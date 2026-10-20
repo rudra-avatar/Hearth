@@ -110,5 +110,30 @@ timeout 10 env LUNA_SEND="$T/quiet.sh" PIDFILE="$T/pid" LOG="$T/log" LAUNCHER="$
 check "a second watcher exits at once when one is already running" "$(grep -c 'another watcher is already running' "$T/log")" "1"
 check "and leaves the first one's pid file alone" "$(cat "$T/pid")" "$$"
 
+# ---- watch.sh on webOS 3: the home bar in the system log ----
+bar () { NO_VERIFY=1 WATCH_BAR_STDIN=1 LUNA_SEND="$T/luna.sh" LAUNCH_LOG="$T/launches" ALLOW="$T/allow" LAUNCHER="$T/launcher" LOG="$T/log" sh "$S/watch.sh"; }
+BAR_HDMI='2026-10-20T12:26:20Z [30.1] user.info surface-manager-starfish [] LSM NL_HOME_SHOWN {"CLOCK":30.1,"foregroundId":"com.webos.app.hdmi1","wedge_image":""}'
+BAR_SELF='2026-10-20T12:26:50Z [60.0] user.info surface-manager-starfish [] LSM NL_HOME_SHOWN {"CLOCK":60.0,"foregroundId":"tld.my.customlauncher","wedge_image":""}'
+OTHER='2026-10-20T12:26:23Z [32.9] user.info surface-manager-starfish [] LSM NL_APP_LAUNCH {"app_id":"com.webos.app.hdmi1"}'
+fresh; printf '%s
+' "$BAR_HDMI" | bar
+check "the home bar over another app opens the launcher" "$(launches)" "1"
+fresh; printf '%s
+' "$BAR_SELF" | bar
+check "the home bar over the launcher itself does not" "$(launches)" "0"
+fresh; printf '%s
+' "$OTHER" | bar
+check "other log lines are ignored" "$(launches)" "0"
+fresh; echo 100 > "$T/allow"; printf 'TIME 105
+%s
+' "$BAR_HDMI" | bar
+check "the home bar right after asking for LG Home is left alone" "$(launches)" "0"
+check "and that request is used up" "$([ -f "$T/allow" ] && echo still || echo gone)" "gone"
+fresh; echo 100 > "$T/allow"; printf 'TIME 200
+%s
+' "$BAR_HDMI" | bar
+check "an old request for LG Home does not stop it" "$(launches)" "1"
+rm -f "$T/allow"
+
 rm -rf "$T"
 exit $fail

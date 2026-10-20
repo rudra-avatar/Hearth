@@ -22,6 +22,13 @@ MARK="${MARK:-/tmp/launcher-launch-mark}"            # touched when the launcher
 FRONT_URI="luna://com.webos.applicationManager/getForegroundAppInfo"
 HOME_PATTERN='*"appId":"com.webos.app.home"*'
 LAUNCHER_PATTERN="*\"appId\":\"$LAUNCHER_ID\"*"
+# webOS 3 has no LG Home app: Home shows a launcher bar over the app in front, which never changes
+# the app in front. The surface manager logs each time the bar is shown, so on those TVs this
+# script watches the system log for that line instead.
+HOME_APP_DIR="${HOME_APP_DIR:-/usr/palm/applications/com.webos.app.home}"
+SYSLOG="${SYSLOG:-/var/log/messages}"
+BAR_PATTERN='*NL_HOME_SHOWN*'
+BAR_ON_LAUNCHER="*\"foregroundId\":\"$LAUNCHER_ID\"*"
 
 log () { echo "$(date '+%H:%M:%S') watcher: $*" >> "$LOG"; }
 
@@ -98,12 +105,44 @@ handle () {
     esac
 }
 
+# One "home bar shown" line from the system log (webOS 3). Opens the launcher unless it is already
+# the app under the bar, or the user asked for LG's own Home in the last 10 seconds.
+handle_bar () {
+    line="$1"
+    case "$line" in
+        $BAR_PATTERN) ;;
+        *) return ;;
+    esac
+    case "$line" in
+        $BAR_ON_LAUNCHER) return ;;
+    esac
+    if [ -f "$ALLOW" ]; then
+        now="${FAKE_NOW:-$(date +%s)}"
+        since=$(cat "$ALLOW" 2>/dev/null); since="${since:-0}"
+        rm -f "$ALLOW"
+        [ $((now - since)) -le 10 ] && return
+    fi
+    [ -f "$LAUNCHER/appinfo.json" ] || return
+    open_launcher
+    log "the home bar was shown: opened the launcher"
+    start_verify
+}
+
 # Test modes: read reports from standard input (a line "TIME n" sets the clock), or run the check once.
 if [ -n "$WATCH_STDIN" ]; then
     while IFS= read -r report; do
         case "$report" in
             "TIME "*) FAKE_NOW="${report#TIME }" ;;
             *) handle "$report" ;;
+        esac
+    done
+    exit 0
+fi
+if [ -n "$WATCH_BAR_STDIN" ]; then
+    while IFS= read -r report; do
+        case "$report" in
+            "TIME "*) FAKE_NOW="${report#TIME }" ;;
+            *) handle_bar "$report" ;;
         esac
     done
     exit 0
@@ -125,6 +164,21 @@ echo $$ > "$PIDFILE"
 # (a stop request is only noticed when the current command ends, so the launcher stops the watcher with kill -9 instead)
 trap 'pkill -P $$ 2>/dev/null; [ "$(cat "$PIDFILE" 2>/dev/null)" = "$$" ] && rm -f "$PIDFILE"; exit 0' TERM INT
 log "started (pid $$)"
+
+if [ ! -d "$HOME_APP_DIR" ]; then
+    # webOS 3: look at the end of the system log a few times a second. Reading the last lines
+    # (rather than following the file) keeps working when the log is rotated.
+    log "no LG Home app on this TV: watching the system log for the home bar"
+    last=$(tail -n 40 "$SYSLOG" 2>/dev/null | grep NL_HOME_SHOWN | tail -n 1)
+    while true; do
+        usleep 400000 2>/dev/null || sleep 1
+        line=$(tail -n 40 "$SYSLOG" 2>/dev/null | grep NL_HOME_SHOWN | tail -n 1)
+        if [ -n "$line" ] && [ "$line" != "$last" ]; then
+            last="$line"
+            handle_bar "$line"
+        fi
+    done
+fi
 
 quick_ends=0
 while true; do

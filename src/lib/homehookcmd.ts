@@ -7,7 +7,7 @@
 // watcher at boot; without it the watcher starts when the launcher opens.
 
 /** Bump when the scripts change: the launcher then rewrites the installed copy and restarts the watcher. */
-export const HOOK_VERSION = '6';
+export const HOOK_VERSION = '7';
 export const HOOK_DIR = '/media/developer/launcher-homehook';
 export const HOOK_LINK = '/var/lib/webosbrew/init.d/48-launcher-homehook';
 export const APP_QML = '/usr/palm/applications/com.webos.app.home/qml';

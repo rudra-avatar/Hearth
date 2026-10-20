@@ -1,0 +1,2 @@
+# Shell scripts run on the TV, and are also embedded into the app bundle (homehook): keep LF on every checkout.
+*.sh text eol=lf

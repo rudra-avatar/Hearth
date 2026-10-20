@@ -1,6 +1,7 @@
 // Design tokens: the single source of truth for colour, spacing, type and motion.
 // `applyTokens()` exposes them as CSS custom properties so the stylesheet and the
 // components read the same values.
+import globalCss from './global.css?raw';
 
 export type ThemeName = 'black' | 'grey';
 
@@ -116,15 +117,39 @@ export function applyTokens (theme: ThemeName = 'black', root: HTMLElement = doc
 		for (const key in values) {
 			const value = values[key];
 			const unit = typeof value === 'number' && !/scale|opacity|columns/i.test(key) ? (key.endsWith('Ms') ? 'ms' : 'px') : '';
-			root.style.setProperty(`--${group}-${kebab(key)}`, `${value}${unit}`);
+			setVar(root, `--${group}-${kebab(key)}`, `${value}${unit}`);
 		}
 	}
+	refreshVarFallback();
 }
 
 /** Switch the colour theme at runtime. */
 export function applyTheme (theme: ThemeName, root: HTMLElement = document.documentElement): void {
 	const colors = THEMES[theme] as unknown as Record<string, string>;
-	for (const key in colors) root.style.setProperty(`--color-${kebab(key)}`, colors[key]);
+	for (const key in colors) setVar(root, `--color-${kebab(key)}`, colors[key]);
+	refreshVarFallback();
+}
+
+// Chromium 38 (webOS 3.x) has no CSS custom properties: it drops every declaration that uses
+// var(). There, the stylesheet is re-emitted with the current token values substituted in.
+const SUPPORTS_VARS = typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('--a', '0');
+const varValues: Record<string, string> = {};
+
+function setVar (root: HTMLElement, name: string, value: string): void {
+	root.style.setProperty(name, value);
+	varValues[name] = value;
+}
+
+function refreshVarFallback (): void {
+	if (SUPPORTS_VARS) return;
+	let style = document.getElementById('css-var-fallback');
+	if (!style) {
+		style = document.createElement('style');
+		style.id = 'css-var-fallback';
+		document.head.appendChild(style);
+	}
+	style.textContent = globalCss.replace(/var\((--[\w-]+)\s*(?:,\s*([^)]*))?\)/g,
+		(whole, name: string, fallback?: string) => varValues[name] ?? (fallback !== undefined ? fallback.trim() : whole));
 }
 
 function kebab (s: string): string {

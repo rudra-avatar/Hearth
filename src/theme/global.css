@@ -182,6 +182,7 @@ html, body {
 	left: 18%; top: 18%;
 	width: 64%; height: 64%;
 	object-fit: contain;
+	-webkit-filter: brightness(2.4);
 	filter: brightness(2.4);
 }
 .tile__glyph {

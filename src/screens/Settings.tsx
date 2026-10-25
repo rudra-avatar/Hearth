@@ -4,6 +4,7 @@ import {OptionList, type OptionItem} from '../components/OptionList';
 import type {TileModel} from '../components/Tile';
 import {useKeys, clamp, type NavKey} from '../hooks/useKeys';
 import {useOkPress} from '../hooks/useOkPress';
+import {useLanguage} from '../hooks/useLanguage';
 import {moveItem} from '../lib/order';
 import {LAYOUT} from '../theme/tokens';
 
@@ -44,11 +45,11 @@ interface Held {
 	original: string[];
 }
 
-const HINT = {
-	select: 'OK adds or removes an item · Hold OK to re-order · Back returns home',
-	reorder: 'OK picks up an item · Hold OK or choose Done to finish',
-	holding: 'Arrows move it · OK puts it down · Back cancels',
-	options: 'OK changes a setting · ← → adjust numbers · Back returns home'
+const HINT_KEYS = {
+	select: 'settings.hint.select',
+	reorder: 'settings.hint.reorder',
+	holding: 'settings.hint.holding',
+	options: 'settings.hint.options'
 } as const;
 
 /** Settings: pick which apps and sources appear on the home row and their order, plus the
@@ -59,6 +60,7 @@ const HINT = {
  *  Grid tabs, re-order mode (hold OK, or the button): only what's on the home screen, in order;
  *  OK picks an item up, arrows move it, OK puts it down. Hold OK or press Done to leave. */
 export function Settings ({tabs, active, onToggle, onReorder, onOption, onRefresh, onAdjust, onClose}: Props) {
+	const {t} = useLanguage();
 	const [tabIndex, setTabIndex] = useState(0);
 	const [zone, setZone] = useState<Zone>('tabs');
 	const [gridIndex, setGridIndex] = useState(0);
@@ -190,14 +192,14 @@ export function Settings ({tabs, active, onToggle, onReorder, onOption, onRefres
 
 	useKeys(handleKey, active);
 
-	const hint = onOptions ? HINT.options : held ? HINT.holding : reordering ? HINT.reorder : HINT.select;
+	const hint = onOptions ? t(HINT_KEYS.options) : held ? t(HINT_KEYS.holding) : reordering ? t(HINT_KEYS.reorder) : t(HINT_KEYS.select);
 	const labels = tabs.map((t) => t.label);
 	const buttonClass = ['settings__button', reordering && 'settings__button--active', zone === 'button' && 'settings__button--focused'].filter(Boolean).join(' ');
 
 	return (
 		<div class="screen screen--settings">
 			<div class="settings">
-				<h1 class="settings__title">Settings</h1>
+				<h1 class="settings__title">{t('common.settings')}</h1>
 				<p class="settings__hint">{hint}</p>
 				<div class="settings__tabs">
 					{labels.map((label, i) => (
@@ -215,7 +217,7 @@ export function Settings ({tabs, active, onToggle, onReorder, onOption, onRefres
 							onMouseEnter={() => setZone('refresh')}
 							onClick={() => { if (onRefresh) onRefresh(); }}
 						>
-							Refresh list
+							{t('settings.refreshList')}
 						</div>
 					)}
 					{tab && (
@@ -224,7 +226,7 @@ export function Settings ({tabs, active, onToggle, onReorder, onOption, onRefres
 							onMouseEnter={() => setZone('button')}
 							onClick={() => setMode(!reordering)}
 						>
-							{reordering ? 'Done' : `Re-order ${tab.noun}`}
+							{reordering ? t('settings.done') : t('settings.reorder', {noun: tab.noun})}
 						</div>
 					)}
 				</div>
@@ -249,7 +251,7 @@ export function Settings ({tabs, active, onToggle, onReorder, onOption, onRefres
 						onActivate={(i) => { setZone('content'); onOption(options[i].id); }}
 					/>
 				)}
-				{reordering && count === 0 && <p class="settings__hint">Nothing on the home screen yet.</p>}
+				{reordering && count === 0 && <p class="settings__hint">{t('settings.nothing')}</p>}
 			</div>
 		</div>
 	);

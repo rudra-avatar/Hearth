@@ -3,6 +3,7 @@ dist/
 build/
 *.ipk
 .DS_Store
+.idea/
 
 # local, per-person settings
 tv.env

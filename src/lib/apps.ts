@@ -8,11 +8,14 @@
 //     service isn't there, we fall back to the catalogue.
 
 import {APP_CATALOG, type CatalogApp} from '../config/catalog';
-import {APP_ID, LUNA} from '../config/constants';
+import {APP_ID, ICONS, LUNA} from '../config/constants';
 import {isWebOS, lunaCall, type LunaResponse} from './luna';
 import {appExists} from './launch';
 import {noteExec, rootState, type RootState} from './failure';
 import {APPS_CACHE_KEY, deserializeApps, serializeApps} from './appcache';
+import {readIcons, shellQuote} from './iconread';
+
+export {shellQuote};
 
 export interface AppEntry {
 	id: string;
@@ -76,11 +79,6 @@ const ICON_CACHE_KEY = 'launcher-icon-cache-v1';
  *  characters, shell syntax) is skipped rather than passed to a root shell. */
 const SAFE_PATH = /^\/[A-Za-z0-9._\/+@-]+$/;
 
-/** Quote a value for a POSIX shell. Defence in depth: paths are also validated. */
-export function shellQuote (value: string): string {
-	return `'${value.replace(/'/g, `'\\''`)}'`;
-}
-
 /** Run a shell command as root through the Homebrew Channel service; resolves with stdout. */
 export function exec (command: string, timeoutMs = 8000): Promise<string> {
 	return lunaCall<ExecResponse>(LUNA.homebrewExec, {command}, timeoutMs).then(
@@ -116,32 +114,25 @@ function listViaHomebrew (): Promise<AppEntry[]> {
 		});
 }
 
-/** Read the icons as data URIs in one shell round-trip, cached in localStorage by path.
- *  Icons are requested by *index*, so app IDs never reach the shell. */
+/** Read the icons as data URIs, a few per shell call (see iconread.ts for why), cached in localStorage by path. */
 function loadIcons (points: LaunchPoint[]): Promise<Record<string, string>> {
 	const cache = readIconCache();
 	const result: Record<string, string> = {};
-	const missing: {id: string; path: string}[] = [];
+	const missing: string[] = [];
 	for (const p of points) {
 		const path = p.largeIcon || p.icon;
 		if (!path || !SAFE_PATH.test(path)) continue;
 		if (cache[path]) result[p.id] = cache[path];
-		else missing.push({id: p.id, path});
+		else if (missing.indexOf(path) === -1) missing.push(path);
 	}
 	if (!missing.length) return Promise.resolve(result);
 
-	// One line per icon: "<index> <base64>". busybox base64 has no -w, so strip newlines.
-	const script = missing
-		.map((m, i) => `printf '%d ' ${i}; base64 ${shellQuote(m.path)} 2>/dev/null | tr -d '\\n'; echo`)
-		.join('; ');
-	return exec(script, 15000).then((out) => {
-		for (const line of out.split('\n')) {
-			const match = /^(\d+) ([A-Za-z0-9+\/=]+)$/.exec(line);
-			const entry = match && missing[Number(match[1])];
-			if (!match || !entry) continue;
-			const url = `data:image/png;base64,${match[2]}`;
-			result[entry.id] = url;
-			cache[entry.path] = url;
+	const wanted = missing.map((path) => ({id: path, path}));
+	return readIcons(wanted, (command) => exec(command, ICONS.timeoutMs), ICONS.perCall, ICONS.parallelCalls).then((found) => {
+		for (const path of Object.keys(found)) cache[path] = `data:image/png;base64,${found[path]}`;
+		for (const p of points) {
+			const path = p.largeIcon || p.icon;
+			if (path && cache[path] && !result[p.id]) result[p.id] = cache[path];
 		}
 		// keep only the icons of apps that are still installed, so the cache does not grow past the storage limit
 		const kept: Record<string, string> = {};
@@ -151,7 +142,7 @@ function loadIcons (points: LaunchPoint[]): Promise<Record<string, string>> {
 		}
 		writeIconCache(kept);
 		return result;
-	}).catch(() => result);
+	});
 }
 
 /** The app list as last seen, for an instant first paint (empty the first time). */

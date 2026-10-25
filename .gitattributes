@@ -1,0 +1,2 @@
+# Shell scripts run on the TV (and are embedded into the app as text): always LF, even on Windows checkouts.
+*.sh text eol=lf

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#06131c"/><stop offset="0.5" stop-color="#0c2a38"/><stop offset="1" stop-color="#041018"/></linearGradient>
+<linearGradient id="w1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1f6f80"/><stop offset="1" stop-color="#0f3c4a"/></linearGradient>
+<linearGradient id="w2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#155766"/><stop offset="1" stop-color="#0a2c38"/></linearGradient>
+<linearGradient id="w3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0c3c4a"/><stop offset="1" stop-color="#051a22"/></linearGradient>
+<linearGradient id="w4" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#072630"/><stop offset="1" stop-color="#020b10"/></linearGradient>
+<filter id="glow" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="40"/></filter>
+<filter id="grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" result="n"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 0.06"/></feComponentTransfer></filter>
+</defs>
+<rect width="1920" height="1080" fill="url(#sky)"/>
+<ellipse cx="960" cy="520" rx="900" ry="90" fill="#58b8c8" opacity="0.18" filter="url(#glow)"/>
+<path d="M0 560 C 240 530, 480 590, 720 560 S 1200 520, 1440 555 S 1800 580, 1920 560 L 1920 1080 L 0 1080 Z" fill="url(#w1)"/>
+<path d="M0 660 C 300 620, 560 690, 860 650 S 1400 610, 1680 650 S 1880 670, 1920 660 L 1920 1080 L 0 1080 Z" fill="url(#w2)"/>
+<path d="M0 780 C 280 740, 620 810, 940 770 S 1500 730, 1920 780 L 1920 1080 L 0 1080 Z" fill="url(#w3)"/>
+<path d="M0 900 C 360 860, 760 930, 1120 890 S 1700 870, 1920 900 L 1920 1080 L 0 1080 Z" fill="url(#w4)"/>
+<rect width="1920" height="1080" filter="url(#grain)"/>
+</svg>

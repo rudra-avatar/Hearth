@@ -30,6 +30,7 @@ eq(w.describe(73, true).icon, 'snow', 'snow');
 const v = w.weatherView(d, 'c', true, 'Pune');
 eq([v.main.indexOf('29°') === 0, v.range, v.city], [true, 'H 31°  L 25°', 'Pune'], 'the clock line');
 eq(w.weatherView(d, 'c', false, '').range, '', 'range can be hidden');
+eq([v.temp, v.main === v.temp + ' ' + v.text, v.text.length > 0], ['29°', true, true], 'temperature and conditions are also given apart, for the weather card');
 
 eq(w.isFresh(d, 12.97, 77.59, 1000 + 60000), true, 'a minute old is fresh');
 eq(w.isFresh(d, 12.97, 77.59, 1000 + w.FRESH_MS + 1), false, 'older than 30 minutes is not fresh');
@@ -40,6 +41,17 @@ eq(w.usableCached(d, 12.97, 77.59, 500), null, 'a reading from the future is ign
 eq(w.validCoords(91, 0), false, 'latitude out of range');
 eq(w.validCoords(10, 20), true, 'good coordinates');
 eq(w.forecastUrl(12.9716, 77.5946).indexOf('latitude=12.972&longitude=77.595') > 0, true, 'coordinates are rounded in the URL');
+eq(w.forecastUrl(1, 2).indexOf('hourly=temperature_2m,weather_code,is_day&forecast_hours=4') > 0, true, 'the next hours come in the same request');
+{
+  const hourly = {time: ['2026-10-25T13:00', '2026-10-25T14:00', 'bad', '2026-10-25T16:00', '2026-10-25T17:00'], temperature_2m: [10, 11.4, 9, 8.6, 7], weather_code: [3, 0, 0, 61, 2], is_day: [1, 1, 1, 0, 0]};
+  const r = w.parseWeather(JSON.stringify({current: {temperature_2m: 10, weather_code: 3, is_day: 1}, hourly}), 0, 0, 1);
+  eq(r.hours, [{hour: 14, tempC: 11.4, code: 0, isDay: true}, {hour: 16, tempC: 8.6, code: 61, isDay: false}, {hour: 17, tempC: 7, code: 2, isDay: false}], 'the next three hours, after the current one; a bad entry is skipped');
+  eq(w.weatherView(r, 'c', true, '', true).hours.map((h) => [h.hour, h.temp, h.icon]), [[14, '11°', 'sun'], [16, '9°', 'rain'], [17, '7°', 'partly']], 'the card gets each hour with its temperature and picture');
+  eq(w.weatherView(r, 'c', true, '', false).hours, [], 'hours can be switched off');
+  const old = {...r}; delete old.hours;
+  eq(w.weatherView(old, 'c', true, '', true).hours, [], 'a reading saved by an older version has no hours, and no error');
+}
+eq([w.hourLabel(0, '12h'), w.hourLabel(13, '12h'), w.hourLabel(9, '24h'), w.hourLabel(21, '24h')], ['12 AM', '1 PM', '09:00', '21:00'], 'hour labels follow the clock format');
 eq(w.geocodeUrl('São Paulo & co').indexOf('name=S%C3%A3o%20Paulo%20%26%20co') > 0, true, 'search text is encoded');
 
 const cmd = n.shellFetchCommand('https://x.test/a?b=1&c=2');

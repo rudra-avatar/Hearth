@@ -17,6 +17,7 @@ It is a normal webOS app (app ID `tld.my.customlauncher`). On a rooted TV it can
 
 ## What it does
 
+- **In English and Spanish.** Settings → Options → **Language** switches the whole interface — menus, settings, messages, dates and the weather — at once, without restarting.
 - **Clock, date and weather.** Six typefaces, adjustable size, thickness and position, 12-hour, 24-hour or "same as the TV". The weather line (temperature, conditions,
   today's high and low) comes from [Open-Meteo](https://open-meteo.com), needs no account, and can be switched off.
 - **Widget colour and opacity.** White is hard to read on a light picture, so the clock, date and weather can be white, warm white, ice blue, amber, grey, dark grey,
@@ -45,7 +46,7 @@ It is a normal webOS app (app ID `tld.my.customlauncher`). On a rooted TV it can
 | | |
 |---|---|
 | Lowest tested | LG firmware **03.01.16** (**webOS 7.0.0**), by users of this launcher |
-| Newer versions | **Should work.** Hearth is compiled for old web views (Chrome 53) and uses only standard web features and TV services that LG keeps across versions, so newer webOS should be fine, but I have not tried every version. Please report anything odd |
+| Newer versions | **Should work.** Hearth is compiled for old web views (Chromium 38) and uses only standard web features and TV services that LG keeps across versions, so newer webOS should be fine, but I have not tried every version. Please report anything odd |
 
 ### Rooted TV with the Homebrew Channel: everything
 
@@ -106,17 +107,26 @@ from the Homebrew Channel or Dev Manager.
 ### Settings
 
 - **Apps / Sources:** which apps and HDMI inputs are on the row, and their order. **Refresh list** (Apps) checks for newly installed apps.
-- **Look:** theme (OLED black or calm blue-grey), icon size (50-140 %), rows (one or two), side margin (0-300 px) and bottom margin, app names on or off, and **Reset look and clock**.
-- **Clock:** time format, size, font, thickness, vertical and horizontal position, date and AM/PM on or off.
-- **Weather:** on or off, the city, Celsius or Fahrenheit, the city name and today's high and low on or off.
+- **Look:** theme (OLED black, calm blue-grey or Glass), the **Glass colour** (Violet, Graphite, Midnight, Sunset), **Reduce effects (faster)**, icon size (50-140 %), rows (one or two),
+  side margin (0-300 px) and bottom margin, app names on or off, **When Home is pressed** (the first app, or the app opened last), **Hide the apps when idle** (never, 1, 3 or 10 minutes), and **Reset look and clock**.
+- **Clock:** time format, size, font, thickness, vertical and horizontal position, date and AM/PM on or off, the Glass cards in the top-left corner, and **Move the clock slightly (OLED care)**
+  (on by default: a few pixels every 3 minutes, so a static clock never wears into an OLED screen).
+- **Weather:** on or off, the city, Celsius or Fahrenheit, the city name, today's high and low, and the next three hours (in the Glass weather card).
   Pick a city from the list of about 75, or choose **Search for a city** and type any place name (worldwide).
 - **Wallpaper:** the picture or slideshow, interval and shuffle, **Widget colour** and **Widget opacity**.
-- **Options (rooted TVs):** the TV input; live app list; *Make this launcher the default instead of LG Home*; *Start the launcher helper at boot*;
-  *Show the LG logo when the TV starts*; *Close LG Home when the app opens* and *Close LG Home now*; and, last, the experimental *Alternative method* (webOS 5 and newer).
+- **Options:** the **Language** (English or Spanish — works on every TV); and, on rooted TVs, the TV input; live app list; *Make this launcher the default instead of LG Home*; *Start the launcher helper at boot*;
+  *Home button opens Hearth directly* and *Red / Green / Yellow / Blue button opens*; *Show the LG logo when the TV starts*;
+  *Close LG Home when the app opens* and *Close LG Home now*; and, last, the experimental *Alternative method* (webOS 5 and newer).
+  The remote-button rows need [LG Input Hook](https://github.com/Simon34545/lginputhook) from the Homebrew Channel (open it once after installing). Hearth reads and
+  writes Input Hook's own settings, so a button set up there or by hand shows as it is; it only adds or removes "launch" bindings on Home and the colour buttons
+  and leaves every other binding alone. *Home button opens Hearth directly* means LG Home is never shown when Home is pressed (no flash).
 
 ### Wallpaper
 
-**Settings → Wallpaper → Wallpaper** opens a folder browser: **Default background**, or a **USB drive** / **Internal storage** (`/media/developer`), where OK on a picture sets it and
+Five minimalist wallpapers come with Hearth: **Aurora**, **Dunes**, **Tide**, **Bloom** and **Horizon** (1920×1080 JPEGs of about 150-190 KB each, drawn for Hearth;
+sources in `tools/wallpapers`, rendered with `sh tools/wallpapers/render.sh`). They load straight from the app, so they also work on a TV that is not rooted, and only the one on screen is in memory.
+
+**Settings → Wallpaper → Wallpaper** opens a folder browser: **Default background**, the five built-in wallpapers, or a **USB drive** / **Internal storage** (`/media/developer`), where OK on a picture sets it and
 **Play this folder as a slideshow** plays every picture in the folder. Use JPG, PNG, WebP or BMP, ideally 1920×1080 to 3840×2160 and a few MB at most; a picture over 8 MB or over 25 megapixels is skipped
 with a message. A web app cannot read files itself, so on a rooted TV the Homebrew Channel's service reads them in small pieces. If it can't, the screen says why and offers **Try again**.
 
@@ -143,11 +153,46 @@ luna-send-pub -n 1 'luna://com.webos.service.eim/addDevice' '{"appId":"tld.my.cu
 - The "LG Home" tile still opens LG's own Home.
 - **Turn it off before uninstalling Hearth.** Reversal steps (also over SSH) and a diagnostics script are in [`src/homehook/README.md`](src/homehook/README.md).
 
+### No LG Home flash: map the Home button with LG Input Hook (optional)
+
+The helper can only react once LG Home is already on screen, so LG Home shows for about half a second after you press Home.
+To skip LG Home entirely, let [LG Input Hook](https://github.com/Simon34545/lginputhook) (in the Homebrew Channel) open Hearth when Home is pressed:
+
+1. Install **LG Input Hook** from the Homebrew Channel and open it once (this gives it root and starts it at boot).
+2. In it, press **Add keybind**, press Home on the remote to see its code, choose **Launch App** → **Hearth**, and **Save changes**.
+   Or over SSH (773 is the Home button on the remote this was tested with; check yours in `/tmp/lginput-hook-micomservice.log`):
+   ```
+   echo '{"773":{"action":"launch","id":"tld.my.customlauncher"}}' > /home/root/.config/lginputhook/keybinds.json
+   ```
+3. Keep the helper above switched on: it still covers leaving an app with Back and the TV's own start-up.
+
+This is stored with Input Hook, not with Hearth, so it survives Hearth updates. To undo it, delete the binding in Input Hook (or write `{}` to that file).
+Tested on webOS 6.5.3.
+
 The **Alternative method** row sets the TV's own `defaultApps.home` setting instead. It is experimental, may not work on webOS older than 5 (it did not on webOS 4), and needs the same care: switch it off before uninstalling.
 To undo it from a shell:
 ```
 luna-send -n 1 -f luna://com.webos.settingsservice/setSystemSettings '{"category":"general","settings":{"defaultApps":{"home":"com.webos.app.home"}}}'
 ```
+
+## webOS 11: one extra step on rooted TVs
+
+On webOS 11 (tested on an LG C4, firmware 43.21.73) the TV only lets an app use the Homebrew Channel's
+command service when the app's Luna permissions include `org.webosbrew.hbchannel.service.group`. The app
+installer leaves that out for Hearth, so even on a rooted TV every option that needs root is greyed out with
+*"the TV refused the command"*, the app icons are letters, and the wallpaper picker can't read the storage.
+
+[`tools/webos11-permission.sh`](tools/webos11-permission.sh) adds the permission. Because the installer writes
+Hearth's permission file again on every install or update, it is installed as a boot hook that checks it at
+each start (before Hearth's own boot helper). Once, from a computer on the same network:
+
+```
+scp -O tools/webos11-permission.sh root@TV_IP:/var/lib/webosbrew/init.d/40-hearth-permission
+ssh root@TV_IP 'chmod 755 /var/lib/webosbrew/init.d/40-hearth-permission; sh /var/lib/webosbrew/init.d/40-hearth-permission'
+```
+
+Then close and reopen Hearth. After updating Hearth, restart the TV (or run the second command again).
+To undo it, delete `/var/lib/webosbrew/init.d/40-hearth-permission` and reinstall Hearth.
 
 ## Troubleshooting
 
@@ -157,6 +202,8 @@ luna-send -n 1 -f luna://com.webos.settingsservice/setSystemSettings '{"category
 - **USB drive missing in the picker:** plug it in, then open the picker again. The TV must have mounted it.
 - **The weather doesn't appear:** check the TV's internet connection; it tries again by itself after 2, 10 and then 30 minutes.
 - **The Home button shows LG Home for a moment right after boot:** turn on *Start the launcher helper at boot*.
+- **LG Home flashes for a moment every time you press Home:** map the Home button with LG Input Hook (see *No LG Home flash* above).
+- **Letters instead of app icons with the live app list:** fixed in this version (icons are now read a few at a time; reading them all at once went over the Homebrew service's 200 KB output limit on webOS 6).
 - **Odd layout after changing sizes:** Settings → Look → **Reset look and clock**.
 
 ## Credits
@@ -174,7 +221,7 @@ Needs Node 18+.
 ```
 npm install
 npm test           # unit tests, plus the home-screen helper's shell tests
-npm run build      # type-check, then build dist/ (compiled for old web views, Chrome 53+)
+npm run build      # type-check, then build dist/ and re-emit it for Chromium 38 (webOS 3.x)
 npm run package    # dist/ -> build/tld.my.customlauncher_<version>_all.ipk
 ```
 
@@ -183,7 +230,8 @@ To publish a new release and keep Homebrew Channel updates working, see [docs/PU
 
 ## Notes for developers
 
-- The build targets Chrome 53 (webOS 4.x) and avoids CSS grid, `gap` and `inset`. Module scripts don't load from `file://` on webOS, so the bundle is one classic script.
+- The build targets Chromium 38 (webOS 3.x): vite compiles for Chrome 53, then `scripts/legacy.mjs` re-emits the bundle with older syntax. It avoids CSS grid, `gap` and `inset`. Module scripts don't load from `file://` on webOS, so the bundle is one classic script.
+- All user-facing text goes through `t(key, params)` in `src/lib/i18n.ts`; the tables live in `src/locales/en.json` and `src/locales/es.json`. To add a language: copy a table, add its code to `Lang` in `src/lib/i18n.ts` and `src/lib/storage.ts`, and load it in `src/main.tsx`. Labels with dynamic parts (like the colour buttons) are functions on their `Pref`, so they translate at render time.
 - `src/lib/prefs.ts` describes every setting in one table; the Settings lists and key handling come from it.
 - Shell commands go through one place, `exec` in `src/lib/apps.ts`, which also learns whether this TV can run commands (`src/lib/failure.ts`) so rows can be greyed out and errors explained at no extra cost.
 - The weather code is behind a build switch: `HEARTH_WEATHER=0 npm run build` leaves it out entirely.

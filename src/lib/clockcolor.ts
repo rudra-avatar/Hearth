@@ -16,16 +16,16 @@ export interface ClockColorInfo {
 }
 
 export const CLOCK_COLORS: readonly ClockColorInfo[] = [
-	{id: 'white', label: 'White', color: '#F2F2F2', accent: '#F2F2F2'},
-	{id: 'warm', label: 'Warm white', color: '#FFE9C7', accent: '#FFE9C7'},
-	{id: 'blue', label: 'Ice blue', color: '#C4E2FF', accent: '#C4E2FF'},
-	{id: 'amber', label: 'Amber', color: '#FFB74D', accent: '#FFB74D'},
-	{id: 'grey', label: 'Grey', color: '#9AA0A6', accent: '#9AA0A6'},
-	{id: 'charcoal', label: 'Dark grey', color: '#3C4043', accent: '#3C4043', dark: true},
-	{id: 'black', label: 'Black', color: '#0A0A0A', accent: '#0A0A0A', dark: true},
-	{id: 'ember', label: 'Gradient: Ember (red to gold)', gradient: 'linear-gradient(90deg, #D62839 0%, #F08C1A 100%)', accent: '#F0803F'},
-	{id: 'ocean', label: 'Gradient: Ocean (deep blue to aqua)', gradient: 'linear-gradient(90deg, #1E4FD8 0%, #19C6D8 100%)', accent: '#1F8BDA', dark: true},
-	{id: 'dusk', label: 'Gradient: Dusk (violet to coral)', gradient: 'linear-gradient(90deg, #6A2FC9 0%, #F2634F 100%)', accent: '#A04A9A', dark: true}
+	{id: 'white', label: 'color.white', color: '#F2F2F2', accent: '#F2F2F2'},
+	{id: 'warm', label: 'color.warm', color: '#FFE9C7', accent: '#FFE9C7'},
+	{id: 'blue', label: 'color.blue', color: '#C4E2FF', accent: '#C4E2FF'},
+	{id: 'amber', label: 'color.amber', color: '#FFB74D', accent: '#FFB74D'},
+	{id: 'grey', label: 'color.grey', color: '#9AA0A6', accent: '#9AA0A6'},
+	{id: 'charcoal', label: 'color.charcoal', color: '#3C4043', accent: '#3C4043', dark: true},
+	{id: 'black', label: 'color.black', color: '#0A0A0A', accent: '#0A0A0A', dark: true},
+	{id: 'ember', label: 'color.ember', gradient: 'linear-gradient(90deg, #D62839 0%, #F08C1A 100%)', accent: '#F0803F'},
+	{id: 'ocean', label: 'color.ocean', gradient: 'linear-gradient(90deg, #1E4FD8 0%, #19C6D8 100%)', accent: '#1F8BDA', dark: true},
+	{id: 'dusk', label: 'color.dusk', gradient: 'linear-gradient(90deg, #6A2FC9 0%, #F2634F 100%)', accent: '#A04A9A', dark: true}
 ];
 
 export const CLOCK_COLOR_IDS: readonly ClockColor[] = CLOCK_COLORS.map((c) => c.id);

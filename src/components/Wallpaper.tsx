@@ -1,5 +1,6 @@
 import {useEffect, useRef} from 'preact/hooks';
 import {WALLPAPER} from '../config/constants';
+import {builtinWallpaperUrl} from '../lib/builtinwallpapers';
 import type {WallpaperConfig} from '../lib/storage';
 import {
 	clearWallpaperCache, listImages, loadPicture, readWallpaperCache, releasePicture, createShuffleOrder,
@@ -160,6 +161,8 @@ export function Wallpaper ({config, onProblem}: Props) {
 			files = [];
 			order = null;
 			if (config.mode === 'gradient' || !config.path) { clearWallpaperCache(); hideAll(); return; }
+			// one that comes with Hearth: part of the app, loaded straight away (no shell, no saved copy)
+			if (config.mode === 'builtin') { clearWallpaperCache(); show(builtinWallpaperUrl(config.path), true); return; }
 
 			const cached = readWallpaperCache(cacheId);
 			if (cached) {                                          // instant: no shell work at all
@@ -187,7 +190,7 @@ export function Wallpaper ({config, onProblem}: Props) {
 		};
 
 		const onVisibility = () => {
-			if (config.mode === 'gradient') return;
+			if (config.mode === 'gradient' || config.mode === 'builtin') return;
 			if (document.hidden) { stopTimer(); saveCache(); return; }
 			if (failed) start();                                   // the USB drive may be back
 			else if (config.mode === 'folder') {

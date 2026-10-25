@@ -252,6 +252,7 @@ html, body {
 	left: 18%; top: 18%;
 	width: 64%; height: 64%;
 	object-fit: contain;
+	-webkit-filter: brightness(2.4);
 	filter: brightness(2.4);
 }
 .tile__glyph {
@@ -327,17 +328,19 @@ html, body {
 .settings__tabs {
 	display: flex;
 	flex-direction: row;
+	flex-wrap: nowrap;
 	margin: 36px 0 30px;
 }
 .tab {
 	margin-right: 40px;
-	padding: 10px 4px;
+	padding: 10px 6px;
 	font-size: var(--font-settings-tab);
 	font-weight: 500;
 	letter-spacing: 0.12em;
 	text-transform: uppercase;
 	color: var(--color-text-muted);
 	border-bottom: 3px solid transparent;
+	white-space: nowrap;
 	transition: color var(--motion-focus-ms) ease-out, border-color var(--motion-focus-ms) ease-out;
 }
 .tab--active { color: var(--color-text-secondary); border-bottom-color: var(--color-tile-border); }
@@ -355,6 +358,7 @@ html, body {
 	color: var(--color-text-secondary);
 	box-shadow: 0 0 0 2px var(--color-button-border);
 	transform: scale(1);
+	white-space: nowrap;
 	transition: transform var(--motion-focus-ms) ease-out, box-shadow var(--motion-focus-ms) ease-out, background var(--motion-focus-ms) ease-out, color var(--motion-focus-ms) ease-out;
 }
 .settings__button--refresh { margin-left: auto; margin-right: 20px; }
@@ -585,3 +589,254 @@ html, body {
 	pointer-events: none;
 }
 .toast--error { color: var(--color-danger); }
+
+/* ======================================================================================
+   Glass theme (Settings → Look → Theme → Glass), in the style of the Apple TV home screen.
+   Everything below applies only while it is chosen. For the TV's sake, focus changes still
+   animate only transform and opacity, and blur (backdrop-filter, Chrome 76+) is used only on
+   large panels, never on every tile or row.
+   ====================================================================================== */
+
+:root[data-theme="glass"] {
+	--glass-radius: 30px;
+	--glass-spring: cubic-bezier(0.34, 1.45, 0.64, 1);   /* a small overshoot, like tvOS focus */
+	--glass-blur: blur(36px) saturate(1.6);
+}
+
+/* ---- tiles: no border; the selected one lifts with a shadow and a sheen ---- */
+[data-theme="glass"] .tile__box {
+	border-radius: var(--glass-radius);
+	box-shadow: none;
+}
+[data-theme="glass"] .tile__frame { transition: transform 320ms var(--glass-spring); }
+[data-theme="glass"] .tile--focused .tile__frame { transform: scale(1.16) translateY(-6px); }
+/* the shadow under a lifted tile: drawn once, faded in (cheaper than animating box-shadow) */
+[data-theme="glass"] .tile__frame::before {
+	content: '';
+	position: absolute;
+	left: 8%; right: 8%; top: 14%; bottom: -6%;
+	border-radius: var(--glass-radius);
+	box-shadow: 0 26px 46px rgba(0, 0, 0, 0.6);
+	opacity: 0;
+	transition: opacity 260ms ease-out;
+	pointer-events: none;
+}
+[data-theme="glass"] .tile--focused .tile__frame::before { opacity: 1; }
+/* the sheen: a soft diagonal light across the selected icon */
+[data-theme="glass"] .tile__box::after {
+	content: '';
+	position: absolute;
+	left: 0; top: 0;
+	width: 100%; height: 100%;
+	border-radius: var(--glass-radius);
+	background: linear-gradient(135deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.10) 32%, rgba(255, 255, 255, 0) 55%);
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+	opacity: 0;
+	transition: opacity 260ms ease-out;
+	pointer-events: none;
+}
+[data-theme="glass"] .tile--focused .tile__box::after { opacity: 1; }
+/* no white ring: the lift is the focus (the ring stays for a tile picked up to re-order) */
+[data-theme="glass"] .tile__ring { border-radius: var(--glass-radius); }
+[data-theme="glass"] .tile--focused .tile__ring { opacity: 0; }
+[data-theme="glass"] .tile--lifted .tile__ring { opacity: 1; }
+[data-theme="glass"] .tile__monogram { font-weight: 500; }
+/* only the selected app shows its name, as on Apple TV (the picker grid keeps all names) */
+[data-theme="glass"] .rows .tile__label {
+	margin-top: 22px;
+	font-weight: 500;
+	color: var(--color-text-primary);
+	opacity: 0;
+	transition: opacity 200ms ease-out;
+}
+[data-theme="glass"] .rows .tile--focused .tile__label { opacity: 1; }
+[data-theme="glass"] .row__label { letter-spacing: 0.08em; font-weight: 600; }
+[data-theme="glass"] .row__viewport { padding: 30px 30px 16px; margin: -30px -30px -16px; }   /* room for the larger lift */
+
+/* ---- clock: lighter shadows, so it sits on the background rather than above it ---- */
+[data-theme="glass"] .clock__time { text-shadow: 0 2px 18px rgba(0, 0, 0, 0.35); }
+
+/* ---- frosted panels: Settings, the picker, the app menu and messages ---- */
+[data-theme="glass"] .screen--settings,
+[data-theme="glass"] .screen--picker {
+	-webkit-backdrop-filter: var(--glass-blur);
+	backdrop-filter: var(--glass-blur);
+}
+[data-theme="glass"] .screen--dialog { background: rgba(8, 10, 24, 0.35); }
+[data-theme="glass"] .dialog,
+[data-theme="glass"] .toast {
+	background: rgba(40, 44, 70, 0.55);
+	-webkit-backdrop-filter: var(--glass-blur);
+	backdrop-filter: var(--glass-blur);
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+[data-theme="glass"] .dialog { border-radius: 36px; }
+[data-theme="glass"] .toast { color: var(--color-text-primary); }
+[data-theme="glass"] .settings__title { font-weight: 600; }
+
+/* tabs and buttons are pills; the selected one turns white */
+[data-theme="glass"] .tab {
+	padding: 10px 22px;
+	margin-right: 14px;
+	border-radius: 999px;
+	border-bottom: 0;
+	letter-spacing: 0.04em;
+	text-transform: none;
+	font-weight: 600;
+	white-space: nowrap;
+	flex-shrink: 1;
+	transition: color 200ms ease-out, background 200ms ease-out, transform 280ms var(--glass-spring);
+}
+[data-theme="glass"] .tab--active { background: rgba(255, 255, 255, 0.14); color: var(--color-text-primary); }
+[data-theme="glass"] .tab--focused { background: #FFFFFF; color: #0b0d1c; transform: scale(1.06); }
+[data-theme="glass"] .settings__button { box-shadow: none; background: rgba(255, 255, 255, 0.14); transition: transform 280ms var(--glass-spring), background 200ms ease-out, color 200ms ease-out; white-space: nowrap; flex-shrink: 0; }
+[data-theme="glass"] .settings__button--focused { background: #FFFFFF; color: #0b0d1c; box-shadow: none; transform: scale(1.08); }
+
+/* rows in Settings and the picker: translucent; the selected one is white with dark text */
+[data-theme="glass"] .option,
+[data-theme="glass"] .picker__row {
+	border-radius: 22px;
+	box-shadow: none;
+	transition: background 180ms ease-out, transform 280ms var(--glass-spring);
+}
+[data-theme="glass"] .option--focused,
+[data-theme="glass"] .picker__row--focused {
+	background: rgba(255, 255, 255, 0.94);
+	box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+	transform: scale(1.015);
+}
+[data-theme="glass"] .picker__row--info { background: transparent; }
+[data-theme="glass"] .option--focused .option__label,
+[data-theme="glass"] .option--focused .option__value,
+[data-theme="glass"] .picker__row--focused .picker__label,
+[data-theme="glass"] .picker__row--focused .picker__input { color: #0b0d1c; }
+[data-theme="glass"] .option--focused .option__description,
+[data-theme="glass"] .option--focused .option__description--reason,
+[data-theme="glass"] .picker__row--focused .picker__detail { color: rgba(11, 13, 28, 0.66); }
+[data-theme="glass"] .picker__row--focused .picker__icon { stroke: #0b0d1c; }
+[data-theme="glass"] .option--focused .switch { background: rgba(11, 13, 28, 0.18); }
+[data-theme="glass"] .option--focused .switch--on { background: var(--color-switch-track-on); }
+[data-theme="glass"] .switch__knob { box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3); }
+[data-theme="glass"] .switch__knob,
+[data-theme="glass"] .switch--on .switch__knob { background: #FFFFFF; }
+
+/* ---- Glass: the clock and the weather as two frosted cards of the same size, the weather under the clock
+   (Clock.tsx renders them only in this theme). A one-column grid gives both cards the width of the wider
+   one, and equal rows give them the height of the taller one. Older web views without grid (webOS 4) get
+   flex: the same cards stacked, just not forced to the same height. ---- */
+/* size to the content: the clock is placed at its centre line, so otherwise it would only get the room up to the screen's edge */
+.clock--cards { width: -webkit-max-content; width: max-content; }
+.clock__cards {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	display: grid;
+	grid-template-columns: 1fr;
+	grid-auto-rows: 1fr;
+	grid-row-gap: 0.8em;
+}
+@supports not (display: grid) {
+	.clock__cards > .clock__card + .clock__card { margin-top: 0.8em; }
+}
+/* small, in the top-left corner (Settings → Clock): scaled from that corner */
+.clock--corner { transform-origin: 0 0; text-align: left; }
+.clock--corner .clock__card--time { align-items: flex-start; }
+/* a large clock: two cards of the same height would not fit above the apps, so the weather card keeps its own height */
+.clock__cards--compact { grid-auto-rows: auto; }
+.clock__card {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	padding: 0.9em 1.3em;
+	border-radius: 1.2em;
+	background: var(--glass-card, rgba(30, 34, 62, 0.42));
+	-webkit-backdrop-filter: blur(30px) saturate(1.6);
+	backdrop-filter: blur(30px) saturate(1.6);
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16), 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+/* on the glass, the clock needs only a light shadow */
+.clock--cards .clock__time, .clock--cards .clock__period, .clock--cards .clock__date { text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25); }
+/* the weather card's text is always white on the dark glass, whatever colour the clock is set to */
+.clock__card--weather {
+	align-items: center;      /* the weather block sits in the middle of its card; its lines stay left-aligned */
+	min-width: 13em;
+	text-align: left;
+	color: #FFFFFF;
+	-webkit-text-fill-color: #FFFFFF;
+}
+.clock__card-head {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	font-size: 0.8em;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	opacity: 0.85;
+}
+.clock__card-head .clock__weather-icon { width: 1.45em; height: 1.45em; margin-right: 0.45em; stroke: #FFFFFF; }
+.clock__card-body {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	margin-top: 0.35em;
+}
+.clock__card-temp {
+	font-size: 2.9em;
+	font-weight: 300;
+	line-height: 1;
+	letter-spacing: -0.02em;
+	margin-right: 0.4em;
+}
+.clock__card-side { display: flex; flex-direction: column; }
+.clock__card-text { font-size: 0.95em; font-weight: 500; }
+.clock__card-range { margin-top: 0.2em; font-size: 0.8em; opacity: 0.7; }
+
+/* ---- Next hours in the Glass weather card (Settings → Weather → Show the next hours) ---- */
+.clock__card-hours {
+	display: flex;
+	flex-direction: row;
+	margin-top: 0.7em;
+	padding-top: 0.6em;
+	border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+.clock__card-hour {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	min-width: 3.4em;
+	margin-right: 0.8em;
+	font-size: 0.78em;
+}
+.clock__card-hour:last-child { margin-right: 0; }
+.clock__card-hour .clock__weather-icon { width: 1.4em; height: 1.4em; margin: 0.25em 0; stroke: #FFFFFF; }
+.clock__card-hour-time { opacity: 0.7; }
+.clock__card-hour-temp { font-weight: 500; }
+
+/* ---- Quiet mode (Settings → Look → Hide the apps when idle): only the clock, weather and wallpaper stay ---- */
+.rows { transition: opacity 900ms ease-in-out; }
+.screen--quiet .rows { opacity: 0; }
+
+/* ---- Reduce effects (Settings → Look): no blur, no shadows or sheen, short plain motion. Panels that were
+   frosted become more solid so text stays readable without the blur. ---- */
+[data-effects="reduced"] *,
+[data-effects="reduced"] *::before,
+[data-effects="reduced"] *::after {
+	-webkit-backdrop-filter: none !important;
+	backdrop-filter: none !important;
+}
+[data-effects="reduced"] .tile__frame::before,
+[data-effects="reduced"] .tile__box::after { display: none; }
+[data-effects="reduced"] .tile__frame,
+[data-effects="reduced"] .tab,
+[data-effects="reduced"] .settings__button,
+[data-effects="reduced"] .option,
+[data-effects="reduced"] .picker__row { transition-duration: 120ms !important; transition-timing-function: ease-out !important; }
+[data-effects="reduced"][data-theme="glass"] .tile--focused .tile__frame { transform: scale(1.1); }
+[data-effects="reduced"] .clock__card { background: rgba(18, 20, 36, 0.82); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14); }
+[data-effects="reduced"][data-theme="glass"] .screen--settings,
+[data-effects="reduced"][data-theme="glass"] .screen--picker { background: rgba(10, 12, 24, 0.9); }
+[data-effects="reduced"][data-theme="glass"] .dialog,
+[data-effects="reduced"][data-theme="glass"] .toast { background: rgba(28, 30, 50, 0.96); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14); }
+[data-effects="reduced"] .option--focused,
+[data-effects="reduced"] .picker__row--focused { box-shadow: none; }
+[data-effects="reduced"] .rows { transition-duration: 300ms; }

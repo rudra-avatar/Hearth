@@ -2,23 +2,25 @@
 // (theme, sizes, margins), the clock, the wallpaper, and a few options. Persisted in
 // localStorage (private to this app on the TV).
 
+import {builtinWallpaper} from './builtinwallpapers';
 import {STORAGE_KEY, WALLPAPER} from '../config/constants';
 import type {ThemeName} from '../theme/tokens';
 import {CLOCK_FONT_IDS, type ClockFont} from './clockfont';
 import {CLOCK_COLOR_IDS, type ClockColor} from './clockcolor';
 import {validCoords, type City, type TempUnit} from './weather';
 
-export type WallpaperMode = 'gradient' | 'image' | 'folder';
+export type WallpaperMode = 'gradient' | 'image' | 'folder' | 'builtin';
 export type ClockFormat = 'tv' | '12h' | '24h';
 export type {ClockColor};
 export type ClockWeight = 200 | 300 | 400;
+export type Lang = 'en' | 'es';
 
 /** Numeric settings: the values they can take (OK steps through them, ← → nudge them). */
 export const RANGES = {
 	iconScale:    {min: 50,  max: 140, step: 10, def: 100},   // % of the standard tile size
 	sideMargin:   {min: 0,   max: 300, step: 10, def: 50},    // px at 1080p, left and right of the app row
 	bottomMargin: {min: 0,   max: 200, step: 10, def: 40},    // px at 1080p, below the app row
-	clockSize:    {min: 80,  max: 220, step: 10, def: 140},   // px, height of the digits
+	clockSize:    {min: 60,  max: 220, step: 10, def: 140},   // px, height of the digits
 	clockTop:     {min: 0,   max: 70,  step: 2,  def: 28},    // % of the screen height (0 = the very top)
 	clockLeft:    {min: 0,   max: 100, step: 2,  def: 50},    // % of the screen width (where the clock's centre sits)
 	clockOpacity: {min: 10,  max: 100, step: 10, def: 100}    // % (how solid the clock, date and weather are)
@@ -48,8 +50,20 @@ export interface ClockConfig {
 	showDate: boolean;
 	/** AM/PM beside the time (12-hour mode only) */
 	showPeriod: boolean;
+	/** Glass theme: the clock and weather cards small, in the top-left corner (instead of where top/left put them) */
+	corner: boolean;
+	/** OLED care: move the clock a few pixels every few minutes */
+	shift: boolean;
 }
 
+import type {GlassTint} from '../theme/tokens';
+export type {GlassTint};
+export const GLASS_TINTS: readonly GlassTint[] = ['violet', 'graphite', 'midnight', 'sunset'];
+/** Where the highlight goes when Home is pressed. */
+export type HomeFocus = 'first' | 'last';
+/** Minutes without a key press before the app row fades out (0: never). */
+export const QUIET_VALUES = [0, 1, 3, 10] as const;
+export type QuietAfter = typeof QUIET_VALUES[number];
 export interface WeatherConfig {
 	/** show the weather line under the date */
 	on: boolean;
@@ -58,6 +72,8 @@ export interface WeatherConfig {
 	showCity: boolean;
 	/** today's high and low */
 	showRange: boolean;
+	/** the next three hours (in the Glass theme's weather card) */
+	showHours: boolean;
 }
 
 export interface WallpaperConfig {
@@ -101,6 +117,14 @@ export interface UserConfig {
 	clock: ClockConfig;
 	weather: WeatherConfig;
 	wallpaper: WallpaperConfig;
+	/** the Glass theme's colour */
+	glassTint: GlassTint;
+	/** no blur and simpler motion (faster on slow TVs) */
+	reduceEffects: boolean;
+	homeFocus: HomeFocus;
+	quietAfter: QuietAfter;
+	/** UI language */
+	language: Lang;
 }
 
 export const DEFAULT_WALLPAPER: WallpaperConfig = {
@@ -115,7 +139,8 @@ export const DEFAULT_WEATHER: WeatherConfig = {
 	city: null,
 	unit: 'c',
 	showCity: true,
-	showRange: true
+	showRange: true,
+	showHours: true
 };
 
 export const DEFAULT_CLOCK: ClockConfig = {
@@ -127,7 +152,9 @@ export const DEFAULT_CLOCK: ClockConfig = {
 	color: 'white',
 	opacity: RANGES.clockOpacity.def,
 	showDate: true,
-	showPeriod: true
+	showPeriod: true,
+	corner: false,
+	shift: true
 };
 
 export const DEFAULT_CONFIG: UserConfig = {
@@ -148,7 +175,12 @@ export const DEFAULT_CONFIG: UserConfig = {
 	clockFormat: '12h',
 	clock: DEFAULT_CLOCK,
 	weather: DEFAULT_WEATHER,
-	wallpaper: DEFAULT_WALLPAPER
+	wallpaper: DEFAULT_WALLPAPER,
+	glassTint: 'violet',
+	reduceEffects: false,
+	homeFocus: 'first',
+	quietAfter: 0,
+	language: 'en'
 };
 
 function stringList (value: unknown): string[] | null {
@@ -173,7 +205,7 @@ export function loadConfig (): UserConfig {
 		const wx: Partial<WeatherConfig> = parsed.weather || {};
 		const wc = wx.city as Partial<City> | null | undefined;
 		const city: City | null = wc && typeof wc.name === 'string' && wc.name && validCoords(wc.lat, wc.lon) ? {name: wc.name.slice(0, 60), lat: wc.lat as number, lon: wc.lon as number, detail: typeof wc.detail === 'string' ? wc.detail.slice(0, 80) : undefined} : null;
-		const mode: WallpaperMode = w.mode === 'image' || w.mode === 'folder' ? w.mode : 'gradient';
+		const mode: WallpaperMode = w.mode === 'image' || w.mode === 'folder' || (w.mode === 'builtin' && builtinWallpaper(String(w.path)) !== undefined) ? w.mode : 'gradient';
 		const path = typeof w.path === 'string' ? w.path : '';
 		const interval = typeof w.intervalSec === 'number' && w.intervalSec >= 5 ? w.intervalSec : DEFAULT_WALLPAPER.intervalSec;
 		return {
@@ -186,7 +218,7 @@ export function loadConfig (): UserConfig {
 			closeHome: parsed.closeHome !== false,
 			replaceHome: parsed.replaceHome === true,
 			hookBoot: parsed.hookBoot !== false,
-			theme: parsed.theme === 'grey' ? 'grey' : 'black',
+			theme: parsed.theme === 'grey' || parsed.theme === 'glass' ? parsed.theme : 'black',
 			iconScale: ranged(parsed.iconScale, 'iconScale'),
 			showLabels: parsed.showLabels !== false,
 			rows: parsed.rows === 2 ? 2 : 1,
@@ -202,21 +234,29 @@ export function loadConfig (): UserConfig {
 				color: CLOCK_COLOR_IDS.indexOf(c.color as ClockColor) !== -1 ? (c.color as ClockColor) : 'white',
 				opacity: ranged(c.opacity, 'clockOpacity'),
 				showDate: c.showDate !== false,
-				showPeriod: c.showPeriod !== false
+				showPeriod: c.showPeriod !== false,
+				corner: c.corner === true,
+				shift: c.shift !== false
 			},
 			weather: {
 				on: wx.on === true && city !== null,
 				city,
 				unit: wx.unit === 'f' ? 'f' : 'c',
 				showCity: wx.showCity !== false,
-				showRange: wx.showRange !== false
+				showRange: wx.showRange !== false,
+				showHours: wx.showHours !== false
 			},
 			wallpaper: {
 				mode: path ? mode : 'gradient',
 				path,
 				intervalSec: interval,
 				shuffle: w.shuffle !== false
-			}
+			},
+			glassTint: GLASS_TINTS.indexOf(parsed.glassTint as GlassTint) !== -1 ? parsed.glassTint as GlassTint : 'violet',
+			reduceEffects: parsed.reduceEffects === true,
+			homeFocus: parsed.homeFocus === 'last' ? 'last' : 'first',
+			quietAfter: (QUIET_VALUES as readonly number[]).indexOf(parsed.quietAfter as number) !== -1 ? parsed.quietAfter as QuietAfter : 0,
+			language: (parsed.language === 'en' || parsed.language === 'es') ? parsed.language : 'en'
 		};
 	} catch {
 		return {...DEFAULT_CONFIG};

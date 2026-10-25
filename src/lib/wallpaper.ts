@@ -11,6 +11,7 @@
 import {WALLPAPER} from '../config/constants';
 import {exec, shellQuote} from './apps';
 import {isWebOS} from './luna';
+import {t} from './i18n';
 
 export interface DirEntry {
 	name: string;
@@ -147,16 +148,17 @@ export function parseMounts (output: string): StorageRoot[] {
 		const mount = parts[1].replace(/\\040/g, ' ');
 		const isUsb = /^\/dev\/sd[a-z]/.test(parts[0]) || /\/usb\//i.test(mount);
 		if (!isUsb || !isSafePath(mount) || roots.some((r) => r.path === mount)) continue;
-		roots.push({label: 'USB drive', path: mount});
+		roots.push({label: t('input.usbDrive'), path: mount});
 	}
-	if (roots.length > 1) roots.forEach((r, i) => { r.label = `USB drive ${i + 1}`; });
+	if (roots.length > 1) roots.forEach((r, i) => { r.label = t('input.usbDriveN', {n: i + 1}); });
 	return roots;
 }
 
 export function listRoots (): Promise<StorageRoot[]> {
-	if (!isWebOS()) return Promise.resolve([{label: 'USB drive', path: '/tmp/usb/sda/sda1'}, INTERNAL_ROOT]);
+	const internal = {...INTERNAL_ROOT, label: t('input.internalStorage')};
+	if (!isWebOS()) return Promise.resolve([{label: t('input.usbDrive'), path: '/tmp/usb/sda/sda1'}, internal]);
 	// Rejects when the shell service isn't reachable, so the picker can say why it is empty.
-	return exec('cat /proc/mounts').then((out) => parseMounts(out).concat(INTERNAL_ROOT));
+	return exec('cat /proc/mounts').then((out) => parseMounts(out).concat(internal));
 }
 
 // ---------- loading a picture ----------

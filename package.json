@@ -1,21 +1,29 @@
 {
   "name": "custom-launcher",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Custom home screen for LG webOS TVs: clock, apps row, wallpaper and USB slideshow",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/legacy.mjs",
     "package": "sh scripts/package.sh",
     "install:tv": "sh scripts/install.sh",
     "deploy": "npm run build && npm run package && npm run install:tv",
     "manifest": "node scripts/gen-manifest.mjs",
-    "test": "node scripts/test-wallpaper.mjs && node scripts/test-settings.mjs && node scripts/test-appcache.mjs && node scripts/test-closehome.mjs && node scripts/test-homehookcmd.mjs && sh scripts/test-homehook.sh && node scripts/test-uninstall.mjs && node scripts/test-rows.mjs && node scripts/test-apporder.mjs && node scripts/test-tileorder.mjs && node scripts/test-tvinput.mjs && node scripts/test-launch.mjs && node scripts/test-weather.mjs && node scripts/test-failure.mjs"
+    "test": "node scripts/test-wallpaper.mjs && node scripts/test-settings.mjs && node scripts/test-appcache.mjs && node scripts/test-clocklift.mjs && node scripts/test-inputhook.mjs && node scripts/test-iconread.mjs && node scripts/test-closehome.mjs && node scripts/test-homehookcmd.mjs && sh scripts/test-homehook.sh && node scripts/test-uninstall.mjs && node scripts/test-rows.mjs && node scripts/test-apporder.mjs && node scripts/test-tileorder.mjs && node scripts/test-tvinput.mjs && node scripts/test-launch.mjs && node scripts/test-weather.mjs && node scripts/test-failure.mjs"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.6",
     "@webos-tools/cli": "^3.2.6",
+    "@babel/core": "^7.29.7",
+    "@babel/preset-env": "^7.29.7",
+    "@rollup/plugin-babel": "^7.1.0",
+    "@rollup/plugin-commonjs": "^29.0.3",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-terser": "^1.0.0",
+    "core-js": "^3.51.0",
+    "rollup": "^4.64.12",
     "typescript": "^7.0.2",
     "vite": "^5.4.21"
   },

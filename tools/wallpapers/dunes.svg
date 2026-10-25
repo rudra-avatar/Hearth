@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a1530"/><stop offset="0.45" stop-color="#a8465a"/><stop offset="0.72" stop-color="#e9925e"/><stop offset="1" stop-color="#f3b979"/></linearGradient>
+<radialGradient id="sun" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#ffe1b0" stop-opacity="0.95"/><stop offset="0.35" stop-color="#ffc98a" stop-opacity="0.5"/><stop offset="1" stop-color="#ffb070" stop-opacity="0"/></radialGradient>
+<linearGradient id="d1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a3d4f"/><stop offset="1" stop-color="#5a2340"/></linearGradient>
+<linearGradient id="d2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5c2440"/><stop offset="1" stop-color="#3a1630"/></linearGradient>
+<linearGradient id="d3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2e1026"/><stop offset="1" stop-color="#14070f"/></linearGradient>
+<filter id="grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" result="n"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 0.06"/></feComponentTransfer></filter>
+</defs>
+<rect width="1920" height="1080" fill="url(#sky)"/>
+<circle cx="1180" cy="640" r="420" fill="url(#sun)"/>
+<path d="M0 700 C 320 640, 620 690, 900 660 S 1500 600, 1920 660 L 1920 1080 L 0 1080 Z" fill="url(#d1)"/>
+<path d="M0 800 C 400 740, 760 820, 1080 770 S 1650 730, 1920 780 L 1920 1080 L 0 1080 Z" fill="url(#d2)"/>
+<path d="M0 900 C 300 860, 700 920, 1000 880 S 1600 860, 1920 900 L 1920 1080 L 0 1080 Z" fill="url(#d3)"/>
+<rect width="1920" height="1080" filter="url(#grain)"/>
+</svg>

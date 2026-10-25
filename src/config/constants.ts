@@ -43,6 +43,13 @@ export const TIMING = {
 /** localStorage key for the user's selections. Bump the suffix on breaking changes. */
 export const STORAGE_KEY = 'customlauncher-config-v1';
 
+/** Reading app icons through the Homebrew service (see lib/iconread.ts). */
+export const ICONS = {
+	perCall: 4,                   // icons per shell call: a TV icon is ~2-20 KB of base64, well under the service's 200 KB output limit
+	parallelCalls: 2,
+	timeoutMs: 15000
+} as const;
+
 /** Wallpaper / slideshow settings. */
 export const WALLPAPER = {
 	releaseAfterMs: 30000,        // the launcher keeps its wallpaper this long after going to the background, so Home shows it at once

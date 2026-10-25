@@ -6,6 +6,7 @@
 import {APP_ID, LUNA, SYSTEM_APP} from '../config/constants';
 import {lunaCall, type LunaResponse} from './luna';
 import {appExists} from './launch';
+import {t} from './i18n';
 
 export interface InputSource {
 	id: string;        // e.g. HDMI_1
@@ -33,18 +34,21 @@ const FALLBACK_ICON = 'hdmigeneric.png';
 
 /** Live TV isn't an EIM device, but launching its app switches to the tuner, so it
  *  behaves like any other source. Port 0 sorts it ahead of HDMI 1. */
-const LIVE_TV: InputSource = {
-	id: 'LIVE_TV',
-	appId: SYSTEM_APP.liveTv,
-	label: 'Live TV',
-	port: 0,
-	connected: true,
-	icon: 'tv.png'
-};
+function liveTv (): InputSource {
+	return {
+		id: 'LIVE_TV',
+		appId: SYSTEM_APP.liveTv,
+		label: t('input.liveTv'),
+		port: 0,
+		connected: true,
+		icon: 'tv.png'
+	};
+}
 
 export function listInputs (): Promise<InputSource[]> {
-	return Promise.all([listExternalInputs(), appExists(LIVE_TV.appId)])
-		.then(([external, hasTuner]) => (hasTuner ? [LIVE_TV] : []).concat(external));
+	const tv = liveTv();
+	return Promise.all([listExternalInputs(), appExists(tv.appId)])
+		.then(([external, hasTuner]) => (hasTuner ? [tv] : []).concat(external));
 }
 
 function listExternalInputs (): Promise<InputSource[]> {
@@ -55,7 +59,7 @@ function listExternalInputs (): Promise<InputSource[]> {
 			.map((d) => ({
 				id: d.id,
 				appId: d.appId,
-				label: d.label || 'Launcher',
+				label: d.label || t('input.launcher'),
 				port: d.port,
 				connected: d.connected !== false,
 				icon: d.icon || FALLBACK_ICON
@@ -64,10 +68,12 @@ function listExternalInputs (): Promise<InputSource[]> {
 }
 
 /** Sample data so the layout can be developed in a desktop browser. */
-export const MOCK_INPUTS: InputSource[] = [
-	LIVE_TV,
-	{id: 'HDMI_1', appId: 'com.webos.app.hdmi1', label: 'Streaming Box', port: 1, connected: true, icon: 'streamingbox.png'},
-	{id: 'HDMI_2', appId: 'com.webos.app.hdmi2', label: 'Sound Bar', port: 2, connected: true, icon: 'hometheater.png'},
-	{id: 'HDMI_3', appId: 'com.webos.app.hdmi3', label: 'Games Console', port: 3, connected: true, icon: 'gameconsole.png'},
-	{id: 'HDMI_4', appId: 'com.webos.app.hdmi4', label: 'HDMI 4', port: 4, connected: false, icon: 'HDMI_4.png'}
-];
+export function mockInputs (): InputSource[] {
+	return [
+		liveTv(),
+		{id: 'HDMI_1', appId: 'com.webos.app.hdmi1', label: t('input.streamingBox'), port: 1, connected: true, icon: 'streamingbox.png'},
+		{id: 'HDMI_2', appId: 'com.webos.app.hdmi2', label: t('input.soundBar'), port: 2, connected: true, icon: 'hometheater.png'},
+		{id: 'HDMI_3', appId: 'com.webos.app.hdmi3', label: t('input.gamesConsole'), port: 3, connected: true, icon: 'gameconsole.png'},
+		{id: 'HDMI_4', appId: 'com.webos.app.hdmi4', label: 'HDMI 4', port: 4, connected: false, icon: 'HDMI_4.png'}
+	];
+}

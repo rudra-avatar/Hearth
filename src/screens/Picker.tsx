@@ -1,7 +1,9 @@
+import {BUILTIN_WALLPAPERS} from '../lib/builtinwallpapers';
 import {useCallback, useEffect, useRef, useState} from 'preact/hooks';
 import {PickerIcon} from '../components/Glyph';
-import {failureText, whySuffix} from '../lib/failure';
+import {whySuffix} from '../lib/failure';
 import {useKeys, clamp, type NavKey} from '../hooks/useKeys';
+import {useLanguage} from '../hooks/useLanguage';
 import {
 	baseName, INTERNAL_ROOT, joinPath, listDir, listRoots, parentPath,
 	type DirEntry, type StorageRoot
@@ -11,14 +13,15 @@ import {
 export type WallpaperChoice =
 	| {mode: 'gradient'}
 	| {mode: 'image'; path: string}
-	| {mode: 'folder'; path: string};
+	| {mode: 'folder'; path: string}
+	| {mode: 'builtin'; path: string};
 
 interface Props {
 	onChoose: (choice: WallpaperChoice) => void;
 	onClose: () => void;
 }
 
-type RowKind = 'gradient' | 'root' | 'folder' | 'picture' | 'slideshow' | 'info' | 'retry';
+type RowKind = 'gradient' | 'builtin' | 'root' | 'folder' | 'picture' | 'slideshow' | 'info' | 'retry';
 
 interface PickerRow {
 	key: string;
@@ -30,9 +33,9 @@ interface PickerRow {
 
 const VISIBLE_ROWS = 9;
 
-const HINTS = {
-	roots: 'Pick where your pictures are · Back returns to settings',
-	folder: 'OK opens a folder or sets a picture · Back goes up'
+const HINT_KEYS = {
+	roots: 'picker.hint.roots',
+	folder: 'picker.hint.folder'
 } as const;
 
 /** Long paths keep their end (the current folder) and lose the start. */
@@ -44,17 +47,18 @@ function pictureCount (entries: DirEntry[]): number {
 	return entries.filter((e) => !e.isDir).length;
 }
 
-function buildRows (path: string | null, roots: StorageRoot[], entries: DirEntry[], failed: boolean): PickerRow[] {
+function buildRows (t: (key: string, params?: Record<string, string | number>) => string, path: string | null, roots: StorageRoot[], entries: DirEntry[], failed: boolean): PickerRow[] {
 	if (failed) {
-		const rows: PickerRow[] = [{key: 'retry', kind: 'retry', label: 'Try again', detail: 'Read the storage again'}];
-		if (path === null) rows.unshift({key: 'gradient', kind: 'gradient', label: 'Default background', detail: 'Plain black, or the calm gradient, as set by the theme'});
+		const rows: PickerRow[] = [{key: 'retry', kind: 'retry', label: t('common.retry'), detail: t('picker.readStorageAgain')}];
+		if (path === null) rows.unshift({key: 'gradient', kind: 'gradient', label: t('picker.defaultBackground'), detail: t('picker.defaultBackgroundDetail')});
 		return rows;
 	}
 	if (path === null) {
-		const rows: PickerRow[] = [{key: 'gradient', kind: 'gradient', label: 'Default background', detail: 'Plain black, or the calm gradient, as set by the theme'}];
+		const rows: PickerRow[] = [{key: 'gradient', kind: 'gradient', label: t('picker.defaultBackground'), detail: t('picker.defaultBackgroundDetail')}];
+		BUILTIN_WALLPAPERS.forEach((w) => rows.push({key: `builtin:${w.id}`, kind: 'builtin', label: t(w.label), detail: t('picker.builtin', {detail: t(w.detail)}), path: w.id}));
 		roots.forEach((r) => rows.push({key: `root:${r.path}`, kind: 'root', label: r.label, detail: r.path, path: r.path}));
 		if (!roots.some((r) => r.path !== INTERNAL_ROOT.path)) {
-			rows.push({key: 'no-usb', kind: 'info', label: 'No USB drive found', detail: 'Plug one in, then open this screen again'});
+			rows.push({key: 'no-usb', kind: 'info', label: t('picker.noUsb'), detail: t('picker.noUsbDetail')});
 		}
 		return rows;
 	}
@@ -62,8 +66,8 @@ function buildRows (path: string | null, roots: StorageRoot[], entries: DirEntry
 	const count = pictureCount(entries);
 	if (count > 0) {
 		rows.push({
-			key: 'slideshow', kind: 'slideshow', label: 'Play this folder as a slideshow',
-			detail: `${count} ${count === 1 ? 'picture' : 'pictures'} in ${baseName(path)}`
+			key: 'slideshow', kind: 'slideshow', label: t('picker.slideshow'),
+			detail: t(count === 1 ? 'picker.slideshowDetailOne' : 'picker.slideshowDetailMany', {count, name: baseName(path)})
 		});
 	}
 	entries.forEach((e) => rows.push({
@@ -72,7 +76,7 @@ function buildRows (path: string | null, roots: StorageRoot[], entries: DirEntry
 		label: e.name,
 		path: joinPath(path, e.name)
 	}));
-	if (!rows.length) rows.push({key: 'empty', kind: 'info', label: 'Nothing here', detail: 'This folder has no pictures or folders'});
+	if (!rows.length) rows.push({key: 'empty', kind: 'info', label: t('picker.nothingHere'), detail: t('picker.nothingHereDetail')});
 	return rows;
 }
 
@@ -80,6 +84,7 @@ function buildRows (path: string | null, roots: StorageRoot[], entries: DirEntry
  *  Top level: the default gradient, USB drives, internal storage. Inside a folder: sub-folders,
  *  pictures, and (when it has pictures) a row that plays the whole folder as a slideshow. */
 export function Picker ({onChoose, onClose}: Props) {
+	const {t} = useLanguage();
 	const [roots, setRoots] = useState<StorageRoot[]>([]);
 	const [path, setPath] = useState<string | null>(null);
 	const [entries, setEntries] = useState<DirEntry[]>([]);
@@ -89,7 +94,7 @@ export function Picker ({onChoose, onClose}: Props) {
 	const [attempt, setAttempt] = useState(0);
 	const remembered = useRef<Record<string, number>>({});
 
-	const rows = buildRows(path, roots, entries, !loading && error !== '');
+	const rows = buildRows(t, path, roots, entries, !loading && error !== '');
 	const pathKey = path === null ? '' : path;
 
 	// Roots load once; a folder's contents load whenever the path changes.
@@ -100,14 +105,14 @@ export function Picker ({onChoose, onClose}: Props) {
 			setError('');
 			listRoots().then(
 				(r) => { if (!cancelled) { setRoots(r); setLoading(false); } },
-				(e) => { if (!cancelled) { setRoots([]); setError(failureText(e, 'read the storage')); setLoading(false); } }
+				() => { if (!cancelled) { setRoots([]); setError(t('picker.couldntReadRoots') + (whySuffix() || '')); setLoading(false); } }
 			);
 		} else {
 			setLoading(true);
 			setError('');
 			listDir(path).then(
 				(list) => { if (!cancelled) { setEntries(list); setLoading(false); } },
-				() => { if (!cancelled) { setEntries([]); setError(`Couldn't read this folder${whySuffix() || ''}`); setLoading(false); } }
+				() => { if (!cancelled) { setEntries([]); setError(t('picker.couldntReadFolder') + (whySuffix() || '')); setLoading(false); } }
 			);
 		}
 		return () => { cancelled = true; };
@@ -136,6 +141,7 @@ export function Picker ({onChoose, onClose}: Props) {
 		if (!row || loading) return;
 		switch (row.kind) {
 			case 'gradient': onChoose({mode: 'gradient'}); break;
+			case 'builtin': if (row.path) onChoose({mode: 'builtin', path: row.path}); break;
 			case 'retry': setIndex(0); setAttempt((n) => n + 1); break;
 			case 'root':
 			case 'folder': if (row.path) goTo(row.path, 0); break;
@@ -160,16 +166,16 @@ export function Picker ({onChoose, onClose}: Props) {
 
 	const start = clamp(index - Math.floor(VISIBLE_ROWS / 2), 0, Math.max(0, rows.length - VISIBLE_ROWS));
 	const visible = rows.slice(start, start + VISIBLE_ROWS);
-	const iconFor = (row: PickerRow) => row.kind === 'gradient' ? 'default' : row.kind === 'retry' ? 'info' : row.kind === 'root' ? (row.path === INTERNAL_ROOT.path ? 'folder' : 'drive') : row.kind;
+	const iconFor = (row: PickerRow) => row.kind === 'gradient' ? 'default' : row.kind === 'builtin' ? 'picture' : row.kind === 'retry' ? 'info' : row.kind === 'root' ? (row.path === INTERNAL_ROOT.path ? 'folder' : 'drive') : row.kind;
 
 	return (
 		<div class="screen screen--picker">
 			<div class="settings">
-				<h1 class="settings__title">Choose wallpaper</h1>
-				<p class="settings__hint">{path === null ? HINTS.roots : HINTS.folder}</p>
-				<div class="picker__path">{path === null ? 'Locations' : shortPath(path)}</div>
+				<h1 class="settings__title">{t('picker.title')}</h1>
+				<p class="settings__hint">{path === null ? t(HINT_KEYS.roots) : t(HINT_KEYS.folder)}</p>
+				<div class="picker__path">{path === null ? t('picker.path.locations') : shortPath(path)}</div>
 				<div class="picker">
-					{loading && <div class="picker__status">Loading…</div>}
+					{loading && <div class="picker__status">{t('common.loading')}</div>}
 					{!loading && error && <div class="picker__status picker__status--error">{error}</div>}
 					{!loading && visible.map((row, n) => {
 						const i = start + n;

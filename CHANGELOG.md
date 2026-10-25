@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.2.0
+
+**New**
+- **Two languages: English and Spanish.** *Settings → Options → Language* switches the whole interface at once —
+  menus, settings, messages, dates and the weather — without restarting the app.
+- **Five built-in minimalist wallpapers:** Aurora, Dunes, Tide, Bloom and Horizon (Settings → Wallpaper). Small (about 150-190 KB each), loaded straight from the app, and they work without root.
+- **Glass colour** (Look): Violet, Graphite, Midnight or Sunset.
+- **Reduce effects (faster)** (Look): no blur, shadows or springy motion, for slower TVs.
+- **When Home is pressed** (Look): highlight the first app, or the app you opened last.
+- **Hide the apps when idle** (Look): the app row fades out after 1, 3 or 10 minutes; any button brings it back without doing anything else.
+- **Move the clock slightly (OLED care)** (Clock), on by default.
+- **The next three hours** in the Glass weather card (Weather → Show the next hours).
+- **Remote buttons** (Options, rooted TVs with LG Input Hook): *Home button opens Hearth directly* (no LG Home flash), and an app of your choice for each colour button.
+- **webOS 3.x runs again:** the bundle is re-emitted with Chromium 38 syntax (`scripts/legacy.mjs`), and the Home-button helper also understands the older home bar's signal.
+
+**Fixes**
+- **webOS 11:** the options that need root no longer stay greyed out on a rooted webOS 11 TV once its one-time
+  permission step is done: [`tools/webos11-permission.sh`](tools/webos11-permission.sh), a boot hook, gives Hearth the
+  Homebrew Channel permission that the app installer leaves out (see "webOS 11" in the README). The "TV refused the
+  command" message now points there.
+- **Building on Windows:** the Home-button helper scripts are always written to the TV with plain line ends. A build
+  from a Windows checkout embedded them with CRLF, and turning on *Make this launcher the default instead of LG Home*
+  failed with `syntax error: unexpected word (expecting "then")`. `.gitattributes` keeps `*.sh` files LF.
+- **App icons showed as letters** with the live app list on TVs with many apps (seen on webOS 6.5.3 with 26 apps): all icons were read in one command, whose
+  output (about 240 KB) went over the Homebrew service's 200 KB limit, so the whole read failed. Icons are now read 4 per command, and a group that still fails
+  is retried one icon at a time.
+
+**Docs**
+- How to stop LG Home flashing when Home is pressed, by mapping the Home button to Hearth with LG Input Hook.
+
 ## 1.1.0
 
 The launcher is now called **Hearth**, with a new icon, and it is faster, easier to set up and much more complete.

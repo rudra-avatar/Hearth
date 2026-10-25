@@ -1,6 +1,7 @@
 import {useCallback, useState} from 'preact/hooks';
 import {useKeys, clamp, type NavKey} from '../hooks/useKeys';
 import {useOkPress} from '../hooks/useOkPress';
+import {useLanguage} from '../hooks/useLanguage';
 import type {MoveAction} from '../lib/tileorder';
 
 interface Props {
@@ -32,23 +33,24 @@ interface MenuRow {
 /** What opens when OK is held on an app or input: move it along the row, hide it, or (apps) uninstall it.
  *  Uninstall asks for confirmation, and the confirmation starts on Cancel. */
 export function AppMenu ({title, moves, hideDetail, showUninstall, blockedReason, onMove, onHide, onUninstall, onClose}: Props) {
+	const {t} = useLanguage();
 	const [step, setStep] = useState<Step>('menu');
 
 	const menuRows = (): MenuRow[] => {
 		const rows: MenuRow[] = [
-			{key: 'start', label: 'Move to start', detail: moves.start ? undefined : 'Already first', disabled: !moves.start, run: () => onMove('start')},
-			{key: 'left', label: 'Move left', detail: moves.left ? undefined : 'Already first', disabled: !moves.left, run: () => onMove('left')},
-			{key: 'right', label: 'Move right', detail: moves.right ? undefined : 'Already last', disabled: !moves.right, run: () => onMove('right')},
-			{key: 'end', label: 'Move to end', detail: moves.end ? undefined : 'Already last', disabled: !moves.end, run: () => onMove('end')},
-			{key: 'hide', label: 'Hide from the home screen', detail: hideDetail, run: onHide}
+			{key: 'start', label: t('appMenu.moveToStart'), detail: moves.start ? undefined : t('appMenu.moveToStart.detail'), disabled: !moves.start, run: () => onMove('start')},
+			{key: 'left', label: t('appMenu.moveLeft'), detail: moves.left ? undefined : t('appMenu.moveLeft.detail'), disabled: !moves.left, run: () => onMove('left')},
+			{key: 'right', label: t('appMenu.moveRight'), detail: moves.right ? undefined : t('appMenu.moveRight.detail'), disabled: !moves.right, run: () => onMove('right')},
+			{key: 'end', label: t('appMenu.moveToEnd'), detail: moves.end ? undefined : t('appMenu.moveToEnd.detail'), disabled: !moves.end, run: () => onMove('end')},
+			{key: 'hide', label: t('appMenu.hide'), detail: hideDetail, run: onHide}
 		];
 		if (showUninstall) {
 			rows.push({
-				key: 'uninstall', label: 'Uninstall', detail: blockedReason || 'Removes the app from the TV', disabled: !!blockedReason,
+				key: 'uninstall', label: t('appMenu.uninstall'), detail: blockedReason || t('appMenu.uninstall.detail'), disabled: !!blockedReason,
 				run: () => { setStep('confirm'); setIndex(0); }
 			});
 		}
-		rows.push({key: 'cancel', label: 'Cancel', run: onClose});
+		rows.push({key: 'cancel', label: t('common.cancel'), run: onClose});
 		return rows;
 	};
 	const firstEnabled = (rows: MenuRow[]): number => {
@@ -58,8 +60,8 @@ export function AppMenu ({title, moves, hideDetail, showUninstall, blockedReason
 
 	const [index, setIndex] = useState(() => firstEnabled(menuRows()));
 	const rows: MenuRow[] = step === 'menu' ? menuRows() : step === 'confirm' ? [
-		{key: 'cancel', label: 'Cancel', run: onClose},
-		{key: 'yes', label: `Uninstall ${title}`, detail: 'This cannot be undone', run: () => { setStep('working'); onUninstall(); }}
+		{key: 'cancel', label: t('common.cancel'), run: onClose},
+		{key: 'yes', label: t('appMenu.confirm.yes', {title}), detail: t('appMenu.confirm.cannotUndo'), run: () => { setStep('working'); onUninstall(); }}
 	] : [];
 
 	const handleKey = useCallback((key: NavKey): boolean => {
@@ -84,9 +86,9 @@ export function AppMenu ({title, moves, hideDetail, showUninstall, blockedReason
 	return (
 		<div class="screen screen--dialog">
 			<div class="dialog">
-				<h1 class="dialog__title">{step === 'confirm' ? `Uninstall ${title}?` : step === 'working' ? `Uninstalling ${title}…` : title}</h1>
-				{step === 'confirm' && <p class="dialog__text">This removes the app from the TV.</p>}
-				{step === 'working' && <p class="dialog__text">Please wait, this can take a few seconds.</p>}
+				<h1 class="dialog__title">{step === 'confirm' ? t('appMenu.confirm.title', {title}) : step === 'working' ? t('appMenu.working.title', {title}) : title}</h1>
+				{step === 'confirm' && <p class="dialog__text">{t('appMenu.confirm.text')}</p>}
+				{step === 'working' && <p class="dialog__text">{t('appMenu.working.text')}</p>}
 				{rows.map((row, i) => (
 					<div
 						key={row.key}

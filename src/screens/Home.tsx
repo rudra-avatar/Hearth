@@ -21,6 +21,8 @@ export interface Appearance {
 	/** 1 or 2 rows of apps */
 	rows: number;
 	clock: ClockConfig;
+	/** Glass theme: the clock and the weather are shown as two frosted cards of the same size */
+	clockCards?: boolean;
 }
 
 interface Props {
@@ -40,12 +42,14 @@ interface Props {
 	focus?: {key: string; seq: number};
 	/** the weather line under the date, when it is on and known */
 	weather?: WeatherView | null;
+	/** quiet mode: the app row has faded out (Look → Hide the apps when idle) */
+	quiet?: boolean;
 }
 
 /** The home screen: a clock and the tiles along the bottom, in one row or two.
  *  Left/Right move along a row, Up/Down change row (two rows), OK opens, holding OK opens the app's menu.
  *  Back goes to the first tile. */
-export function Home ({items, timeFormat, appearance, active, paused, onActivate, onLongPress, wake, focus, weather}: Props) {
+export function Home ({items, timeFormat, appearance, active, paused, onActivate, onLongPress, wake, focus, weather, quiet}: Props) {
 	const now = useClock(paused);
 	const [position, setPosition] = useState<RowsPosition>(initialPosition);
 	const sizes = splitRows(items.length, appearance.rows);
@@ -96,8 +100,8 @@ export function Home ({items, timeFormat, appearance, active, paused, onActivate
 	const classes = ['rows', !appearance.showLabels && 'rows--no-labels', sizes.length > 1 && 'rows--multi'].filter(Boolean).join(' ');
 
 	return (
-		<div class={`screen${active ? '' : ' screen--away'}`}>
-			<Clock now={now} format={timeFormat} config={appearance.clock} weather={weather} />
+		<div class={`screen${active ? '' : ' screen--away'}${quiet ? ' screen--quiet' : ''}`}>
+			<Clock now={now} format={timeFormat} config={appearance.clock} weather={weather} cards={appearance.clockCards} />
 			<div class={classes} style={rowStyle}>
 				{sizes.map((size, r) => {
 					const start = offsets[r];

@@ -17,7 +17,10 @@ import {
 
 export type {HookResult, HookStatus};
 
-const FILES = {watchSh, applySh, stockSh, diagnoseSh};
+// The TV's shell reads a carriage return as part of the word ("then\r"), so scripts from a Windows checkout
+// would fail with "syntax error". Always send them with plain line ends.
+const lf = (text: string): string => text.replace(/\r\n?/g, '\n');
+const FILES = {watchSh: lf(watchSh), applySh: lf(applySh), stockSh: lf(stockSh), diagnoseSh: lf(diagnoseSh)};
 
 export function getHookStatus (): Promise<HookStatus | null> {
 	if (!isWebOS()) return Promise.resolve(null);

@@ -32,8 +32,30 @@ eq([d.theme, d.iconScale, d.sideMargin, d.bottomMargin, d.clockFormat, d.clock.s
 store[KEY] = JSON.stringify({theme: 'grey', iconScale: 999, sideMargin: 33, bottomMargin: -5, clock: {size: 12, top: 29, weight: 999, color: 'neon', showDate: false}, wallpaper: {mode: 'folder', path: '/x', intervalSec: 2}});
 const g = s.loadConfig();
 eq([g.theme, g.iconScale, g.sideMargin, g.bottomMargin], ['grey', 140, 30, 0], 'out-of-range numbers are clamped and snapped');
-eq([g.clock.size, g.clock.top, g.clock.weight, g.clock.color, g.clock.showDate, g.clock.showPeriod], [80, 30, 200, 'white', false, true], 'clock values validated, missing ones default');
+eq([g.clock.size, g.clock.top, g.clock.weight, g.clock.color, g.clock.showDate, g.clock.showPeriod], [60, 30, 200, 'white', false, true], 'clock values validated, missing ones default');
 eq([g.wallpaper.mode, g.wallpaper.intervalSec], ['folder', 60], 'bad interval falls back');
+store[KEY] = JSON.stringify({theme: 'glass'});
+eq(s.loadConfig().theme, 'glass', 'the Glass theme is kept after a restart');
+store[KEY] = JSON.stringify({clock: {corner: true}});
+eq(s.loadConfig().clock.corner, true, 'the top-left corner choice is kept after a restart');
+store[KEY] = JSON.stringify({clock: {corner: 'yes'}});
+eq(s.loadConfig().clock.corner, false, 'anything but true leaves the clock where it was');
+store[KEY] = JSON.stringify({glassTint: 'sunset', reduceEffects: true, homeFocus: 'last', quietAfter: 3, clock: {shift: false}, weather: {showHours: false}});
+{
+  const n = s.loadConfig();
+  eq([n.glassTint, n.reduceEffects, n.homeFocus, n.quietAfter, n.clock.shift, n.weather.showHours], ['sunset', true, 'last', 3, false, false], 'the new look and behaviour settings are kept after a restart');
+}
+store[KEY] = JSON.stringify({glassTint: 'neon', reduceEffects: 'yes', homeFocus: 'middle', quietAfter: 7});
+{
+  const n = s.loadConfig();
+  eq([n.glassTint, n.reduceEffects, n.homeFocus, n.quietAfter, n.clock.shift, n.weather.showHours], ['violet', false, 'first', 0, true, true], 'unknown values fall back: violet, effects on, first app, never quiet, OLED care on, hours on');
+}
+store[KEY] = JSON.stringify({wallpaper: {mode: 'builtin', path: 'aurora'}});
+eq([s.loadConfig().wallpaper.mode, s.loadConfig().wallpaper.path], ['builtin', 'aurora'], 'a built-in wallpaper is kept after a restart');
+store[KEY] = JSON.stringify({wallpaper: {mode: 'builtin', path: '../../etc/passwd'}});
+eq(s.loadConfig().wallpaper.mode, 'gradient', 'an unknown built-in wallpaper falls back to the default background');
+store[KEY] = JSON.stringify({theme: 'neon'});
+eq(s.loadConfig().theme, 'black', 'an unknown theme falls back to OLED black');
 store[KEY] = '{not json';
 eq(s.loadConfig().theme, 'black', 'corrupt storage falls back to defaults');
 store[KEY] = JSON.stringify({wallpaper: {mode: 'folder', path: ''}});
@@ -92,10 +114,10 @@ eq([r.appIds, r.wallpaper.mode], [['a'], 'image'], 'reset keeps apps and wallpap
 // ---- the lists shown in Settings ----
 for (const tab of ['look', 'clock', 'wallpaper', 'options']) {
   const list = p.optionsFor(tab, c0);
-  eq(list.length >= 1 && list.length <= 12, true, `${tab} tab has ${list.length} options (a long list scrolls)`);
+  eq(list.length >= 1 && list.length <= 16, true, `${tab} tab has ${list.length} options (a long list scrolls)`);
 }
 const look = p.optionsFor('look', c0);
-eq(look.map((o) => o.valueText), ['OLED black', '100%', '1 row', undefined, '50 px', '40 px', 'Reset'], 'Look tab shows current values (the app-names switch has no text, it is a switch)');
+eq(look.map((o) => o.valueText), ['OLED black', 'Violet', undefined, '100%', '1 row', undefined, '50 px', '40 px', 'The first app', 'Never', 'Reset'], 'Look tab shows current values (the app-names switch has no text, it is a switch)');
 eq(p.applyPref(c0, 'rows', 'ok').rows, 2, 'Rows of apps: 1 -> 2');
 eq(p.applyPref(p.applyPref(c0, 'rows', 'ok'), 'rows', 'ok').rows, 1, 'and 2 -> 1');
 eq(p.applyPref(c0, 'showLabels', 'ok').showLabels, false, 'Show app names switches off');
@@ -103,7 +125,7 @@ const optsOn = p.optionsFor('options', c0, {homeApp: 'tld.my.customlauncher'});
 const optsOff = p.optionsFor('options', c0, {homeApp: 'com.webos.app.home'});
 const optsUnknown = p.optionsFor('options', c0, {homeApp: null});
 eq([optsOn, optsOff, optsUnknown].map((o) => o.find((x) => x.id === 'useAsHome').valueText), ['On', 'Off', 'Unknown'], 'home-app row shows On / Off / Unknown');
-eq(p.optionsFor('options', c0).map((o) => o.id).join(','), 'tvInput,useHomebrew,replaceHome,startAtBoot,lgLogo,closeHome,closeHomeNow,useAsHome', 'the Options tab: TV input, live app list, the helper, the LG logo, and the experimental method last');
+eq(p.optionsFor('options', c0).map((o) => o.id).join(','), 'tvInput,useHomebrew,replaceHome,startAtBoot,homeButton,keyRed,keyGreen,keyYellow,keyBlue,lgLogo,closeHome,closeHomeNow,useAsHome', 'the Options tab: TV input, live app list, the helper, the remote buttons, the LG logo, and the experimental method last');
 eq(p.optionsFor('options', c0, {homeApp: null, homeHook: null, tvInput: true}).find((o) => o.id === 'tvInput').valueText, 'Added', 'the TV-input row says Added when the launcher is in the input list');
 eq(p.optionsFor('options', c0, {homeApp: null, homeHook: null, tvInput: false}).find((o) => o.id === 'tvInput').valueText, 'Not added', 'and Not added when it is not');
 eq(p.optionsFor('options', c0).find((o) => o.id === 'tvInput').valueText, 'Unknown', 'and Unknown until the TV has been asked');
@@ -137,7 +159,7 @@ store[KEY] = JSON.stringify({clock: {font: 'comic-sans'}});
 eq(s.loadConfig().clock.font, 'inter', 'an unknown clock font falls back to Inter');
 store[KEY] = JSON.stringify({clock: {size: 100}});
 eq(s.loadConfig().clock.font, 'inter', 'settings from an older version (no font) get Inter');
-eq(p.optionsFor('clock', c0).map((o) => o.id).join(','), 'clockFormat,clockSize,clockFont,clockWeight,clockTop,clockLeft,showDate,showPeriod', 'the Clock tab has the font option after the size');
+eq(p.optionsFor('clock', c0).map((o) => o.id).join(','), 'clockFormat,clockSize,clockFont,clockWeight,clockTop,clockLeft,showDate,showPeriod,clockCorner,clockShift', 'the Clock tab has the font option after the size');
 const fonts = [];
 let cf = c0;
 for (let i = 0; i < 6; i++) { cf = p.applyPref(cf, 'clockFont', 'ok'); fonts.push(cf.clock.font); }

@@ -11,6 +11,7 @@ import {CLOCK_COLOR_IDS, LABEL_COLOR_IDS, type ClockColor} from './clockcolor';
 import {TILE_SHAPE_IDS} from './tileshape';
 import {DEFAULT_CITY} from './cities';
 import {validCoords, type City, type TempUnit} from './weather';
+import {cleanRemap, DEFAULT_REMAP, type RemapConfig} from './remapcmd';
 
 export type WallpaperMode = 'gradient' | 'image' | 'folder';
 export type ClockFormat = 'tv' | '12h' | '24h';
@@ -109,6 +110,8 @@ export interface UserConfig {
 	replaceHome: boolean;
 	/** "Replace LG Home with a script and SAM": Hearth holds LG Home's own place, so the TV never opens LG Home at all; see src/takeover */
 	takeoverHome: boolean;
+	/** "Reassign remote buttons": what the remote's app buttons (and others) do instead (see remapcmd.ts) */
+	remap: RemapConfig;
 	theme: ThemeName;
 	/** a built-in background (see backgrounds.ts); 'theme' is the theme's own */
 	background: string;
@@ -196,6 +199,7 @@ export const DEFAULT_CONFIG: UserConfig = {
 	showDebug: false,
 	replaceHome: false,
 	takeoverHome: false,
+	remap: DEFAULT_REMAP,
 	theme: 'black',
 	background: 'theme',
 	iconScale: RANGES.iconScale.def,
@@ -261,6 +265,7 @@ export function loadConfig (): UserConfig {
 			showDebug: parsed.showDebug === true,
 			replaceHome: parsed.replaceHome === true,
 			takeoverHome: parsed.takeoverHome === true,
+			remap: cleanRemap(parsed.remap),
 			theme: THEME_IDS.indexOf(parsed.theme as ThemeName) !== -1 ? (parsed.theme as ThemeName) : 'black',
 			background: BACKGROUND_IDS.indexOf(parsed.background as string) !== -1 ? (parsed.background as string) : 'theme',
 			iconScale: ranged(parsed.iconScale, 'iconScale'),

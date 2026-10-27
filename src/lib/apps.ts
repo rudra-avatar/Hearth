@@ -14,6 +14,7 @@ import {appExists} from './launch';
 import {noteExec, rootState, type RootState} from './failure';
 import {listTvApps, iconAddress, iconLoads} from './ssap';
 import {APPS_CACHE_KEY, deserializeApps, serializeApps} from './appcache';
+import {ICON_STAMPS_KEY, iconIsFresh, parseStamps, stampCommand} from './iconstamps';
 
 export interface AppEntry {
 	id: string;
@@ -163,17 +164,34 @@ function readIcons (jobs: IconJob[]): Promise<Record<number, string>> {
 	}).catch(() => ({}));
 }
 
-/** Read the icons as data URIs, cached in localStorage by path. Batches of ICON_BATCH, run one after another; an icon
- *  missing from its batch is asked for once more on its own. The cache is saved after every batch, so a slow TV keeps
- *  what it has already read. */
+/** Each icon file's size and change time, in one command (see iconstamps.ts). Resolves with {} when it can't. */
+function readStamps (paths: string[]): Promise<Record<string, string>> {
+	if (!paths.length) return Promise.resolve({});
+	return exec(stampCommand(paths.map(shellQuote)), 8000).then(parseStamps, () => ({}));
+}
+
+/** Read the icons as data URIs, cached in localStorage by path. A cached icon is used only while its file's size and
+ *  change time are the ones saved with it, so an app update with a new icon at the same path shows the new one.
+ *  Batches of ICON_BATCH, run one after another; an icon missing from its batch is asked for once more on its own.
+ *  The cache is saved after every batch, so a slow TV keeps what it has already read. */
 function loadIcons (points: LaunchPoint[]): Promise<Record<string, string>> {
+	const paths: string[] = [];
+	for (const p of points) {
+		const path = p.largeIcon || p.icon;
+		if (path && SAFE_PATH.test(path) && paths.indexOf(path) === -1) paths.push(path);
+	}
+	return readStamps(paths).then((now) => loadIconsWith(points, now));
+}
+
+function loadIconsWith (points: LaunchPoint[], now: Record<string, string>): Promise<Record<string, string>> {
 	const cache = readIconCache();
+	const saved = readIconStamps();
 	const result: Record<string, string> = {};
 	const missing: IconJob[] = [];
 	for (const p of points) {
 		const path = p.largeIcon || p.icon;
 		if (!path || !SAFE_PATH.test(path)) continue;
-		if (cache[path]) result[p.id] = cache[path];
+		if (cache[path] && iconIsFresh(path, now, saved)) result[p.id] = cache[path];
 		else missing.push({id: p.id, path});
 	}
 	if (!missing.length) return Promise.resolve(result);
@@ -181,13 +199,23 @@ function loadIcons (points: LaunchPoint[]): Promise<Record<string, string>> {
 	const keep = (): void => {
 		// keep only the icons of apps that are still installed, so the cache does not grow past the storage limit
 		const kept: Record<string, string> = {};
+		const keptStamps: Record<string, string> = {};
 		for (const p of points) {
 			const path = p.largeIcon || p.icon;
-			if (path && cache[path]) kept[path] = cache[path];
+			if (path && cache[path]) {
+				kept[path] = cache[path];
+				if (saved[path]) keptStamps[path] = saved[path];
+			}
 		}
 		writeIconCache(kept);
+		writeIconStamps(keptStamps);
 	};
-	const store = (job: IconJob, url: string): void => { result[job.id] = url; cache[job.path] = url; };
+	const store = (job: IconJob, url: string): void => {
+		result[job.id] = url;
+		cache[job.path] = url;
+		if (now[job.path]) saved[job.path] = now[job.path];
+		else delete saved[job.path];
+	};
 
 	const batches: IconJob[][] = [];
 	for (let i = 0; i < missing.length; i += ICON_BATCH) batches.push(missing.slice(i, i + ICON_BATCH));
@@ -220,4 +248,14 @@ function readIconCache (): Record<string, string> {
 function writeIconCache (cache: Record<string, string>): void {
 	try { localStorage.setItem(ICON_CACHE_KEY, JSON.stringify(cache)); }
 	catch { /* quota exceeded: icons will simply be re-fetched next time */ }
+}
+
+function readIconStamps (): Record<string, string> {
+	try { return JSON.parse(localStorage.getItem(ICON_STAMPS_KEY) || '{}'); }
+	catch { return {}; }
+}
+
+function writeIconStamps (stamps: Record<string, string>): void {
+	try { localStorage.setItem(ICON_STAMPS_KEY, JSON.stringify(stamps)); }
+	catch { /* quota exceeded: icons are read again next time, which is harmless */ }
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Input status** (Settings → Look, on by default): inputs with nothing plugged in are greyed out with *Not connected* under the name, and on rooted TVs the name a connected device announces over HDMI-CEC (e.g. *Fire TV Stick*) is shown under its input. Inputs on the home row are re-read every 15 s while Hearth is in front, so a device switched on shows up.
+
 ## 1.2.0
 
 - **Edit names and icons** (Settings → Apps or Sources, hold OK on an item): rename an app or input, pick another icon (16 input symbols, the bundled app logos), or use your own picture from a USB drive or the TV (rooted TVs, saved inside Hearth's settings). *Use the app's / TV's name and icon* resets it. See the README, "Edit a name or icon".

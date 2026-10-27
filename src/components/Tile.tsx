@@ -16,6 +16,10 @@ export interface TileModel {
 	glyph?: GlyphName;
 	/** monogram background when there is no artwork */
 	color?: string;
+	/** an input with nothing plugged in: drawn greyed out */
+	disconnected?: boolean;
+	/** a small second line under the name (e.g. "Not connected", or the connected device's name) */
+	note?: string;
 }
 
 interface Props {
@@ -38,7 +42,8 @@ export class Tile extends Component<Props> {
 		const a = this.props.model;
 		const b = next.model;
 		return this.props.focused !== next.focused || this.props.lifted !== next.lifted || this.props.checked !== next.checked || this.props.dimmed !== next.dimmed ||
-			a !== b && (a.key !== b.key || a.label !== b.label || a.imageUrl !== b.imageUrl || a.glyphImageUrl !== b.glyphImageUrl || a.sourceIcon !== b.sourceIcon || a.glyph !== b.glyph || a.color !== b.color);
+			a !== b && (a.key !== b.key || a.label !== b.label || a.imageUrl !== b.imageUrl || a.glyphImageUrl !== b.glyphImageUrl || a.sourceIcon !== b.sourceIcon || a.glyph !== b.glyph || a.color !== b.color ||
+				a.disconnected !== b.disconnected || a.note !== b.note);
 	}
 
 	private hover = () => { if (this.props.onHover) this.props.onHover(); };
@@ -46,7 +51,7 @@ export class Tile extends Component<Props> {
 
 	render () {
 		const {model, focused, lifted, checked, dimmed} = this.props;
-		const classes = ['tile', focused && 'tile--focused', lifted && 'tile--lifted', dimmed && 'tile--dimmed'].filter(Boolean).join(' ');
+		const classes = ['tile', focused && 'tile--focused', lifted && 'tile--lifted', (dimmed || model.disconnected) && 'tile--dimmed', model.note && 'tile--noted'].filter(Boolean).join(' ');
 		return (
 			<div class={classes} onMouseEnter={this.hover} onClick={this.activate}>
 				<div class="tile__frame">
@@ -64,7 +69,7 @@ export class Tile extends Component<Props> {
 				</div>
 				<div class="tile__ring" />
 				</div>
-				<div class="tile__label">{model.label}</div>
+				<div class="tile__label">{model.label}{model.note && <span class="tile__note">{model.note}</span>}</div>
 			</div>
 		);
 	}

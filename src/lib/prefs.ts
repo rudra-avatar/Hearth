@@ -183,6 +183,8 @@ const BASE_PREFS: Pref[] = [
 		(c) => c.showLabels, (c, v) => ({...c, showLabels: v})),
 	choice('labelColor', 'look', 'Name colour', 'The colour of the app names under the icons. "The theme\'s own" follows the theme.',
 		LABEL_COLOR_IDS, (c) => c.labelColor, (c, v) => ({...c, labelColor: v}), labelColorText),
+	toggle('inputStatus', 'look', 'Show input status', 'Inputs with nothing plugged in are greyed out, and a connected device\'s own name (from HDMI-CEC, rooted TVs) is shown under its input.',
+		(c) => c.inputStatus, (c, v) => ({...c, inputStatus: v})),
 	toggle('showLgHome', 'look', 'Show the LG Home tile', 'The LG Home tile at the end of the row. If Hearth is your home screen (the helper), this tile is the way back to LG\'s own Home.',
 		(c) => c.showLgHome, (c, v) => ({...c, showLgHome: v})),
 	toggle('showSystem', 'look', 'Show the System Settings tile', 'The tile that opens the TV\'s own settings. The Hearth Settings tile always stays, so you can always get back here.',

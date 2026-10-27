@@ -277,19 +277,24 @@ export function App () {
 		return () => window.clearTimeout(timer);
 	}, [asleep]);
 
-	// Inputs are only read when they're needed: some are on the home row, or Settings is open.
+	// Inputs are only read when they're needed: some are on the home row, or Settings is open. With "Show input status"
+	// on and inputs on the home row they are re-read every 15 s while the launcher is in front, so a device switched on
+	// or plugged in shows up (the TV's input service sends no change events on webOS 4).
 	const needInputs = config.sourceIds.length > 0 || screen === 'settings';
+	const watchInputs = config.inputStatus && config.sourceIds.length > 0;
+	const cecNames = config.inputStatus;
 	useEffect(() => {
 		if (!needInputs) return undefined;
 		const refresh = () => {
 			if (!isWebOS()) { setInputs(MOCK_INPUTS); return; }
-			listInputs().then(setInputs).catch(() => showToast('Could not read the inputs', 'error'));
+			listInputs(cecNames).then(setInputs).catch(() => showToast('Could not read the inputs', 'error'));
 		};
 		refresh();
 		const onVisibility = () => { if (!document.hidden) refresh(); };
 		document.addEventListener('visibilitychange', onVisibility);
-		return () => document.removeEventListener('visibilitychange', onVisibility);
-	}, [needInputs, showToast]);
+		const poll = watchInputs ? window.setInterval(() => { if (!document.hidden) refresh(); }, 15000) : 0;
+		return () => { document.removeEventListener('visibilitychange', onVisibility); window.clearInterval(poll); };
+	}, [needInputs, watchInputs, cecNames, showToast]);
 
 	// Which app the TV's Home button opens: read when Settings opens, so the Options row is right.
 	useEffect(() => {
@@ -468,8 +473,8 @@ export function App () {
 
 	// apps and inputs share one order (Move to start / left / right / end); LG Home and Settings always end the row
 	const orderedTiles: TileModel[] = useMemo(
-		() => orderTiles(shownApps.map((a) => appTile(a, config.appEdits)).concat(shownInputs.map((i) => inputTile(i, config.sourceEdits))), (t) => t.key, config.tileOrder),
-		[shownApps, shownInputs, config.tileOrder, config.sourceEdits, config.appEdits]
+		() => orderTiles(shownApps.map((a) => appTile(a, config.appEdits)).concat(shownInputs.map((i) => inputTile(i, config.sourceEdits, config.inputStatus))), (t) => t.key, config.tileOrder),
+		[shownApps, shownInputs, config.tileOrder, config.sourceEdits, config.appEdits, config.inputStatus]
 	);
 	const homeItems: TileModel[] = useMemo(
 		() => orderedTiles.concat(MISC_TILES.filter((t) => (t.key === MISC.lgHome ? config.showLgHome : t.key === MISC.system ? config.showSystem : true))),
@@ -648,7 +653,7 @@ export function App () {
 				const adding = tvInput !== true;
 				showToast(adding ? 'Adding the launcher as an input…' : 'Removing the launcher from the inputs…');
 				(adding ? addTvInput() : removeTvInput())
-					.then((accepted) => (isWebOS() ? listInputs() : Promise.resolve(MOCK_INPUTS)).then((list) => {
+					.then((accepted) => (isWebOS() ? listInputs(config.inputStatus) : Promise.resolve(MOCK_INPUTS)).then((list) => {
 						setInputs(list);
 						const listed = list.some((i) => i.appId === APP_ID);
 						if (listed === adding) showToast(adding ? 'Added. Now set the TV to start on its last input, and pick this one' : 'Removed from the TV\'s inputs');

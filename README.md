@@ -27,6 +27,7 @@ It is a normal webOS app (app ID `tld.my.customlauncher`). On a rooted TV it can
   ![Widget colour options on a light background](docs/screenshots/clock-colours.jpg)
 - **Your apps and inputs in one row.** Choose what is shown, re-order, or hold OK on an app for *Move to start / left / right / end*, *Hide* and *Uninstall*.
   Back on the home row opens the **Recent apps** panel (rooted TVs). **Refresh list** in Settings → Apps looks for newly installed apps straight away.
+  Inputs with nothing plugged in are **greyed out** with *Not connected*, and on rooted TVs a connected device's own name (from HDMI-CEC, e.g. *Fire TV Stick*) is shown under its input.
 - **Your own names and icons.** Hold OK on an app or an input in Settings → Apps or Sources to rename it and choose a different icon, or use your own picture from a USB drive or the TV's storage (rooted TVs). One entry reset puts the original back. See *Edit a name or icon* below.
 - **Wallpaper.** Plain black (or a calm blue-grey), one picture, or a slideshow of a whole folder from a USB drive or the TV's storage, or the bundled nature photos, with shuffle and an interval from 10 seconds to 1 hour.
 - **Start the TV straight into Hearth.** *Options → Add the launcher as a TV input* adds **Hearth** to the TV's input list, next to HDMI 1 and Live TV. Choose it, set the TV to start on its last input,
@@ -53,7 +54,7 @@ It is a normal webOS app (app ID `tld.my.customlauncher`). On a rooted TV it can
 
 ### Rooted TV (Homebrew Channel): everything
 
-The Homebrew Channel lets Hearth run a few fixed commands on the TV. That powers the live app list with real icons, the Recent apps panel, USB/storage browsing for wallpapers, replacing LG Home, the TV input, the LG logo switch and uninstalling apps.
+The Homebrew Channel lets Hearth run a few fixed commands on the TV. That powers the live app list with real icons, the names of connected HDMI-CEC devices under their inputs, the Recent apps panel, USB/storage browsing for wallpapers, replacing LG Home, the TV input, the LG logo switch and uninstalling apps.
 
 ### Not rooted (only Developer Mode): the core, with the extras greyed out
 
@@ -117,7 +118,8 @@ from the Homebrew Channel or Dev Manager.
 ### Settings
 
 - **Apps / Sources:** which apps and HDMI inputs are on the row, and their order. **Refresh list** (Apps) checks for newly installed apps.
-- **Look:** theme (OLED black or calm blue-grey), icon size (50-140 %), rows (one or two), side margin (0-300 px) and bottom margin, app names on or off, and **Reset look and clock**.
+- **Look:** theme (OLED black or calm blue-grey), icon size (50-140 %), rows (one or two), side margin (0-300 px) and bottom margin, app names on or off,
+  **Show input status** (grey out unplugged inputs, show connected devices' names), and **Reset look and clock**.
 - **Clock:** time format, size, font, thickness, vertical and horizontal position, date and AM/PM on or off.
 - **Weather:** on or off, the city, Celsius or Fahrenheit, the city name and today's high and low on or off.
   Pick a city from the list of about 75, or choose **Search for a city** and type any place name (worldwide).

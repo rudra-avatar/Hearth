@@ -14,9 +14,13 @@ export function appTile (app: AppEntry, edits: SourceEdits = {}): TileModel {
 	return {key: app.id, label: edit.label || app.title, imageUrl: edit.iconData || bundled || (edit.icon ? undefined : app.iconUrl), sourceIcon: edit.iconData || bundled ? undefined : edit.icon, color: app.color};
 }
 
-export function inputTile (input: InputSource, edits: SourceEdits = {}): TileModel {
+/** status: show whether something is plugged in (greyed out when not) and the connected device's CEC name. */
+export function inputTile (input: InputSource, edits: SourceEdits = {}, status = false): TileModel {
 	const edit = edits[input.appId] || {};
-	return {key: input.appId, label: edit.label || input.label, imageUrl: edit.iconData || undefined, sourceIcon: edit.icon || autoIcon(input.icon)};
+	const tile: TileModel = {key: input.appId, label: edit.label || input.label, imageUrl: edit.iconData || undefined, sourceIcon: edit.icon || autoIcon(input.icon)};
+	if (!status) return tile;
+	if (!input.connected) return {...tile, disconnected: true, note: 'Not connected'};
+	return input.deviceName && input.deviceName !== tile.label ? {...tile, note: input.deviceName} : tile;
 }
 
 /** Order `items` by an ID list, dropping IDs that no longer exist. */

@@ -460,6 +460,9 @@ html, body {
 }
 .grid__track .tile { margin-right: var(--layout-tile-gap); margin-bottom: 40px; }
 .tile--dimmed .tile__box { opacity: 0.45; }
+/* a second line under the name: "Not connected", or the device plugged into an input (HDMI-CEC name) */
+.tile__note { display: block; margin-top: 2px; font-size: 0.8em; font-weight: 400; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile--noted .tile__label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* the Settings grid has smaller tiles: smaller letter and tick badge to match */
 .grid__track .tile__monogram { font-size: 50px; }
 .grid__track .tile__badge { right: 8px; top: 8px; width: 28px; height: 28px; }

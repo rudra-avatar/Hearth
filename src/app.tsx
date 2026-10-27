@@ -28,6 +28,7 @@ import {applyHomeHook, getHookStatus, hookMessage, installHomeHook, logLine, mar
 import {getTakeoverStatus, installTakeover, reapplyTakeover, removeTakeover, stockTakeover, takeoverMessage} from './lib/takeover';
 import {applyPref, disabledReason, findPref, optionsFor, resetLook, type Press, type SystemInfo} from './lib/prefs';
 import {loadConfig, saveConfig, toggleId, DEFAULT_WALLPAPER, type UserConfig} from './lib/storage';
+import {readLastOpened, writeLastOpened} from './lib/homefocus';
 import {applyTheme, THEMES} from './theme/tokens';
 import {setRootVars} from './lib/cssvars';
 import {applyBackground, NATURE_SHOW} from './lib/backgrounds';
@@ -79,6 +80,8 @@ export function App () {
 	const closeRecents = useCallback(() => setRecents(false), []);
 	const [menu, setMenu] = useState<{key: string; title: string; app: AppEntry | null} | null>(null);   // the tile whose Move / Hide / Uninstall menu is open
 	const [focus, setFocus] = useState<{key: string; seq: number} | undefined>(undefined);               // asks Home to follow a moved tile
+	const lastOpened = useRef<string | null>(readLastOpened());       // the app or input opened last (Settings → Look → When Home is pressed)
+	const noteOpened = useCallback((key: string) => { if (lastOpened.current !== key) { lastOpened.current = key; writeLastOpened(key); } }, []);
 	const replaceRef = useRef(config.replaceHome || config.takeoverHome);
 	const [allInputs, setInputs] = useState<InputSource[]>([]);
 	// the launcher itself may be in the TV's input list (see Options): it is not offered as a source
@@ -548,11 +551,12 @@ export function App () {
 		// With the helper on: say the launcher is alive and note what is being opened, so the helper's check
 		// can never mistake this moment for a failure, and its log shows what happened if an app does not open.
 		if (config.replaceHome) markAliveSoon(`launcher: opening ${item.key}`, false);
+		noteOpened(item.key);
 		launchApp(item.key).catch(() => {
 			if (config.replaceHome) logLine(`launcher: the TV refused to open ${item.key}`);
 			showToast(`Couldn't open ${item.label}`, 'error');
 		});
-	}, [showToast, config.replaceHome, config.takeoverHome]);
+	}, [showToast, noteOpened, config.replaceHome, config.takeoverHome]);
 
 	const onToggle = useCallback((tabId: string, key: string) => {
 		if (tabId === TAB.apps) {
@@ -743,8 +747,8 @@ export function App () {
 			{wallpaperOn && natureShow && <PhotoShow intervalSec={config.wallpaper.intervalSec} shuffle={config.wallpaper.shuffle} paused={asleep} />}
 			{wallpaperOn && !natureShow && <Wallpaper config={config.wallpaper} opacity={config.wallpaperOpacity} onProblem={(text) => showToast(text, 'error')} />}
 			{/* Home stays mounted under the other screens so it keeps its focus position. */}
-			<Home items={homeItems} timeFormat={timeFormat} appearance={appearance} active={screen === 'home' && !menu && !recents} paused={asleep} onActivate={onActivate} onLongPress={onLongPress} onBack={openRecents} wake={wakes} focus={focus} weather={weatherLine} />
-			{recents && screen === 'home' && <Recents icons={recentIcons} width={config.recentsW} height={config.recentsH} onClose={closeRecents} onToast={showToast} />}
+			<Home items={homeItems} timeFormat={timeFormat} appearance={appearance} active={screen === 'home' && !menu && !recents} paused={asleep} onActivate={onActivate} onLongPress={onLongPress} onBack={openRecents} wake={wakes} homeKey={config.homeFocus === 'last' ? lastOpened.current : null} focus={focus} weather={weatherLine} />
+			{recents && screen === 'home' && <Recents icons={recentIcons} width={config.recentsW} height={config.recentsH} onClose={closeRecents} onOpen={noteOpened} onToast={showToast} />}
 			{menu && <AppMenu title={menu.title} moves={menuMoves} hideDetail={menu.app ? 'You can add it back in Settings → Apps' : 'You can add it back in Settings → Sources'} showUninstall={!!menu.app} blockedReason={menuBlocked} onMove={(action) => moveTile(menu.key, action)} onHide={() => hideTile(menu)} onUninstall={() => { if (menu.app) removeApp(menu.app); }} onClose={() => setMenu(null)} />}
 			{/* Settings stays mounted under the picker so it keeps its tab. */}
 			{(screen !== 'home') && <Settings tabs={tabs} active={screen === 'settings'} onToggle={onToggle} onReorder={onReorder} onOption={onOption} onRefresh={onRefresh} onEdit={(key) => { setEditKey(key); setScreen('source'); }} onAdjust={onAdjust} onTab={onTab} onClose={() => setScreen('home')} about={aboutText(versions, rootState(), lastFailure())} />}

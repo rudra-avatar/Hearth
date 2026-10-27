@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **When Home is pressed** (Settings → Look): the highlight goes to the first app (as before, the default) or to **the last app opened**, the app or input
+  last opened from Hearth (its home row or the Recent apps panel). If that tile is no longer on the row (uninstalled or hidden), the first app is used.
+  The tile is noted when it is opened and kept in a small entry of its own, so it is still known if the TV starts Hearth afresh; nothing runs in the
+  background. Idea and first version by iulyax27 (pull request #10); rewritten for the current code.
+
 ## 1.2.0
 
 - **Edit names and icons** (Settings → Apps or Sources, hold OK on an item): rename an app or input, pick another icon (16 input symbols, the bundled app logos), or use your own picture from a USB drive or the TV (rooted TVs, saved inside Hearth's settings). *Use the app's / TV's name and icon* resets it. See the README, "Edit a name or icon".

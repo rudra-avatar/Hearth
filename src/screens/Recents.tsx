@@ -16,12 +16,14 @@ interface Props {
 	width: number;
 	height: number;
 	onClose: () => void;
+	/** an app is being opened from the panel (noted for Settings → Look → When Home is pressed) */
+	onOpen?: (id: string) => void;
 	onToast: (text: string, kind?: 'error') => void;
 }
 
 /** The panel Back opens on the home screen: the TV's recent apps along the bottom. OK opens one, holding OK closes it,
  *  Up reaches "Close all", Back closes the panel. */
-export function Recents ({icons, width, height, onClose, onToast}: Props) {
+export function Recents ({icons, width, height, onClose, onOpen, onToast}: Props) {
 	const [apps, setApps] = useState<RecentApp[] | null>(null);
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
@@ -53,7 +55,7 @@ export function Recents ({icons, width, height, onClose, onToast}: Props) {
 			else onToast(ids.length > 1 ? `Closed ${ids.length} apps` : `Closed ${label}`);
 		}));
 	};
-	const open = (a?: RecentApp) => { if (a) launchApp(a.id).then(() => onClose(), () => onToast(`Couldn't open ${a.title}`, 'error')); };
+	const open = (a?: RecentApp) => { if (!a) return; if (onOpen) onOpen(a.id); launchApp(a.id).then(() => onClose(), () => onToast(`Couldn't open ${a.title}`, 'error')); };
 
 	const handleKey = useCallback((key: NavKey): boolean => {
 		if (key === 'back') { onClose(); return true; }

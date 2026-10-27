@@ -118,6 +118,7 @@ from the Homebrew Channel or Dev Manager.
 
 - **Apps / Sources:** which apps and HDMI inputs are on the row, and their order. **Refresh list** (Apps) checks for newly installed apps.
 - **Look:** theme (OLED black or calm blue-grey), icon size (50-140 %), rows (one or two), side margin (0-300 px) and bottom margin, app names on or off, and **Reset look and clock**.
+  **When Home is pressed:** the highlight goes to the first app (the default), or to the last app or input you opened from Hearth (the first app if that one is no longer on the row).
 - **Clock:** time format, size, font, thickness, vertical and horizontal position, date and AM/PM on or off.
 - **Weather:** on or off, the city, Celsius or Fahrenheit, the city name and today's high and low on or off.
   Pick a city from the list of about 75, or choose **Search for a city** and type any place name (worldwide).
@@ -250,6 +251,7 @@ Then close and reopen Hearth. After updating Hearth, restart the TV (or run the 
 - **chriskoperdraad-tech**, pull requests #2 and #3: webOS 3.x (Chromium 38) support. The Home-bar watcher lines are theirs; the ES5 build and the custom-property fallback are Hearth's own code.
 - **ganondorft**, pull request #6: the webOS 11 permission fix and the Windows line-ending fix.
 - **iulyax27**, pull requests #8 and #10: icon batches, the Input Hook guide, and the ideas for quiet mode and OLED shift.
+  *When Home is pressed: the last app opened*: idea and first version by iulyax27, PR #10.
 - **Recent apps panel, icon shapes and bottom fade:** community contribution, author not named. The idea and the TV services to call came from it; Hearth's code is its own.
 
 **Projects and ideas:**

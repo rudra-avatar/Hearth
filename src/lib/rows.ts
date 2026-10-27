@@ -33,6 +33,17 @@ export function clampPosition (sizes: number[], position: RowsPosition): RowsPos
 	return {row, cols: cols.length ? cols : [0]};
 }
 
+/** The position with the highlight on the tile at `index` of the whole list (the other rows keep their column from `from`),
+ *  or null when there is no such tile. */
+export function positionOf (sizes: number[], index: number, from: RowsPosition): RowsPosition | null {
+	const offsets = rowOffsets(sizes);
+	const total = sizes.reduce((sum, size) => sum + size, 0);
+	if (index < 0 || index >= total) return null;
+	let row = 0;
+	while (row < sizes.length - 1 && index >= offsets[row] + sizes[row]) row++;
+	return {row, cols: clampPosition(sizes, from).cols.map((c, r) => (r === row ? index - offsets[row] : c))};
+}
+
 /** Left and right move along the row and stop at its ends; up and down change row, keeping the same column where there is one. */
 export function movePosition (sizes: number[], position: RowsPosition, direction: Direction): RowsPosition {
 	const at = clampPosition(sizes, position);

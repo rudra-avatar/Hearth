@@ -11,6 +11,7 @@ import {CLOCK_COLOR_IDS, LABEL_COLOR_IDS, type ClockColor} from './clockcolor';
 import {TILE_SHAPE_IDS} from './tileshape';
 import {DEFAULT_CITY} from './cities';
 import {validCoords, type City, type TempUnit} from './weather';
+import type {HomeFocus} from './homefocus';
 
 export type WallpaperMode = 'gradient' | 'image' | 'folder';
 export type ClockFormat = 'tv' | '12h' | '24h';
@@ -129,6 +130,8 @@ export interface UserConfig {
 	recentsH: number;
 	/** quiet mode: hide the apps after this many seconds without a key (0 = off) */
 	quietSec: number;
+	/** where the highlight lands when Hearth comes back to the front (Home): the first tile, or the app or input opened last */
+	homeFocus: HomeFocus;
 	/** OLED shift: the clock and the apps move a few pixels now and then so nothing burns in */
 	oledShift: boolean;
 	/** colour of the names under the icons: 'theme' or a plain colour id (see LABEL_COLOR_IDS) */
@@ -208,6 +211,7 @@ export const DEFAULT_CONFIG: UserConfig = {
 	recentsW: RANGES.recentsW.def,
 	recentsH: RANGES.recentsH.def,
 	quietSec: RANGES.quietSec.def,
+	homeFocus: 'first',
 	oledShift: true,
 	labelColor: 'theme',
 	showLabels: true,
@@ -273,6 +277,7 @@ export function loadConfig (): UserConfig {
 			recentsW: ranged(parsed.recentsW, 'recentsW'),
 			recentsH: ranged(parsed.recentsH, 'recentsH'),
 			quietSec: ranged(parsed.quietSec, 'quietSec'),
+			homeFocus: parsed.homeFocus === 'last' ? 'last' : 'first',
 			oledShift: parsed.oledShift !== false,
 			labelColor: LABEL_COLOR_IDS.indexOf(parsed.labelColor as string) !== -1 ? (parsed.labelColor as string) : 'theme',
 			showLabels: parsed.showLabels !== false,

@@ -18,6 +18,7 @@ import type {TempUnit} from './weather';
 import {lastFailure, rootState, type RootState} from './failure';
 import type {LogoState} from './system';
 import type {TakeoverStatus} from './takeovercmd';
+import {HOME_FOCUS_IDS, homeFocusText} from './homefocus';
 
 export type PrefTab = 'look' | 'clock' | 'weather' | 'wallpaper' | 'options';
 
@@ -169,6 +170,8 @@ const BASE_PREFS: Pref[] = [
 		THEMES, (c) => c.theme, (c, v) => ({...c, theme: v, clock: {...c.clock, color: LIGHT_THEMES.indexOf(v) !== -1 && c.clock.color === 'white' ? 'charcoal' : LIGHT_THEMES.indexOf(c.theme) !== -1 && LIGHT_THEMES.indexOf(v) === -1 && c.clock.color === 'charcoal' ? 'white' : c.clock.color}}), (v) => THEME_TEXT[v]),
 	choice('quietSec', 'look', 'Quiet mode', 'Hides the apps (the clock stays) when no key is pressed for this long. Any key brings them back; that first key does nothing else. ← → or OK change it.',
 		rangeValues('quietSec'), (c) => c.quietSec, (c, v) => ({...c, quietSec: v}), (v) => (v === 0 ? 'Off' : `${v} seconds`)),
+	choice('homeFocus', 'look', 'When Home is pressed', 'Where the highlight is each time Hearth comes back: on the first app, or on the app or input you last opened from Hearth (on the first app if that one is no longer on the row).',
+		HOME_FOCUS_IDS, (c) => c.homeFocus, (c, v) => ({...c, homeFocus: v}), homeFocusText),
 	toggle('minimal', 'look', 'Minimalist icons', 'No border around the icons and no white or black frame on the selected one. The selected icon is simply bigger.',
 		(c) => c.minimal, (c, v) => ({...c, minimal: v})),
 	range('iconScale', 'look', 'Icon size', 'Make the app icons smaller or bigger. ← → adjust.',

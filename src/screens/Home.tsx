@@ -6,7 +6,7 @@ import {useKeys, type NavKey} from '../hooks/useKeys';
 import {useOkPress} from '../hooks/useOkPress';
 import {useClock} from '../hooks/useClock';
 import type {TimeFormat} from '../lib/clock';
-import {clampPosition, initialPosition, movePosition, rowOffsets, splitRows, type RowsPosition} from '../lib/rows';
+import {clampPosition, initialPosition, movePosition, positionOf, rowOffsets, splitRows, type RowsPosition} from '../lib/rows';
 import {labelColorValue} from '../lib/clockcolor';
 import type {ClockConfig} from '../lib/storage';
 import type {WeatherView} from '../lib/weather';
@@ -50,8 +50,11 @@ interface Props {
 	onLongPress?: (item: TileModel) => void;
 	/** Back pressed on the home screen (opens the Recent apps panel) */
 	onBack: () => void;
-	/** counts up each time the launcher is brought to the front (Home pressed): the highlight goes back to the first tile */
+	/** counts up each time the launcher is brought to the front (Home pressed): the highlight goes back to the first tile,
+	 *  or to the `homeKey` tile when that is set and still on the row */
 	wake?: number;
+	/** the tile to highlight on a wake instead of the first (Settings → Look → When Home is pressed: the last app opened) */
+	homeKey?: string | null;
 	/** put the highlight on the tile with this key (after it was moved); `seq` changes for each request */
 	focus?: {key: string; seq: number};
 	/** the weather line under the date, when it is on and known */
@@ -74,7 +77,7 @@ function useShift (on: boolean): {x: number; y: number} | null {
 /** The home screen: a clock and the tiles along the bottom, in one row or two.
  *  Left/Right move along a row, Up/Down change row (two rows), OK opens, holding OK opens the app's menu.
  *  Back opens the Recent apps panel. */
-export function Home ({items, timeFormat, appearance, active, paused, onActivate, onLongPress, onBack, wake, focus, weather}: Props) {
+export function Home ({items, timeFormat, appearance, active, paused, onActivate, onLongPress, onBack, wake, homeKey, focus, weather}: Props) {
 	const now = useClock(paused);
 	const [position, setPosition] = useState<RowsPosition>(initialPosition);
 	const sizes = splitRows(items.length, appearance.rows);
@@ -118,20 +121,30 @@ export function Home ({items, timeFormat, appearance, active, paused, onActivate
 		};
 	}, [appearance.quietSec, active, paused, wake]);
 
-	// Home pressed (the launcher comes to the front): start again at the first tile.
-	useEffect(() => { setPosition(initialPosition()); }, [wake]);
+	// Home pressed (the launcher comes to the front): start again at the first tile, or at the app opened last when
+	// that is chosen (it falls back to the first tile if that app or input is no longer on the row).
+	// Right after a start the app list may still be loading: the tile is then placed once it appears, unless a key was pressed first.
+	const pendingKey = useRef<string | null>(null);
+	const homePosition = (key: string | null | undefined): RowsPosition | null => (key ? positionOf(sizes, items.findIndex((item) => item.key === key), initialPosition()) : null);
+	useEffect(() => {
+		const found = homePosition(homeKey);
+		pendingKey.current = found ? null : homeKey || null;
+		setPosition(found || initialPosition());
+	}, [wake]);
+	useEffect(() => {
+		const found = homePosition(pendingKey.current);
+		if (found) { pendingKey.current = null; setPosition(found); }
+	}, [items]);
 
 	// A tile was moved: the highlight follows it to its new place.
 	useEffect(() => {
 		if (!focus) return;
 		const index = items.findIndex((item) => item.key === focus.key);
-		if (index === -1) return;
-		let row = 0;
-		while (row < sizes.length - 1 && index >= offsets[row] + sizes[row]) row++;
-		setPosition((p) => ({row, cols: clampPosition(sizes, p).cols.map((c, r) => (r === row ? index - offsets[row] : c))}));
+		setPosition((p) => positionOf(sizes, index, p) || p);
 	}, [focus && focus.seq]);
 
 	const handleKey = useCallback((key: NavKey): boolean => {
+		pendingKey.current = null;                            // the person is moving: a late app list no longer moves the highlight
 		if (quietRef.current) return true;                    // the key that wakes the apps does nothing else
 		// functional updates, so quick repeated presses never act on a stale position
 		if (key === 'left' || key === 'right' || key === 'up' || key === 'down') setPosition((p) => movePosition(sizes, p, key));
@@ -173,7 +186,7 @@ export function Home ({items, timeFormat, appearance, active, paused, onActivate
 							items={items.slice(start, start + size)}
 							focused={r === at.row}
 							selected={at.cols[r]}
-							onSelect={(col) => setPosition({row: r, cols: at.cols.map((c, i) => (i === r ? col : c))})}
+							onSelect={(col) => { pendingKey.current = null; setPosition({row: r, cols: at.cols.map((c, i) => (i === r ? col : c))}); }}
 							onActivate={(col) => onActivate(items[start + col])}
 							tileSize={tileSize}
 							tileGap={tileGap}

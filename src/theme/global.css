@@ -687,3 +687,47 @@ html, body {
 	pointer-events: none;
 }
 .toast--error { color: var(--color-danger); }
+
+/* ---------- Continue Watching (Plex) ---------- */
+/* Wide cards above the app row; sizes match CONTINUE_CARD in components/ContinueRow.tsx. */
+.continue { margin-bottom: 28px; }
+.continue__card { flex: 0 0 auto; width: 320px; margin-right: 28px; }
+.continue__frame {
+	position: relative;
+	width: 320px;
+	height: 180px;
+	border-radius: var(--layout-tile-radius);
+	background: var(--color-tile-bg);
+	box-shadow: 0 0 0 2px var(--color-tile-border);
+	transform: scale(1);
+	transition: transform var(--motion-focus-ms) ease-out;
+}
+.continue__card--focused .continue__frame { transform: scale(1.06); z-index: 1; }
+.continue__image { position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: var(--layout-tile-radius); object-fit: cover; }
+.continue__blank { position: absolute; left: 0; top: 0; width: 100%; height: 100%; line-height: 180px; text-align: center; font-size: 64px; color: var(--color-text-muted); }
+.continue__bar { position: absolute; left: 14px; right: 14px; bottom: 12px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.3); overflow: hidden; }
+.continue__fill { width: 100%; height: 100%; background: #fff; transform-origin: 0 0; }
+.continue__ring {
+	position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+	border-radius: var(--layout-tile-radius);
+	box-shadow: 0 0 0 5px var(--color-tile-border-focus);
+	opacity: 0;
+	transition: opacity var(--motion-focus-ms) ease-out;
+}
+.continue__card--focused .continue__ring { opacity: 1; }
+.look-minimal .continue__frame { box-shadow: none; }
+.look-minimal .continue__ring { display: none; }
+.continue__title, .continue__detail { width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.continue__title { margin-top: 14px; font-size: var(--font-tile-label); color: var(--color-text-secondary); }
+.continue__detail { margin-top: 2px; font-size: calc(var(--font-tile-label) * 0.85); color: var(--color-text-muted); }
+.continue__card--focused .continue__title { color: var(--color-text-primary); }
+
+/* Plex sign-in: the plex.tv/link code */
+.plex-link__code { margin: 8px 0 24px; white-space: nowrap; }
+.plex-link__char {
+	display: inline-block; width: 96px; height: 120px; margin-right: 16px; line-height: 120px; text-align: center;
+	border-radius: 18px; font-size: 72px; font-weight: 600; color: var(--color-text-primary);
+	box-shadow: 0 0 0 2px var(--color-tile-border);
+}
+.plex-link__char--empty { color: var(--color-text-muted); }
+.plex-link__status { color: var(--color-text-primary); }

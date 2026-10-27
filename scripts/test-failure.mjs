@@ -35,7 +35,7 @@ eq(rowsOf({homeApp: null, homeHook: null, root: 'yes'}).filter((o) => o.disabled
 f.noteExec(new Error('Service does not exist: org.webosbrew.hbchannel.service'));
 const grey = rowsOf({homeApp: null, homeHook: null, root: 'no', rootDetail: 'Service does not exist'});
 eq(grey.filter((o) => o.disabled).map((o) => o.id).sort(), p.ROOT_OPTIONS.sort(), 'every row that needs root is greyed out without it');
-eq(grey.filter((o) => !o.disabled).map((o) => o.id), ['tvApps', 'showDebug'], 'every Options row that runs commands needs root, so only the no-root app list and the Debug tab switch stay usable');
+eq(grey.filter((o) => !o.disabled).map((o) => o.id), ['tvApps', 'continueWatching', 'plexAccount', 'showDebug'], 'every Options row that runs commands needs root, so only the no-root app list, Continue Watching (Plex works over the network) and the Debug tab switch stay usable');
 eq(p.optionsFor('look', f.DEFAULT_CONFIG, {root: 'no'}).some((o) => o.id === 'resetLook' && !o.disabled), true, 'Reset look and clock (on the Look tab) stays usable without root');
 eq(grey[0].disabled.indexOf('Needs a rooted TV') === 0 && grey[0].disabled.indexOf('TV said: Service does not exist') > 0, true, 'the reason says what the TV said');
 eq(p.disabledReason('theme', {root: 'no'}), null, 'a look setting is never greyed out');

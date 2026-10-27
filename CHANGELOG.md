@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Continue Watching from Plex** (Settings → Options, off by default): a row of wide cards above the apps with what you are part-way through on your Plex server, with progress and time left. Sign in with a code at plex.tv/link (nothing to type on the TV); the token is kept apart from the settings and never shown in the Debug tab. OK plays the item, holding OK opens its page. It opens in LG's Plex app at that title. The list is drawn from a saved copy at once and refreshed a few seconds after Hearth comes to the front, at most once a minute. Up from the app row reaches it.
+
 ## 1.2.0
 
 - **Edit names and icons** (Settings → Apps or Sources, hold OK on an item): rename an app or input, pick another icon (16 input symbols, the bundled app logos), or use your own picture from a USB drive or the TV (rooted TVs, saved inside Hearth's settings). *Use the app's / TV's name and icon* resets it. See the README, "Edit a name or icon".

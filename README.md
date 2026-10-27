@@ -29,6 +29,8 @@ It is a normal webOS app (app ID `tld.my.customlauncher`). On a rooted TV it can
   Back on the home row opens the **Recent apps** panel (rooted TVs). **Refresh list** in Settings → Apps looks for newly installed apps straight away.
 - **Your own names and icons.** Hold OK on an app or an input in Settings → Apps or Sources to rename it and choose a different icon, or use your own picture from a USB drive or the TV's storage (rooted TVs). One entry reset puts the original back. See *Edit a name or icon* below.
 - **Wallpaper.** Plain black (or a calm blue-grey), one picture, or a slideshow of a whole folder from a USB drive or the TV's storage, or the bundled nature photos, with shuffle and an interval from 10 seconds to 1 hour.
+- **Continue Watching from Plex** (optional). A row of wide cards above your apps with what you are part-way through on your Plex server, with progress and time left.
+  OK plays it in the Plex app, holding OK opens its page. Sign in with a code at plex.tv/link; nothing to type on the TV. See *Plex and privacy* below.
 - **Start the TV straight into Hearth.** *Options → Add the launcher as a TV input* adds **Hearth** to the TV's input list, next to HDMI 1 and Live TV. Choose it, set the TV to start on its last input,
   and the TV boots into Hearth.
 
@@ -59,7 +61,7 @@ The Homebrew Channel lets Hearth run a few fixed commands on the TV. That powers
 
 > **Experimental / not tested on a non-rooted TV.** This is how Hearth is designed to behave.
 
-- Expected to work: the home screen, clock and date, the **weather** (it uses the web view's own internet connection), themes, sizes, fonts and colours, the built-in list of common apps, and launching apps.
+- Expected to work: the home screen, clock and date, the **weather** (it uses the web view's own internet connection), **Continue Watching from Plex**, themes, sizes, fonts and colours, the built-in list of common apps, and launching apps.
 - Needs root, so it is **greyed out with the reason** shown: everything on the Options tab (TV input, replacing LG Home, LG logo), the Recent apps panel, reading USB/storage for wallpapers, and uninstalling apps.
 - Without root, Hearth is an app you open yourself; it cannot replace LG Home or start the TV into itself.
 - **More apps on the row without root:** the built-in list only shows well-known apps. Two ways to get the rest:
@@ -123,7 +125,7 @@ from the Homebrew Channel or Dev Manager.
   Pick a city from the list of about 75, or choose **Search for a city** and type any place name (worldwide).
 - **Wallpaper:** the picture or slideshow, interval and shuffle, **Widget colour** and **Widget opacity**.
 - **Options (rooted TVs):** the TV input; live app list; *Replace LG Home with a helper script*; *Replace LG Home with a script and SAM*;
-  *Show the LG logo when the TV starts*; and, last, *Show the Debug tab*.
+  *Show the LG logo when the TV starts*; *Show Continue Watching (Plex)* and *Plex account* (no root needed); and, last, *Show the Debug tab*.
 
 ### Edit a name or icon
 
@@ -163,6 +165,15 @@ A picture over the limit is skipped in a slideshow and refused as a single wallp
 The weather comes from [Open-Meteo](https://open-meteo.com) (free, no account). The only thing sent is the latitude and longitude of the city you chose (and the words you type in the city search). It is fetched a few seconds after Hearth appears, then every 30 minutes
 while Hearth is in front, and the last reading is kept so the home screen never waits for the internet. A reading older than 6 hours is not shown. If the TV's web view cannot make a secure connection (some older TVs can't), Hearth asks the TV's own `curl` or `wget` through the Homebrew Channel instead;
 the last-resort attempts skip the certificate check, which is acceptable for public weather numbers that are only ever read as numbers and a place name.
+
+### Plex and privacy
+
+Continue Watching is off until you switch it on (Settings → Options). *Plex account* shows a short code: enter it at
+[plex.tv/link](https://plex.tv/link) on a phone or computer, and Hearth receives a sign-in for your account. Hearth asks plex.tv once
+for your server's addresses, then talks to your server directly (plain http on your home network when the server allows it,
+which is lighter work for the TV). The sign-in is kept only inside Hearth on the TV, apart from the settings, so it never appears in the
+Debug tab or a saved report; *Plex account* again signs out and forgets it. The list is drawn from the last copy at once and read again
+a few seconds after Hearth comes to the front, at most once a minute. OK opens the item in LG's Plex app at that title.
 
 ## Replacing LG Home (rooted TVs)
 

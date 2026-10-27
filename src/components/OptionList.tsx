@@ -53,17 +53,26 @@ export function OptionList ({options, focused, selected, onSelect, onActivate}: 
 		return () => window.removeEventListener('resize', measure);
 	}, []);
 
-	// Slide the list just far enough to keep the highlighted row inside the window.
+	// Slide the list just far enough to keep the highlighted row inside the window, and the rows either side of it
+	// too when they fit, so the next row is never cut off at the bottom (or the previous one at the top). The
+	// highlighted row itself always stays in view.
 	useLayoutEffect(() => {
 		const track = trackRef.current;
 		if (!track) return;
-		const row = track.children[Math.max(0, Math.min(selected, options.length - 1))] as HTMLElement | undefined;
+		const index = Math.max(0, Math.min(selected, options.length - 1));
+		const row = track.children[index] as HTMLElement | undefined;
 		if (!row) return;
-		const top = row.offsetTop;
-		const bottom = top + row.offsetHeight + 8;      // 8: the focus border
+		const before = track.children[index - 1] as HTMLElement | undefined;
+		const after = track.children[index + 1] as HTMLElement | undefined;
+		const top = row.offsetTop - 8;                              // 8: the focus border
+		const bottom = row.offsetTop + row.offsetHeight + 8;
+		const wantTop = before ? Math.min(top, before.offsetTop - 8) : top;
+		const wantBottom = after ? Math.max(bottom, after.offsetTop + after.offsetHeight + 8) : bottom;
 		let next = shiftRef.current;
-		if (top - 8 < next) next = Math.max(0, top - 8);
-		else if (bottom > next + height) next = bottom - height;
+		if (wantTop < next) next = wantTop;
+		else if (wantBottom > next + height) next = wantBottom - height;
+		next = Math.min(next, top);                                  // never past the highlighted row's top
+		next = Math.max(next, bottom - height);                       // nor so far up that its bottom is cut off
 		if (next < 0) next = 0;
 		if (next !== shiftRef.current) { shiftRef.current = next; setShift(next); }
 	}, [selected, options, height]);

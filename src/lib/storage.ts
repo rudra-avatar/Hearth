@@ -140,6 +140,8 @@ export interface UserConfig {
 	/** the LG Home and System Settings tiles at the end of the row (Hearth's own Settings tile is always there) */
 	showLgHome: boolean;
 	showSystem: boolean;
+	/** a "Continue Watching" row from Plex above the apps (needs a Plex sign-in, Settings → Options) */
+	continueWatching: boolean;
 	/** the names and icons the user gave to sources, by the source's app id */
 	sourceEdits: SourceEdits;
 	/** the user's own name and picture for apps (same shape as sourceEdits, keyed by app id) */
@@ -214,6 +216,7 @@ export const DEFAULT_CONFIG: UserConfig = {
 	minimal: false,
 	showLgHome: true,
 	showSystem: true,
+	continueWatching: false,
 	sourceEdits: {},
 	appEdits: {},
 	rows: 1,
@@ -278,6 +281,7 @@ export function loadConfig (): UserConfig {
 			showLabels: parsed.showLabels !== false,
 			minimal: parsed.minimal === true,
 			showLgHome: parsed.showLgHome !== false,
+			continueWatching: parsed.continueWatching === true,
 			showSystem: parsed.showSystem !== false,
 			sourceEdits: cleanEdits(parsed.sourceEdits),
 			appEdits: cleanEdits(parsed.appEdits),

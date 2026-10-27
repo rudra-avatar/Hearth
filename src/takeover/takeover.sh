@@ -426,6 +426,16 @@ is_home_report () {
     return 1
 }
 
+# webOS 4.x: Home opens LG's full-screen overlay (com.webos.app.fullhome), which the stand-in does not replace. It is
+# usually shown over the app in front without becoming it (then only "Set Hearth as the TV's Home app" helps), but
+# where the TV does report it in front, Hearth is opened as for LG Home.
+is_full_home_report () {
+    case "$1" in
+        *'"appId":"com.webos.app.fullhome"'*|*'"appId": "com.webos.app.fullhome"'*) return 0 ;;
+    esac
+    return 1
+}
+
 # One report from the TV about the app in front. The launch comes first, so the hand-over is as quick as it can be.
 home_seen=0
 last_open=0
@@ -434,7 +444,7 @@ watch_report () {
         *'"appId"'*) ;;
         *) return ;;                                   # not a report about the app in front
     esac
-    if ! is_home_report "$1"; then home_seen=0; return; fi
+    if ! is_home_report "$1" && ! is_full_home_report "$1"; then home_seen=0; return; fi
     now="${FAKE_NOW:-$(date +%s)}"
     # a repeat report while it is still in front: not again at once
     if [ "$home_seen" = 1 ] && [ $((now - last_open)) -lt "$DEBOUNCE_S" ]; then return; fi
@@ -443,7 +453,9 @@ watch_report () {
     touch "$MARK"
     open_hearth >/dev/null
     last_open="$now"
-    if is_mounted; then
+    if is_full_home_report "$1"; then
+        log "watch: LG's full-screen Home (webOS 4.x) is in front: asked for Hearth"
+    elif is_mounted; then
         log "watch: the stand-in is in front: asked for Hearth"
         # (only where the stand-in is in place: before that this is the helper's job, and LG Home in front is no failure)
         if [ -z "$DRY_RUN" ]; then ( nohup sh "$0" verify >/dev/null 2>&1 </dev/null & ); fi
@@ -657,6 +669,8 @@ cmd_diagnose () {
     echo "== what sam has for LG Home (type web = the shim)"; lsend luna://com.webos.applicationManager/getAppInfo "{\"id\":\"$LG_HOME\"}"
     echo "== LG Home process(es) (should be none while the shim has the place)"; lg_home_pids
     echo "== app in front"; lsend luna://com.webos.applicationManager/getForegroundAppInfo '{}'
+    echo "== which app the Home button opens (defaultApps.home; com.webos.app.fullhome on webOS 4.x is not replaced by the stand-in)"
+    lsend luna://com.webos.settingsservice/getSystemSettings '{"category":"general","keys":["defaultApps"]}'
     echo "== is Hearth installed?"; ls "$LAUNCHER" 2>&1 | head -5
     echo "== the watcher that opens Hearth (pid file; should be alive while the takeover is on)"; cat "$WATCH_PID" 2>&1; alive "$WATCH_PID" && echo alive || echo "not running"
     echo "== the guard (runs only after 'LG Home' was chosen in Hearth)"; cat "$GUARD_PID" 2>&1

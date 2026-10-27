@@ -33,7 +33,7 @@ It is a normal webOS app (app ID `tld.my.customlauncher`). On a rooted TV it can
   and the TV boots into Hearth.
 
   ![Hearth in the TV's input list](docs/screenshots/tv-input.jpg)
-- **The Home button opens Hearth** (instead of LG Home), with a helper script or the SAM method (see *Replacing LG Home*), and a switch for LG's own **"Show LG logo when the TV starts"**
+- **The Home button opens Hearth** (instead of LG Home), with a helper script, the SAM method or the TV's Home app setting (see *Replacing LG Home*), and a switch for LG's own **"Show LG logo when the TV starts"**
   setting (normally hidden in a secret menu) for a clean start.
 - **Made to be fast.** The home screen is drawn from saved data first; everything else (app list, weather, helper checks) happens a few seconds later in the background.
   While another app is in front, Hearth lets go of its wallpaper and stops its clock.
@@ -48,6 +48,7 @@ It is a normal webOS app (app ID `tld.my.customlauncher`). On a rooted TV it can
 |---|---|
 | Reference device (everything tested) | Firmware **04.60.90**, **webOS 7.6.0**, rooted, Homebrew Channel 0.7.3 |
 | Also reported by users | LG firmware **03.01.16** (reported as webOS 8.0.0), webOS 6.x (a Settings display bug found there was fixed in 1.1.0) and the webOS 4.x TV it was first built on |
+| webOS 4.5 (LG 65UM7100PLA, 2019) | Firmware **05.40.97**, **webOS 4.10.2** (webOS 4.5), rooted, Homebrew Channel 0.7.3. Tested and in daily use by a contributor: the launcher itself, input status ([#16](https://github.com/rudra-avatar/Hearth/pull/16)), Continue Watching from Plex ([#17](https://github.com/rudra-avatar/Hearth/pull/17)) and *Set Hearth as the TV's Home app* all work on this TV |
 | webOS 11 (LG C4 and others) | **The permission fix works**, reported by several users (see [issue #5](https://github.com/rudra-avatar/Hearth/issues/5) and *webOS 11* below); the maintainer has no webOS 11 TV |
 | Newer versions | **Should work.** Hearth is compiled for old web views (Chrome 53) and uses only standard web features and TV services that LG keeps across versions. Please report anything odd |
 
@@ -98,7 +99,7 @@ luna-send -i luna://com.webos.appInstallService/dev/install '{"id":"com.ares.def
 luna-send -n 1 luna://com.webos.applicationManager/launch '{"id":"tld.my.customlauncher"}'
 ```
 
-Installing over an older version keeps your settings. To remove Hearth, turn off *Replace LG Home with a helper script* (or *Replace LG Home with a script and SAM*) first, then uninstall "Hearth"
+Installing over an older version keeps your settings. To remove Hearth, turn off *Replace LG Home with a helper script* (or *Replace LG Home with a script and SAM*, or *Set Hearth as the TV's Home app*) first, then uninstall "Hearth"
 from the Homebrew Channel or Dev Manager.
 
 ## Using it
@@ -122,7 +123,7 @@ from the Homebrew Channel or Dev Manager.
 - **Weather:** on or off, the city, Celsius or Fahrenheit, the city name and today's high and low on or off.
   Pick a city from the list of about 75, or choose **Search for a city** and type any place name (worldwide).
 - **Wallpaper:** the picture or slideshow, interval and shuffle, **Widget colour** and **Widget opacity**.
-- **Options (rooted TVs):** the TV input; live app list; *Replace LG Home with a helper script*; *Replace LG Home with a script and SAM*;
+- **Options (rooted TVs):** the TV input; live app list; *Replace LG Home with a helper script*; *Replace LG Home with a script and SAM*; *Set Hearth as the TV's Home app (webOS 4.x)*;
   *Show the LG logo when the TV starts*; and, last, *Show the Debug tab*.
 
 ### Edit a name or icon
@@ -166,7 +167,7 @@ the last-resort attempts skip the certificate check, which is acceptable for pub
 
 ## Replacing LG Home (rooted TVs)
 
-There are two built-in methods and one outside helper. Each has a known problem; the recommended setup below combines the helper script with Input Hook.
+There are three built-in methods and one outside helper. Each has a known problem; the recommended setup below combines the helper script with Input Hook. On webOS 4.x use method 3.
 
 ### Method 1: helper script (Settings, Options, "Replace LG Home with a helper script")
 
@@ -186,6 +187,14 @@ The TV opens Hearth through LG Home's own place, so **LG Home is never drawn**. 
 - **Problem: the TV's aspect-ratio setting does not work while it is active.** It works again after you turn the method off and reboot the TV.
 - The "LG Home" tile does nothing while it is on; switch the setting off to use LG's own Home.
 - **If something is stuck,** the undo steps over SSH are in [`src/takeover/README.md`](src/takeover/README.md).
+
+### Method 3: the TV's Home app setting (Settings, Options, "Set Hearth as the TV's Home app (webOS 4.x)")
+
+The Home button opens whatever app the TV's own setting `defaultApps.home` names; this method writes Hearth there, so **Home opens Hearth directly**, with no LG Home first and nothing running in the background. On webOS 4.x it is the one that works: there Home shows LG's full-screen overlay (`com.webos.app.fullhome`), which never becomes the app in front, so methods 1 and 2 never see it. Tested on webOS 4.5.
+
+- It keeps the value it found and puts it back when you turn it off. Greyed out on a TV without the setting, and while method 1 or 2 is on (each greys the others out). Needs root: the TV refuses the change from an app itself.
+- **Problem: uninstalling Hearth while it is on** leaves Home pointing at an app that is gone until the next start, when a small start-up check puts the old value back. Turning it off first avoids that.
+- Undo steps over SSH and details: [`src/homeapp/README.md`](src/homeapp/README.md).
 
 ### Input Hook (flash-free Home button)
 
@@ -238,6 +247,7 @@ Then close and reopen Hearth. After updating Hearth, restart the TV (or run the 
 - **USB drive missing in the picker:** plug it in, then open the picker again. The TV must have mounted it.
 - **The weather doesn't appear:** check the TV's internet connection; it tries again by itself after 2, 10 and then 30 minutes.
 - **The Home button shows LG Home for a moment:** the helper script can only react once LG Home is in front. Use the **Input Hook** app, or *Replace LG Home with a script and SAM* (see Replacing LG Home).
+- **The Home button still shows LG's Home on webOS 4.x** with the helper script or the SAM method on: there Home opens an overlay those two cannot see. Use *Set Hearth as the TV's Home app* (method 3).
 - **Hold OK does nothing** on an app in the home row, or in Settings → Apps or Sources (so the app menu and the name and icon editor do not open): users report that **turning the TV off and on again** (a power cycle: unplug it for a minute) fixes it. The cause is not known yet.
 - **Root options greyed out with "the TV refused the command", or elevation (root) problems:** update the Homebrew Channel to **0.8.0-rc1** ([release page](https://github.com/throwaway96/webos-homebrew-channel/releases/tag/v0.8.0-rc1)) and open it once. On webOS 11 also do the permission step above.
 - **Odd layout after changing sizes:** Settings → Look → **Reset look and clock**.

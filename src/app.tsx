@@ -26,6 +26,7 @@ import {startLogFile, writeReport, previousRunLines} from './lib/logfile';
 import {readStats, type SystemStats, getLogo, setLogo, closeLgHome} from './lib/system';
 import {applyHomeHook, getHookStatus, hookMessage, installHomeHook, logLine, markAliveSoon, reapplyHomeHook, removeHomeHook, stockHome} from './lib/homehook';
 import {getTakeoverStatus, installTakeover, reapplyTakeover, removeTakeover, stockTakeover, takeoverMessage} from './lib/takeover';
+import {homeAppMessage, readHomeApp, restoreHomeApp, setHearthAsHome} from './lib/homeapp';
 import {applyPref, disabledReason, findPref, optionsFor, resetLook, type Press, type SystemInfo} from './lib/prefs';
 import {loadConfig, saveConfig, toggleId, DEFAULT_WALLPAPER, type UserConfig} from './lib/storage';
 import {applyTheme, THEMES} from './theme/tokens';
@@ -309,8 +310,8 @@ export function App () {
 				log(root === 'yes' ? 'Root check: the Homebrew Channel answered' : `Root check: not available (${rootDetail || 'no answer'})`);
 				if (!live) return undefined;
 				if (root === 'yes') readHomebrewVersion().then((homebrew) => { if (live && homebrew) setVersions((p) => ({...p, homebrew})); });
-				if (root === 'no') { setSystemInfo({homeHook: null, logo: null, takeover: null, root, rootDetail}); return undefined; }
-				return Promise.all([getHookStatus(), getLogo(), getTakeoverStatus()]).then(([homeHook, logo, takeover]) => { if (live) setSystemInfo({homeHook, logo, takeover, root, rootDetail}); });
+				if (root === 'no') { setSystemInfo({homeApp: null, homeHook: null, logo: null, takeover: null, root, rootDetail}); return undefined; }
+				return Promise.all([getHookStatus(), getLogo(), getTakeoverStatus(), readHomeApp()]).then(([homeHook, logo, takeover, homeApp]) => { if (live) setSystemInfo({homeHook, logo, takeover, homeApp, root, rootDetail}); });
 			});
 			return () => { live = false; };
 		}
@@ -641,6 +642,25 @@ export function App () {
 						if (result === 'applied') updateConfig({...config, replaceHome: true});
 						refresh();
 						showToast(hookMessage(result, detail), result === 'applied' ? 'info' : 'error');
+					});
+				}
+			}
+			else if (optionId === 'homeApp') {
+				const refresh = () => readHomeApp().then((homeApp) => setSystemInfo((previous) => ({...previous, homeApp})));
+				const on = typeof systemInfo.homeApp === 'string' ? systemInfo.homeApp === APP_ID : config.homeApp;
+				if (on) {
+					showToast('Putting the TV\'s Home app back…');
+					restoreHomeApp(config.homeAppPrevious).then(({result, detail}) => {
+						if (result === 'restored') updateConfig({...config, homeApp: false, homeAppPrevious: ''});
+						refresh();
+						showToast(homeAppMessage(result, detail), result === 'restored' ? 'info' : 'error');
+					});
+				} else {
+					showToast('Setting up…');
+					setHearthAsHome().then(({result, detail}) => {
+						if (result === 'applied') updateConfig({...config, homeApp: true, homeAppPrevious: detail});
+						refresh();
+						showToast(homeAppMessage(result, detail), result === 'applied' ? 'info' : 'error');
 					});
 				}
 			}

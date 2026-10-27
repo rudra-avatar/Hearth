@@ -32,7 +32,8 @@ export function memAvailableMB (): Promise<number> {
 }
 
 // ---------- which app the Home button (and leaving an app with Back) opens ----------
-// webOS keeps this in a system setting, defaultApps.home. LG's default is com.webos.app.home.
+// webOS keeps this in a system setting, defaultApps.home. LG's default is com.webos.app.home (com.webos.app.fullhome on
+// webOS 4.x). See homeapp.ts for the Options row that uses it.
 
 export const LG_HOME_ID = 'com.webos.app.home';
 const APP_ID_PATTERN = /^[A-Za-z0-9._-]+$/;

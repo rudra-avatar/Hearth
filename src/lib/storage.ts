@@ -109,6 +109,10 @@ export interface UserConfig {
 	replaceHome: boolean;
 	/** "Replace LG Home with a script and SAM": Hearth holds LG Home's own place, so the TV never opens LG Home at all; see src/takeover */
 	takeoverHome: boolean;
+	/** "Set Hearth as the TV's Home app": Hearth's id is in the TV's own Home app setting (defaultApps.home); see src/homeapp */
+	homeApp: boolean;
+	/** the app that setting named before Hearth, put back when it is switched off ('' when not known) */
+	homeAppPrevious: string;
 	theme: ThemeName;
 	/** a built-in background (see backgrounds.ts); 'theme' is the theme's own */
 	background: string;
@@ -196,6 +200,8 @@ export const DEFAULT_CONFIG: UserConfig = {
 	showDebug: false,
 	replaceHome: false,
 	takeoverHome: false,
+	homeApp: false,
+	homeAppPrevious: '',
 	theme: 'black',
 	background: 'theme',
 	iconScale: RANGES.iconScale.def,
@@ -261,6 +267,8 @@ export function loadConfig (): UserConfig {
 			showDebug: parsed.showDebug === true,
 			replaceHome: parsed.replaceHome === true,
 			takeoverHome: parsed.takeoverHome === true,
+			homeApp: parsed.homeApp === true,
+			homeAppPrevious: typeof parsed.homeAppPrevious === 'string' && /^[A-Za-z0-9._-]+$/.test(parsed.homeAppPrevious) ? parsed.homeAppPrevious : '',
 			theme: THEME_IDS.indexOf(parsed.theme as ThemeName) !== -1 ? (parsed.theme as ThemeName) : 'black',
 			background: BACKGROUND_IDS.indexOf(parsed.background as string) !== -1 ? (parsed.background as string) : 'theme',
 			iconScale: ranged(parsed.iconScale, 'iconScale'),

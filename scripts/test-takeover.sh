@@ -231,6 +231,11 @@ check "watch: another app in front: nothing is opened" "$(grep -c launch "$T/lun
 printf '%s\n' '{"returnValue": true, "appId": "com.webos.app.home"}' > "$T/front"; : > "$T/luna.log"
 FAKE_NOW=100 run watch >/dev/null 2>&1
 check "watch: also where the TV writes a space after the colon" "$(grep -c 'launch .*tld.my.customlauncher' "$T/luna.log")" "1"
+printf '%s\n' '{"returnValue": true, "appId": "com.webos.app.fullhome"}' > "$T/front"; : > "$T/luna.log"; : > "$T/log"
+FAKE_NOW=100 run watch >/dev/null 2>&1
+check "watch: LG's full-screen Home (webOS 4.x) in front: Hearth is asked for too" "$(grep -c 'launch .*tld.my.customlauncher' "$T/luna.log")" "1"
+check "watch: and the log says which Home it was (no check for the stand-in)" "$(grep -c "full-screen Home" "$T/log"; grep -c 'the stand-in is in front' "$T/log")" "1
+0"
 # Hearth uninstalled: nothing to open, the takeover goes off
 mv "$L/appinfo.json" "$L/x"; : > "$T/luna.log"
 FAKE_NOW=100 run watch >/dev/null 2>&1; sleep 1

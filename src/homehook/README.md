@@ -19,6 +19,8 @@ reports as being in front. When that becomes LG Home (Home button, leaving an ap
 - **Replace LG Home with a helper script**: installs the scripts, adds a link in `/var/lib/webosbrew/init.d` (`48-launcher-homehook`) so the
   helper starts at boot, and starts the watcher. The helper also starts whenever the launcher opens. Off: stops it and deletes everything.
   LG Home can flash for a moment before the launcher opens; the Input Hook app, or **Replace LG Home with a script and SAM**, avoids that.
+- On webOS 4.x the Home button opens LG's full-screen overlay (`com.webos.app.fullhome`). The watcher treats it like LG Home when the TV reports it in front,
+  but it usually never becomes the app in front, so there use **Set Hearth as the TV's Home app** instead (see `src/homeapp/README.md`).
 
 ## Reversing it
 

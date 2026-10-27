@@ -102,7 +102,7 @@ eq(p.applyPref(c0, 'showLabels', 'ok').showLabels, false, 'Show app names switch
 eq([s.DEFAULT_CONFIG.minimal, p.applyPref(c0, 'minimal', 'ok').minimal, p.resetLook({...c0, minimal: true}).minimal], [false, true, false], 'Minimalist icons: off by default, switch on, cleared by reset');
 store[KEY] = JSON.stringify({minimal: true}); eq(s.loadConfig().minimal, true, 'the minimalist choice is read back');
 store[KEY] = JSON.stringify({appEdits: {'a.b': {label: 'X'}, 'c.d': {icon: 'nope'}}}); eq(s.loadConfig().appEdits, {'a.b': {label: 'X'}}, 'app edits are read back and cleaned');
-eq(p.optionsFor('options', c0).map((o) => o.id).join(','), 'tvInput,takeover,replaceHome,lgLogo,tvApps,showDebug', 'the Options tab: TV input, the SAM method, the helper script, the LG logo, the TV app list (hidden when rooted) and last the Debug tab switch');
+eq(p.optionsFor('options', c0).map((o) => o.id).join(','), 'tvInput,takeover,replaceHome,homeApp,lgLogo,tvApps,showDebug', 'the Options tab: TV input, the SAM method, the helper script, the Home app setting, the LG logo, the TV app list (hidden when rooted) and last the Debug tab switch');
 eq(p.optionsFor('options', c0, {homeApp: null, homeHook: null, tvInput: true}).find((o) => o.id === 'tvInput').valueText, 'Added', 'the TV-input row says Added when the launcher is in the input list');
 eq(p.optionsFor('options', c0, {homeApp: null, homeHook: null, tvInput: false}).find((o) => o.id === 'tvInput').valueText, 'Not added', 'and Not added when it is not');
 eq(p.optionsFor('options', c0).find((o) => o.id === 'tvInput').valueText, 'Unknown', 'and Unknown until the TV has been asked');
@@ -123,6 +123,27 @@ eq(dis(tk, undefined, 'replaceHome') ? 'greyed' : 'open', 'greyed', 'the SAM met
 eq(dis(tk, undefined, 'takeover') ? 'greyed' : 'open', 'open', 'the SAM method on: its own row stays usable (to switch it off)');
 eq(dis(c0, {homeApp: null, homeHook: null, takeover: {enabled: true, mounted: true, web: true, linked: true}}, 'replaceHome') ? 'greyed' : 'open', 'greyed', 'the SAM method on according to the TV: the helper is greyed out');
 eq(['On', 'On (not in place yet)', 'Off'].join(), [{enabled: true, mounted: true, web: true, linked: true}, {enabled: true, mounted: false, web: false, linked: false}, {enabled: false, mounted: false, web: false, linked: false}].map((s) => p.optionsFor('options', c0, {homeApp: null, homeHook: null, takeover: s}).find((o) => o.id === 'takeover').valueText).join(), 'the SAM row shows On / On (not in place yet) / Off');
+// ---- "Set Hearth as the TV's Home app": the third way, never on together with the other two ----
+const HEARTH = 'tld.my.customlauncher';
+const homeRow = (cfg, info) => p.optionsFor('options', cfg, info).find((o) => o.id === 'homeApp');
+eq(homeRow(c0).label, 'Set Hearth as the TV\'s Home app (webOS 4.x)', 'the Home app row has its name');
+eq([homeRow(c0, {homeApp: HEARTH, homeHook: null}), homeRow(c0, {homeApp: 'com.webos.app.fullhome', homeHook: null}), homeRow(c0, {homeApp: '', homeHook: null}), homeRow(c0, {homeApp: null, homeHook: null}), homeRow({...c0, homeApp: true})].map((o) => o.valueText).join(), 'On,Off,Not on this TV,Unknown,On', 'it shows what the TV says: On / Off / Not on this TV, and until it has been asked, the saved setting');
+eq(/no matched|setting/i.test(dis(c0, {homeApp: '', homeHook: null}, 'homeApp') || ''), true, 'a TV without the setting greys it out, saying why');
+eq(dis(c0, {homeApp: 'com.webos.app.fullhome', homeHook: null}, 'homeApp') ? 'greyed' : 'open', 'open', 'with the setting there and nothing else on, it can be used');
+eq(dis(c0, {homeApp: 'com.webos.app.fullhome', homeHook: {running: true, linked: true}}, 'homeApp') ? 'greyed' : 'open', 'greyed', 'the helper on: the Home app row is greyed out');
+eq(/helper script/.test(dis(c0, {homeApp: 'com.webos.app.fullhome', homeHook: {running: true, linked: true}}, 'homeApp')), true, 'and it says which method to switch off');
+eq(dis(tk, {homeApp: 'com.webos.app.fullhome', homeHook: null}, 'homeApp') ? 'greyed' : 'open', 'greyed', 'the SAM method on: the Home app row is greyed out');
+const onTv = {homeApp: HEARTH, homeHook: null, takeover: null};
+eq([dis(c0, onTv, 'replaceHome'), dis(c0, onTv, 'takeover')].map((x) => (x ? 'greyed' : 'open')).join(), 'greyed,greyed', 'the TV\'s Home app is Hearth: the helper and the SAM method are greyed out');
+eq(dis({...c0, homeApp: true}, undefined, 'replaceHome') ? 'greyed' : 'open', 'greyed', 'and so they are while only the saved setting says it is on');
+eq(dis({...c0, homeApp: true}, {homeApp: 'com.webos.app.fullhome', homeHook: null}, 'replaceHome') ? 'greyed' : 'open', 'open', 'but the TV has the last word: set back elsewhere, the helper can be used again');
+const both = {homeApp: HEARTH, homeHook: {running: true, linked: true}};
+eq([dis(c0, both, 'homeApp'), dis(c0, both, 'replaceHome')].map((x) => (x ? 'greyed' : 'open')).join(), 'open,open', 'both on (set by hand over SSH): each row stays usable, so either can be switched off');
+store[KEY] = JSON.stringify({homeApp: true, homeAppPrevious: 'com.webos.app.fullhome'});
+eq([s.loadConfig().homeApp, s.loadConfig().homeAppPrevious].join(), 'true,com.webos.app.fullhome', 'the switch and the app from before are read back');
+store[KEY] = JSON.stringify({homeApp: 'yes', homeAppPrevious: "x'; reboot"});
+eq([s.loadConfig().homeApp, s.loadConfig().homeAppPrevious].join(), 'false,', 'anything else is read as off, and only a plain app id is kept');
+eq([s.DEFAULT_CONFIG.homeApp, s.DEFAULT_CONFIG.homeAppPrevious].join(), 'false,', 'off by default');
 eq(p.optionsFor('clock', c0).filter((o) => /Clock position/.test(o.label)).map((o) => o.label).join(' | '), 'Clock position (vertical) | Clock position (horizontal)', 'the clock position settings are named vertical and horizontal');
 eq(JSON.stringify([p.applyPref({...c0, clock: {...c0.clock, top: 2}}, 'clockTop', 'left').clock.top, p.applyPref({...c0, clock: {...c0.clock, top: 0}}, 'clockTop', 'left').clock.top]), '[0,0]', 'the clock can go all the way to the top (0%) and stops there');
 eq([p.applyPref({...c0, clock: {...c0.clock, left: 100}}, 'clockLeft', 'right').clock.left, p.applyPref({...c0, clock: {...c0.clock, left: 0}}, 'clockLeft', 'left').clock.left], [100, 0], 'the horizontal position runs from 0% to 100%');

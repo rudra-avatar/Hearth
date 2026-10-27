@@ -18,6 +18,7 @@ import type {TempUnit} from './weather';
 import {lastFailure, rootState, type RootState} from './failure';
 import type {LogoState} from './system';
 import type {TakeoverStatus} from './takeovercmd';
+import {APP_ID} from '../config/constants';
 
 export type PrefTab = 'look' | 'clock' | 'weather' | 'wallpaper' | 'options';
 
@@ -27,6 +28,8 @@ export interface SystemInfo {
 	homeHook: {running: boolean; linked: boolean} | null;
 	/** Hearth in LG Home's own place ("Replace LG Home with a script and SAM"): what is in place (null while unknown) */
 	takeover?: TakeoverStatus | null;
+	/** the app the TV's Home button opens (its Home app setting): '' when the TV has no such setting (null while unknown) */
+	homeApp?: string | null;
 	/** the launcher is in the TV's input list (null while unknown) */
 	tvInput?: boolean | null;
 	/** the TV's "show the LG logo at start" setting (null while unknown) */
@@ -39,10 +42,11 @@ export interface SystemInfo {
 }
 
 /** The options that run shell commands, so they can't work without root. */
-export const ROOT_OPTIONS = ['takeover', 'replaceHome', 'tvInput', 'lgLogo'];
+export const ROOT_OPTIONS = ['takeover', 'replaceHome', 'homeApp', 'tvInput', 'lgLogo'];
 
-/** The two ways of replacing LG Home cannot be on together: the helper script reacts to LG Home coming to the front, the
- *  SAM method keeps LG Home from ever starting. Each greys the other out. */
+/** The ways of replacing LG Home cannot be on together: the helper script reacts to LG Home coming to the front, the
+ *  SAM method keeps LG Home from ever starting, and the Home app setting sends the Home button to Hearth itself. Each
+ *  greys the others out (but never its own row while it is on, so it can always be switched off). */
 function helperIsOn (info?: SystemInfo, config?: UserConfig): boolean {
 	return !!(config && config.replaceHome) || !!(info && info.homeHook && (info.homeHook.running || info.homeHook.linked));
 }
@@ -51,9 +55,22 @@ function takeoverIsOn (info?: SystemInfo, config?: UserConfig): boolean {
 	return !!(config && config.takeoverHome) || !!(info && info.takeover && info.takeover.enabled);
 }
 
+/** What the TV says once it has been asked; until then, the saved setting. */
+function homeAppIsOn (info?: SystemInfo, config?: UserConfig): boolean {
+	if (info && typeof info.homeApp === 'string') return info.homeApp === APP_ID;
+	return !!(config && config.homeApp);
+}
+
+const HOME_APP_FIRST = 'Not used while "Set Hearth as the TV\'s Home app" is on, which already sends the Home button to Hearth. Switch that off first.';
+
 /** Why a row is greyed out, or null when it is usable. */
 export function disabledReason (id: string, info?: SystemInfo, config?: UserConfig): string | null {
 	if (id === 'lgLogo' && info && info.logo === 'unsupported') return "This TV doesn't have a setting for the LG logo at start.";
+	if (id === 'homeApp' && info && info.homeApp === '') return "This TV doesn't have a Home app setting. Use one of the other two methods.";
+	if (id === 'homeApp' && !homeAppIsOn(info, config) && helperIsOn(info, config)) return 'Switch "Replace LG Home with a helper script" off first. Only one way of replacing LG Home can be on.';
+	if (id === 'homeApp' && !homeAppIsOn(info, config) && takeoverIsOn(info, config)) return 'Switch "Replace LG Home with a script and SAM" off first. Only one way of replacing LG Home can be on.';
+	const offMethod = (id === 'takeover' && !takeoverIsOn(info, config)) || (id === 'replaceHome' && !helperIsOn(info, config));
+	if (offMethod && homeAppIsOn(info, config)) return HOME_APP_FIRST;
 	if (id === 'takeover' && helperIsOn(info, config)) return 'Switch "Replace LG Home with a helper script" off first. The two would fight over the Home button.';
 	if (id === 'replaceHome' && takeoverIsOn(info, config)) return 'Not used while "Replace LG Home with a script and SAM" is on, which already keeps LG Home from showing. Switch that off to use the helper instead.';
 	if (!info || info.root !== 'no' || ROOT_OPTIONS.indexOf(id) === -1) return null;
@@ -272,6 +289,14 @@ const BASE_PREFS: Pref[] = [
 		text: (_c, info) => (!info || !info.homeHook ? 'Unknown' : info.homeHook.running ? 'On' : 'Off')
 	},
 	{
+		id: 'homeApp', tab: 'options', label: 'Set Hearth as the TV\'s Home app (webOS 4.x)', kind: 'action',
+		description: 'Writes Hearth into the TV\'s own Home app setting, so the Home button opens Hearth straight away: no LG Home first, nothing running in the background. The app that was there before comes back when you turn it off. Tested on webOS 4.5. Not together with the other two methods. OK turns it on or off.',
+		text: (c, info) => {
+			if (info && typeof info.homeApp === 'string') return info.homeApp === '' ? 'Not on this TV' : info.homeApp === APP_ID ? 'On' : 'Off';
+			return c.homeApp ? 'On' : 'Unknown';
+		}
+	},
+	{
 		id: 'tvInput', tab: 'options', label: 'Add the launcher as a TV input (start the TV on it)', kind: 'action',
 		description: 'Adds this launcher to the TV\'s input list, like HDMI 1. Then set the TV to start on its last input and pick this one: the TV boots straight into the launcher. OK adds or removes it.',
 		text: (_c, info) => (!info || info.tvInput === null || info.tvInput === undefined ? 'Unknown' : info.tvInput ? 'Added' : 'Not added')
@@ -299,7 +324,7 @@ export function findPref (id: string): Pref | undefined {
 }
 
 /** The order of the Options tab (anything not listed goes last). */
-const OPTIONS_ORDER = ['tvInput', 'takeover', 'replaceHome', 'lgLogo', 'tvApps', 'showDebug'];
+const OPTIONS_ORDER = ['tvInput', 'takeover', 'replaceHome', 'homeApp', 'lgLogo', 'tvApps', 'showDebug'];
 
 function orderOf (tab: PrefTab, id: string): number {
 	if (tab !== 'options') return 0;

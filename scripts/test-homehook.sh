@@ -61,6 +61,13 @@ fresh; printf '%s\n' "TIME 1000" "$SUB_HOME" | watch
 check "a subscription report with extra fields works too" "$(launches)" "1"
 fresh; printf '%s\n' "TIME 1000" "$LAUNCHER_REPORT" | watch
 check "the launcher reported in front: nothing is opened by that alone" "$(launches)" "0"
+FULLHOME_REPORT='{"returnValue":true,"appId":"com.webos.app.fullhome","processId":"","windowId":""}'
+fresh; printf '%s\n' "TIME 1000" "$FULLHOME_REPORT" | watch
+check "LG's full-screen Home (webOS 4.x) in front: the launcher is opened, as for LG Home" "$(launches)" "1"
+fresh; printf '%s\n' "TIME 1000" "$FULLHOME_REPORT" "$FULLHOME_REPORT" | watch
+check "and it is not opened again for a repeat report" "$(launches)" "1"
+fresh; printf '%s\n' "TIME 1000" '{"returnValue":true,"appId":"com.webos.app.homeconnect","processId":"","windowId":""}' | watch
+check "a look-alike id (com.webos.app.homeconnect) is not LG Home" "$(launches)" "0"
 
 # the checks must not start each other (a loop of "asking again" took the screen back from apps being opened)
 checks () { grep -c 'checking that it really showed itself' "$T/log"; }

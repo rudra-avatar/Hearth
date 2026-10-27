@@ -11,7 +11,7 @@ import {lastLine, parseExit, withStatus, writeFileCommands, type InstallStep} fr
 export {lastLine, parseExit, withStatus};
 
 /** Bump when the scripts change: the launcher then rewrites the installed copy. */
-export const TAKEOVER_VERSION = '8';
+export const TAKEOVER_VERSION = '9';
 export const TAKEOVER_DIR = '/media/developer/launcher-takeover';
 export const TAKEOVER_LINK = '/var/lib/webosbrew/init.d/47-launcher-takeover';
 export const LG_HOME_DIR = '/usr/palm/applications/com.webos.app.home';

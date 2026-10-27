@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **Set Hearth as the TV's Home app (webOS 4.x)** (Settings → Options): writes Hearth into the TV's own Home app setting (`defaultApps.home`), so the Home
+  button opens Hearth directly, with nothing running in the background. On webOS 4.x Home opens LG's full-screen overlay (`com.webos.app.fullhome`), which
+  never becomes the app in front, so the helper script and the SAM method never saw it. The value found is kept and put back when the method is turned
+  off; a start-up check (`46-launcher-homeapp`) also puts it back if Hearth is uninstalled while it is on. Needs root (settingsservice refuses an app's
+  own call for this setting). Greyed out on TVs without the setting; never on together with the other two methods. Tested on webOS 4.5. Undo steps:
+  `src/homeapp/README.md`.
+- The helper script (`HOOK_VERSION` 10) and the SAM method's watcher (`TAKEOVER_VERSION` 9) also open Hearth when a TV reports `com.webos.app.fullhome` in
+  front, and both diagnostics print the TV's Home app setting.
+
 ## 1.2.0
 
 - **Edit names and icons** (Settings → Apps or Sources, hold OK on an item): rename an app or input, pick another icon (16 input symbols, the bundled app logos), or use your own picture from a USB drive or the TV (rooted TVs, saved inside Hearth's settings). *Use the app's / TV's name and icon* resets it. See the README, "Edit a name or icon".

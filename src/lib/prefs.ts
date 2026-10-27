@@ -39,7 +39,7 @@ export interface SystemInfo {
 }
 
 /** The options that run shell commands, so they can't work without root. */
-export const ROOT_OPTIONS = ['takeover', 'replaceHome', 'tvInput', 'lgLogo'];
+export const ROOT_OPTIONS = ['takeover', 'replaceHome', 'tvInput', 'lgLogo', 'remap'];
 
 /** The two ways of replacing LG Home cannot be on together: the helper script reacts to LG Home coming to the front, the
  *  SAM method keeps LG Home from ever starting. Each greys the other out. */
@@ -272,6 +272,14 @@ const BASE_PREFS: Pref[] = [
 		text: (_c, info) => (!info || !info.homeHook ? 'Unknown' : info.homeHook.running ? 'On' : 'Off')
 	},
 	{
+		id: 'remap', tab: 'options', label: 'Reassign remote buttons', kind: 'action',
+		description: 'Give the remote\'s app buttons (Netflix, Prime Video and the others) and some other buttons a new job: open any app or input, open Hearth, mute, or do nothing. Works with the standard remote and the Magic Remote. OK opens the list.',
+		text: (c) => {
+			const n = Object.keys(c.remap.keys).length;
+			return !c.remap.on ? 'Off' : n === 1 ? 'On, 1 button' : `On, ${n} buttons`;
+		}
+	},
+	{
 		id: 'tvInput', tab: 'options', label: 'Add the launcher as a TV input (start the TV on it)', kind: 'action',
 		description: 'Adds this launcher to the TV\'s input list, like HDMI 1. Then set the TV to start on its last input and pick this one: the TV boots straight into the launcher. OK adds or removes it.',
 		text: (_c, info) => (!info || info.tvInput === null || info.tvInput === undefined ? 'Unknown' : info.tvInput ? 'Added' : 'Not added')
@@ -299,7 +307,7 @@ export function findPref (id: string): Pref | undefined {
 }
 
 /** The order of the Options tab (anything not listed goes last). */
-const OPTIONS_ORDER = ['tvInput', 'takeover', 'replaceHome', 'lgLogo', 'tvApps', 'showDebug'];
+const OPTIONS_ORDER = ['tvInput', 'takeover', 'replaceHome', 'remap', 'lgLogo', 'tvApps', 'showDebug'];
 
 function orderOf (tab: PrefTab, id: string): number {
 	if (tab !== 'options') return 0;

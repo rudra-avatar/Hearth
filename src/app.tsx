@@ -5,6 +5,7 @@ import {Picker, type WallpaperChoice} from './screens/Picker';
 import {CityPicker} from './screens/CityPicker';
 import {Recents} from './screens/Recents';
 import {SourceEditor} from './screens/SourceEditor';
+import {RemoteButtons, type RemapTarget} from './screens/RemoteButtons';
 import {iconFromFile} from './lib/customicon';
 import {log, logLines} from './lib/log';
 import {debugPages, reportText} from './lib/debuginfo';
@@ -25,6 +26,9 @@ import {hidePointerOnForeground} from './lib/pointer';
 import {startLogFile, writeReport, previousRunLines} from './lib/logfile';
 import {readStats, type SystemStats, getLogo, setLogo, closeLgHome} from './lib/system';
 import {applyHomeHook, getHookStatus, hookMessage, installHomeHook, logLine, markAliveSoon, reapplyHomeHook, removeHomeHook, stockHome} from './lib/homehook';
+import {capturedButton, checkRemap, detectRemote, installRemap, readInputHook, remapMessage, removeRemap, saveRemap, setCapture} from './lib/remap';
+import type {RemoteModel} from './lib/remotes';
+import {buttonLabel, setButton, type RemapAction, type RemapConfig} from './lib/remapcmd';
 import {getTakeoverStatus, installTakeover, reapplyTakeover, removeTakeover, stockTakeover, takeoverMessage} from './lib/takeover';
 import {applyPref, disabledReason, findPref, optionsFor, resetLook, type Press, type SystemInfo} from './lib/prefs';
 import {loadConfig, saveConfig, toggleId, DEFAULT_WALLPAPER, type UserConfig} from './lib/storage';
@@ -46,7 +50,7 @@ import {PROBE_TESTS, RUN_ALL_ID, bad as probeBad, probeOptions, runAll, withLimi
 import {fetchWeather} from './lib/weathernet';
 import {FRESH_MS, isFresh, readWeatherCache, usableCached, weatherView, writeWeatherCache, type City, type WeatherData} from './lib/weather';
 
-type Screen = 'home' | 'settings' | 'picker' | 'cities' | 'source' | 'iconpicker';
+type Screen = 'home' | 'settings' | 'picker' | 'cities' | 'source' | 'iconpicker' | 'remote';
 
 const TAB = {apps: 'apps', sources: 'sources', look: 'look', clock: 'clock', weather: 'weather', wallpaper: 'wallpaper', options: 'options', debug: 'debug', tests: 'tests'} as const;
 const MISC = {lgHome: 'lg-home', settings: 'settings', system: 'system-settings'} as const;
@@ -91,6 +95,12 @@ export function App () {
 	const toastTimer = useRef(0);
 	const closedAt = useRef(0);
 	const [systemInfo, setSystemInfo] = useState<SystemInfo>({homeHook: null});
+	const [remapBusy, setRemapBusy] = useState(false);                                       // the button map is being put on the TV
+	const [captured, setCaptured] = useState<{name: string; seq: number} | null>(null);     // "Press a button": the button the TV reported
+	const captureOn = useRef(false);
+	const [remoteSeen, setRemoteSeen] = useState<RemoteModel | null>(null);       // the remote the TV's log names last
+	const [hookCodes, setHookCodes] = useState<number[]>([]);                    // buttons LG Input Hook has bindings for
+	const remapChecked = useRef(0);
 	const tvFormat = useTimeFormat();
 
 	// With the hand-over helper on, note in its log how long this launcher took to show its first screen.
@@ -255,6 +265,9 @@ export function App () {
 		const poll = window.setInterval(() => sync('check'), 1000);
 		// Home pressed while the launcher is already in front: the TV relaunches it without hiding it first.
 		const onRelaunch = () => {
+			// "Press a button" in Reassign remote buttons: the TV's key filter opened Hearth again to say which button it was
+			const pressed = capturedButton();
+			if (pressed && captureOn.current) { setCaptured((c) => ({name: pressed, seq: (c ? c.seq : 0) + 1})); return; }
 			setScreen('home'); setMenu(null); setRecents(false); setWakes((n) => n + 1);
 			// Home pressed while in front: the launcher never became hidden, so tell the helper it is here
 			// (otherwise its check could think the launcher failed to show and open it again and again)
@@ -593,6 +606,7 @@ export function App () {
 		if (optionId === 'wallpaper' && press === 'ok') { setScreen('picker'); return; }       // OK: pick a picture or folder; ← → step the built-in backgrounds
 		if (pref.kind === 'action') {
 			if (optionId === 'weatherCity') setScreen('cities');
+			else if (optionId === 'remap') setScreen('remote');
 			else if (optionId === 'resetLook') { updateConfig(resetLook(config)); showToast('Look and clock reset'); }
 			else if (optionId === 'takeover') {
 				const refresh = () => getTakeoverStatus().then((takeover) => setSystemInfo((previous) => ({...previous, takeover})));
@@ -734,6 +748,94 @@ export function App () {
 		}));
 	}, [config, showToast]);
 
+	// ----- Reassign remote buttons -----
+	// What a button can be given: the TV's own action, nothing, Hearth, mute, the inputs, then every app.
+	const remapTargets: RemapTarget[] = useMemo(() => {
+		const list: RemapTarget[] = [
+			{key: 'default', label: "The TV's own action", detail: 'What the button did before', action: null},
+			{key: 'none', label: 'Nothing', detail: 'The button is switched off', action: {t: 'none'}},
+			{key: 'hearth', label: 'Hearth', detail: 'This home screen', action: {t: 'app', id: APP_ID}},
+			{key: 'mute', label: 'Mute or unmute', detail: 'Like the mute button', action: {t: 'mute'}}
+		];
+		inputs.forEach((i) => list.push({key: 'in:' + i.appId, label: (config.sourceEdits[i.appId] && config.sourceEdits[i.appId].label) || i.label, detail: 'Input', action: {t: 'app', id: i.appId}}));
+		apps.filter((a) => a.id !== APP_ID).slice().sort((a, b) => a.title.localeCompare(b.title))
+			.forEach((a) => list.push({key: 'app:' + a.id, label: a.title, detail: 'App', action: {t: 'app', id: a.id}}));
+		return list;
+	}, [apps, inputs, config.sourceEdits]);
+
+	/** Puts `next` on the TV: the filter is added (or taken out) when the switch changes, otherwise only the map is sent. */
+	const applyRemap = useCallback((next: RemapConfig, message?: string) => {
+		const was = config.remap;
+		setRemapBusy(true);
+		const work = !next.on ? (was.on ? removeRemap().then((r) => ({result: r, detail: ''})) : Promise.resolve({result: 'removed' as const, detail: ''}))
+			: !was.on ? installRemap(next) : saveRemap(next).then((r) => ({result: r, detail: ''}));
+		work.then(({result, detail}) => {
+			setRemapBusy(false);
+			const ok = result === 'applied' || result === 'removed';
+			if (ok) { updateConfig({...config, remap: next}); remapChecked.current = Date.now(); }
+			showToast(ok && message ? message : remapMessage(result, detail), ok ? 'info' : 'error');
+		});
+	}, [config, showToast]);
+
+	const onRemapSwitch = useCallback(() => applyRemap({...config.remap, on: !config.remap.on}), [config, applyRemap]);
+	const onRemapAssign = useCallback((name: string, action: RemapAction | null) => {
+		const target = action ? remapTargets.filter((t) => t.action && t.action.t === action.t && (action.t !== 'app' || (t.action.t === 'app' && t.action.id === action.id)))[0] : null;
+		const next = {...setButton(config.remap, name, action), on: true};       // giving a button a job turns the feature on
+		applyRemap(next, action ? `${buttonLabel(name)}: ${target ? (action.t === 'app' ? 'opens ' + target.label : target.label.toLowerCase()) : 'changed'}` : `${buttonLabel(name)}: back to the TV's own action`);
+	}, [config, remapTargets, applyRemap]);
+	const onRemapCapture = useCallback((waiting: boolean) => {
+		captureOn.current = waiting;
+		if (!waiting) { setCapture(false); return; }
+		// the filter must be on the TV to hear the press (it is added, with no button changed, if it isn't)
+		const ready = config.remap.on ? Promise.resolve(true) : installRemap({...config.remap, on: true}).then(({result}) => {
+			if (result === 'applied') { updateConfig({...config, remap: {...config.remap, on: true}}); return true; }
+			showToast(remapMessage(result), 'error');
+			return false;
+		});
+		ready.then((ok) => ok && setCapture(true)).then((ok) => {
+			if (!ok && captureOn.current) showToast("Couldn't listen for a button. Choose it from the list instead", 'error');
+		});
+	}, [config, showToast]);
+
+	// Opening the screen: which remote the TV heard last, and which buttons Input Hook acts on (two tiny reads).
+	useEffect(() => {
+		if (screen !== 'remote') return undefined;
+		let live = true;
+		detectRemote().then((m) => { if (live) setRemoteSeen(m); });
+		readInputHook().then((codes) => { if (live) setHookCodes(codes); });
+		return () => { live = false; };
+	}, [screen === 'remote']);                                               // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Leaving the screen while it waits for a press: tell the filter to stop waiting.
+	useEffect(() => {
+		if (screen !== 'remote' && captureOn.current) { captureOn.current = false; setCapture(false); }
+	}, [screen]);                                                            // eslint-disable-line react-hooks/exhaustive-deps
+
+	// With buttons reassigned: shortly after Hearth comes to the front (at most every 10 minutes), make sure the filter is
+	// still in place. The TV's config service forgets it if it reconfigures, and after a restart before the boot link
+	// has run. One cheap read when all is well. If it can't work any more, the setting turns itself off.
+	useEffect(() => {
+		if (!config.remap.on || !isWebOS()) return undefined;
+		let timer = 0;
+		const arm = () => {
+			window.clearTimeout(timer);
+			if (document.hidden || Date.now() - remapChecked.current < 600000) return;
+			timer = window.setTimeout(() => {
+				remapChecked.current = Date.now();
+				checkRemap(config.remap).then(({result, detail, fatal, unreachable}) => {
+					if (unreachable) { remapChecked.current = 0; return; }
+					if (!fatal) return;
+					setConfig((c) => { const next = {...c, remap: {...c.remap, on: false}}; saveConfig(next); return next; });
+					removeRemap();
+					showToast(remapMessage(result, detail), 'error');
+				});
+			}, TIMING.backgroundWorkMs + 1500);
+		};
+		arm();
+		document.addEventListener('visibilitychange', arm);
+		return () => { window.clearTimeout(timer); document.removeEventListener('visibilitychange', arm); };
+	}, [config.remap.on, showToast]);                                        // eslint-disable-line react-hooks/exhaustive-deps
+
 	const menuVerdict = menu && menu.app ? uninstallVerdict(menu.app) : null;
 	const menuBlocked = menuVerdict && !menuVerdict.ok ? menuVerdict.reason : null;
 	const menuMoves = menu ? movesFor(orderedTiles.map((t) => t.key), menu.key) : {start: false, left: false, right: false, end: false};
@@ -773,6 +875,7 @@ export function App () {
 					onClose={() => setScreen('source')}
 				/>
 			)}
+			{screen === 'remote' && <RemoteButtons model={config.remoteModel} detected={remoteSeen} inputHook={hookCodes} onModel={(remoteModel) => updateConfig({...config, remoteModel})} remap={config.remap} targets={remapTargets} captured={captured} busy={remapBusy} onSwitch={onRemapSwitch} onAssign={onRemapAssign} onCapture={onRemapCapture} onClose={() => setScreen('settings')} />}
 			{screen === 'picker' && <Picker onChoose={onChooseWallpaper} onClose={() => setScreen('settings')} />}
 			{WEATHER_ENABLED && screen === 'cities' && <CityPicker allowShell={isWebOS()} onChoose={onChooseCity} onClose={() => setScreen('settings')} />}
 			<Toast message={toast} />

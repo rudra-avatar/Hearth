@@ -3,7 +3,7 @@
 export type GlyphName = 'house' | 'gear' | 'tv';
 
 /** Small icons for the wallpaper picker. */
-export function PickerIcon ({kind}: {kind: 'folder' | 'picture' | 'drive' | 'slideshow' | 'default' | 'info' | 'search' | 'pin'}) {
+export function PickerIcon ({kind}: {kind: 'folder' | 'picture' | 'drive' | 'slideshow' | 'default' | 'info' | 'search' | 'pin' | 'remote' | 'power' | 'app'}) {
 	return (
 		<svg class="picker__icon" viewBox="0 0 24 24" aria-hidden="true">
 			{kind === 'folder' && <path d="M3 7.5h6.2l2 2.3H21v9.7H3z" />}
@@ -13,6 +13,9 @@ export function PickerIcon ({kind}: {kind: 'folder' | 'picture' | 'drive' | 'sli
 			{kind === 'default' && <><rect x="3.5" y="5" width="17" height="14" rx="2" /><path d="M3.5 15l17-7" /></>}
 			{kind === 'info' && <><circle cx="12" cy="12" r="8.5" /><path d="M12 11v5M12 8v.2" /></>}
 			{kind === 'search' && <><circle cx="10.5" cy="10.5" r="6" /><path d="M15 15l5 5" /></>}
+			{kind === 'remote' && <><rect x="7.5" y="2.5" width="9" height="19" rx="3" /><circle cx="12" cy="8" r="1.8" /><path d="M10 13.5h4M10 16.5h4" /></>}
+			{kind === 'app' && <><rect x="4" y="4" width="16" height="16" rx="4" /><path d="M10 9l5 3-5 3z" /></>}
+			{kind === 'power' && <><path d="M12 3.5v8" /><path d="M7.2 6.8a7 7 0 1 0 9.6 0" /></>}
 			{kind === 'pin' && <><path d="M12 21s6.5-6.1 6.5-11A6.5 6.5 0 0 0 5.5 10C5.5 14.9 12 21 12 21z" /><circle cx="12" cy="10" r="2.3" /></>}
 		</svg>
 	);

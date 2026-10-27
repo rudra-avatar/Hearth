@@ -687,3 +687,29 @@ html, body {
 	pointer-events: none;
 }
 .toast--error { color: var(--color-danger); }
+
+/* Reassign remote buttons: the picture of the remote (static SVG; only classes change, the flash is opacity only) */
+.remote-view { display: flex; flex-direction: row; align-items: flex-start; margin-top: 4px; }
+.remote-art { flex: 0 0 auto; width: 760px; height: 870px; margin-left: -120px; }
+.remote-art__body { fill: var(--color-tile-bg); stroke: var(--color-tile-border); stroke-width: 2; }
+.remote-art__shape { fill: var(--color-tile-bg); }
+.remote-art__shape > * { fill: inherit; stroke: var(--color-text-muted); stroke-width: 1.5; }
+.remote-art__button--fixed { opacity: 0.35; }
+.remote-art__button--can { cursor: pointer; }
+.remote-art__button--can .remote-art__shape > * { stroke: var(--color-text-primary); stroke-width: 2.5; }
+.remote-art__button--set .remote-art__shape > * { stroke: var(--color-tile-border-focus); stroke-width: 3.5; }
+.remote-art__inner, .remote-art__mark { fill: none; stroke: var(--color-text-muted); stroke-width: 1.5; }
+.remote-art__text { fill: var(--color-text-secondary); text-anchor: middle; font-weight: 600; letter-spacing: 0.5px; pointer-events: none; }
+.remote-art__button--can .remote-art__text { fill: var(--color-text-primary); }
+.remote-art__ring > * { fill: none; stroke: var(--color-tile-border-focus); stroke-width: 4; }
+.remote-art__pulse > * { fill: none; stroke: var(--color-text-primary); stroke-width: 7; opacity: 0; animation: remote-pulse 450ms ease-out 1; }
+@keyframes remote-pulse { from { opacity: 1; } to { opacity: 0; } }
+.remote-art__leader { fill: none; stroke: var(--color-text-muted); stroke-width: 1.5; }
+.remote-art__dot { fill: var(--color-text-secondary); }
+.remote-art__job { fill: var(--color-text-secondary); font-size: 21px; }
+.remote-art__label--focused .remote-art__job { fill: var(--color-text-primary); }
+.remote-side { flex: 1 1 auto; min-width: 0; max-width: 860px; margin-left: 20px; }
+.remote-card { margin-bottom: 20px; padding: 24px 28px; border-radius: 20px; background: var(--color-tile-bg); box-shadow: 0 0 0 2px var(--color-tile-border); }
+.remote-card__title { font-size: 34px; color: var(--color-text-primary); }
+.remote-card__job { min-height: 30px; margin-top: 6px; font-size: 24px; color: var(--color-text-secondary); }
+.remote-card__note { margin-top: 10px; font-size: 19px; line-height: 1.4; color: var(--color-text-muted); }

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Reassign remote buttons** (Settings → Options, rooted TVs): give the remote's Netflix, Prime Video and other partner buttons (or others, by pressing them) a new job: any app or input, Hearth, mute, or nothing. Hearth adds a key filter to the front of the TV's own key-filter chain, in the TV's memory only, and sets it again at each start (`/var/lib/webosbrew/init.d/47-launcher-remap`). Standard remote and Magic Remote alike; Off gives every button back at once. The Rakuten TV / Movies button is one row for both of its key codes (`Key_webOS_USP` on 2019 remotes, `Key_webOS_RakutenTV` on later ones). See `src/remap/README.md`.
+- **Reassign remote buttons, with a picture of your remote:** choose your Magic Remote (2019–2020, 2021–2024 or the 2025 AI Magic Remote; the TV's log suggests which), then press a button on it, or move to it on the drawing, to choose its new job; what each button does is written beside it. Buttons LG Input Hook also handles are marked (idea from iulyax27). *Other, or not listed* keeps the plain list.
+
 ## 1.2.0
 
 - **Edit names and icons** (Settings → Apps or Sources, hold OK on an item): rename an app or input, pick another icon (16 input symbols, the bundled app logos), or use your own picture from a USB drive or the TV (rooted TVs, saved inside Hearth's settings). *Use the app's / TV's name and icon* resets it. See the README, "Edit a name or icon".

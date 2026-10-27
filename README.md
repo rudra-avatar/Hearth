@@ -35,6 +35,7 @@ It is a normal webOS app (app ID `tld.my.customlauncher`). On a rooted TV it can
   ![Hearth in the TV's input list](docs/screenshots/tv-input.jpg)
 - **The Home button opens Hearth** (instead of LG Home), with a helper script or the SAM method (see *Replacing LG Home*), and a switch for LG's own **"Show LG logo when the TV starts"**
   setting (normally hidden in a secret menu) for a clean start.
+- **Reassign remote buttons** (rooted TVs). Give the remote's Netflix, Prime Video and other partner buttons (and some others) a new job: open any app or input, open Hearth, mute, or do nothing. Press the button to choose it. Works for the standard remote and the Magic Remote, costs nothing while idle, and Off gives every button back to the TV.
 - **Made to be fast.** The home screen is drawn from saved data first; everything else (app list, weather, helper checks) happens a few seconds later in the background.
   While another app is in front, Hearth lets go of its wallpaper and stops its clock.
 - **Clear messages.** When something can't work on your TV, Hearth says what and why instead of failing silently, and greys out the options that need a rooted TV.
@@ -122,7 +123,7 @@ from the Homebrew Channel or Dev Manager.
 - **Weather:** on or off, the city, Celsius or Fahrenheit, the city name and today's high and low on or off.
   Pick a city from the list of about 75, or choose **Search for a city** and type any place name (worldwide).
 - **Wallpaper:** the picture or slideshow, interval and shuffle, **Widget colour** and **Widget opacity**.
-- **Options (rooted TVs):** the TV input; live app list; *Replace LG Home with a helper script*; *Replace LG Home with a script and SAM*;
+- **Options (rooted TVs):** the TV input; live app list; *Replace LG Home with a helper script*; *Replace LG Home with a script and SAM*; *Reassign remote buttons*;
   *Show the LG logo when the TV starts*; and, last, *Show the Debug tab*.
 
 ### Edit a name or icon
@@ -163,6 +164,24 @@ A picture over the limit is skipped in a slideshow and refused as a single wallp
 The weather comes from [Open-Meteo](https://open-meteo.com) (free, no account). The only thing sent is the latitude and longitude of the city you chose (and the words you type in the city search). It is fetched a few seconds after Hearth appears, then every 30 minutes
 while Hearth is in front, and the last reading is kept so the home screen never waits for the internet. A reading older than 6 hours is not shown. If the TV's web view cannot make a secure connection (some older TVs can't), Hearth asks the TV's own `curl` or `wget` through the Homebrew Channel instead;
 the last-resort attempts skip the certificate check, which is acceptable for public weather numbers that are only ever read as numbers and a place name.
+
+## Reassign remote buttons (rooted TVs)
+
+**Settings → Options → Reassign remote buttons** first asks which Magic Remote you have (2019–2020 with Movies, 2021–2024, or the 2025 AI Magic Remote; the one the TV heard last is offered first; for the standard IR remote or any other, *Other, or not listed* keeps the list) and shows a simple drawing of it.
+The buttons you can reassign are highlighted, with what each does now written beside it. **Press one on your real remote** and its choices open; or move to it with the arrows and press OK.
+*Other, or not listed* (and *Show as a list*) shows the plain list instead: the remote's partner buttons (Netflix, Prime Video, Disney+, Rakuten TV / Movies, LG Channels) and what each does.
+OK on a button chooses its new job: **any app**, **an input** (HDMI 1, Live TV…), **Hearth**, **mute or unmute**, **nothing**, or **the TV's own action** again.
+**Press a button to reassign it…** lets the remote say which button you mean, so other buttons work too (Guide, the colour buttons, the microphone…). It is the surest way: remotes from different years can send different codes for the same button (the Rakuten TV / Movies button is one, and Hearth treats both of its codes as one button).
+The arrows, OK, Back, Home, power, volume, channels and the number keys (hold a number = Quick Access) can never be reassigned, so the remote always gets you out.
+
+- **How:** the TV decides what a button does in a chain of small key filters inside its window manager; that is where the Netflix button opens Netflix, for both remotes.
+  Hearth adds its own filter to the front of that chain and hands it your list. It is set in the TV's memory only (nothing on the TV's storage is changed), and a link in the startup folder
+  sets it again at each start. A change applies at once. It costs one lookup per key press: no background process, no polling.
+- **Turn it off:** the first row, *Reassigned buttons: On* → OK. Every button does what the TV does again, at once; your list is kept for later.
+- **Limits:** with the TV off, an app button may still switch the TV on into the original app (that is decided before Hearth's filter runs).
+  Reassigning Prime Video also replaces its hold-for-Alexa. Tested on webOS 4.5; on other versions it is experimental.
+- **LG Input Hook:** if it is installed, the buttons it has its own bindings for are marked (it acts first, so its binding decides). Hearth only reads its file. Idea from iulyax27.
+- **Details, and how to undo it over SSH:** [`src/remap/README.md`](src/remap/README.md).
 
 ## Replacing LG Home (rooted TVs)
 

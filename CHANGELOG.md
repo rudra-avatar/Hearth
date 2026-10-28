@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **When the TV turns on, open…** (Settings → Options, rooted TVs): Live TV or the last input (the TV's default), Hearth, or any installed app. Hearth writes a copy of the TV's start-up table (`/etc/palm/bootd.json` → `/var/luna/preferences/bootd.json`) with the power button, the TV's own button and a cold start pointed at the app; casting, network wake-ups and HDMI-CEC are left as they are, unless **Also when woken over the network** is switched on (off by default; for phone apps and Home Assistant, at the cost of casting to a TV that is off opening the app first). Starts working after one restart of the TV (*Restart the TV now* is offered). A start-up check notes what the TV loaded, and removes the copy if Hearth is uninstalled or LG's file changes. Tested on webOS 4.5. See `src/poweron/README.md`.
+
 ## 1.2.0
 
 - **Edit names and icons** (Settings → Apps or Sources, hold OK on an item): rename an app or input, pick another icon (16 input symbols, the bundled app logos), or use your own picture from a USB drive or the TV (rooted TVs, saved inside Hearth's settings). *Use the app's / TV's name and icon* resets it. See the README, "Edit a name or icon".

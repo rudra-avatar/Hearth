@@ -123,7 +123,7 @@ from the Homebrew Channel or Dev Manager.
   Pick a city from the list of about 75, or choose **Search for a city** and type any place name (worldwide).
 - **Wallpaper:** the picture or slideshow, interval and shuffle, **Widget colour** and **Widget opacity**.
 - **Options (rooted TVs):** the TV input; live app list; *Replace LG Home with a helper script*; *Replace LG Home with a script and SAM*;
-  *Show the LG logo when the TV starts*; and, last, *Show the Debug tab*.
+  *When the TV turns on, open…* (see below); *Show the LG logo when the TV starts*; and, last, *Show the Debug tab*.
 
 ### Edit a name or icon
 
@@ -210,6 +210,19 @@ The binding is stored with Input Hook, so it survives Hearth updates. To undo it
 6. Optional: turn off the LG logo at start-up (**"Show the LG logo when the TV starts"**).
 
 If a rooted TV says "the TV refused the command", or the Homebrew Channel gives elevation errors, see Troubleshooting.
+
+## Choose what the TV opens when it turns on (rooted TVs)
+
+**Settings → Options → "When the TV turns on, open…"**: Live TV or the last input (the TV's own default), Hearth, or any installed app. Handy when there is no aerial and the TV keeps starting on a "No signal" screen.
+
+- It uses the TV's own start-up table, the one that makes the Netflix button switch the TV on into Netflix: Hearth writes a copy of `/etc/palm/bootd.json` to `/var/luna/preferences/bootd.json` with the power button, the TV's own button and a cold start pointed at your app. Nothing runs in the background, and the app opens behind LG's start-up cover, so Live TV is not drawn first.
+- **Only when you switch the TV on yourself.** Casting from a phone, other network wake-ups and HDMI-CEC still go where they ask.
+- **Optional: also when woken over the network** (in the same list, off by default). Phone apps and Home Assistant's "turn on" wake the TV with a Wake-on-LAN packet; with this on, that opens your app too. The catch: casting to the TV while it is off then opens your app first, until the cast takes over.
+- **It starts working after the TV restarts once** (a full restart, not standby): the TV reads the table only when it starts. Hearth offers *Restart the TV now*, and the row says *(after a restart)* until then.
+- Choosing *Live TV or the last input* turns it off: from the next restart the TV does exactly what it did before. If the chosen app is uninstalled, the TV opens its last input as usual.
+- Tested on webOS 4.5 (LG 65UM7100PLA, firmware 05.40.97). Elsewhere the row is greyed out unless the TV has the same start-up table.
+- **Turn it off before a firmware update** (an update usually removes root, and with it the start-up check that keeps the copy in line with LG's file).
+- Details, the start-up check, and how to undo it over SSH: [`src/poweron/README.md`](src/poweron/README.md).
 
 ## webOS 11: one extra step on rooted TVs
 

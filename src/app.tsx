@@ -5,6 +5,7 @@ import {Picker, type WallpaperChoice} from './screens/Picker';
 import {CityPicker} from './screens/CityPicker';
 import {Recents} from './screens/Recents';
 import {SourceEditor} from './screens/SourceEditor';
+import {PowerOnPicker, type PowerOnChoice} from './screens/PowerOnPicker';
 import {iconFromFile} from './lib/customicon';
 import {log, logLines} from './lib/log';
 import {debugPages, reportText} from './lib/debuginfo';
@@ -25,6 +26,8 @@ import {hidePointerOnForeground} from './lib/pointer';
 import {startLogFile, writeReport, previousRunLines} from './lib/logfile';
 import {readStats, type SystemStats, getLogo, setLogo, closeLgHome} from './lib/system';
 import {applyHomeHook, getHookStatus, hookMessage, installHomeHook, logLine, markAliveSoon, reapplyHomeHook, removeHomeHook, stockHome} from './lib/homehook';
+import {clearPowerOnApp, powerOnMessage, readPowerOn, restartTv, setPowerOnApp} from './lib/poweron';
+import {needsRestart, powerOnName} from './lib/poweroncmd';
 import {getTakeoverStatus, installTakeover, reapplyTakeover, removeTakeover, stockTakeover, takeoverMessage} from './lib/takeover';
 import {applyPref, disabledReason, findPref, optionsFor, resetLook, type Press, type SystemInfo} from './lib/prefs';
 import {loadConfig, saveConfig, toggleId, DEFAULT_WALLPAPER, type UserConfig} from './lib/storage';
@@ -46,7 +49,7 @@ import {PROBE_TESTS, RUN_ALL_ID, bad as probeBad, probeOptions, runAll, withLimi
 import {fetchWeather} from './lib/weathernet';
 import {FRESH_MS, isFresh, readWeatherCache, usableCached, weatherView, writeWeatherCache, type City, type WeatherData} from './lib/weather';
 
-type Screen = 'home' | 'settings' | 'picker' | 'cities' | 'source' | 'iconpicker';
+type Screen = 'home' | 'settings' | 'picker' | 'cities' | 'source' | 'iconpicker' | 'poweron';
 
 const TAB = {apps: 'apps', sources: 'sources', look: 'look', clock: 'clock', weather: 'weather', wallpaper: 'wallpaper', options: 'options', debug: 'debug', tests: 'tests'} as const;
 const MISC = {lgHome: 'lg-home', settings: 'settings', system: 'system-settings'} as const;
@@ -91,6 +94,7 @@ export function App () {
 	const toastTimer = useRef(0);
 	const closedAt = useRef(0);
 	const [systemInfo, setSystemInfo] = useState<SystemInfo>({homeHook: null});
+	const [powerOnBusy, setPowerOnBusy] = useState(false);                                 // "When the TV turns on" is being changed
 	const tvFormat = useTimeFormat();
 
 	// With the hand-over helper on, note in its log how long this launcher took to show its first screen.
@@ -309,8 +313,8 @@ export function App () {
 				log(root === 'yes' ? 'Root check: the Homebrew Channel answered' : `Root check: not available (${rootDetail || 'no answer'})`);
 				if (!live) return undefined;
 				if (root === 'yes') readHomebrewVersion().then((homebrew) => { if (live && homebrew) setVersions((p) => ({...p, homebrew})); });
-				if (root === 'no') { setSystemInfo({homeHook: null, logo: null, takeover: null, root, rootDetail}); return undefined; }
-				return Promise.all([getHookStatus(), getLogo(), getTakeoverStatus()]).then(([homeHook, logo, takeover]) => { if (live) setSystemInfo({homeHook, logo, takeover, root, rootDetail}); });
+				if (root === 'no') { setSystemInfo({homeHook: null, logo: null, takeover: null, powerOn: null, root, rootDetail}); return undefined; }
+				return Promise.all([getHookStatus(), getLogo(), getTakeoverStatus(), readPowerOn()]).then(([homeHook, logo, takeover, powerOn]) => { if (live) setSystemInfo({homeHook, logo, takeover, powerOn, root, rootDetail}); });
 			});
 			return () => { live = false; };
 		}
@@ -502,6 +506,61 @@ export function App () {
 		readStats().then((st) => { statsRef.current = st; setDebugTick((n) => n + 1); save(); });
 	}, [config, versions]);                                                  // eslint-disable-line react-hooks/exhaustive-deps
 
+	// ----- When the TV turns on, open… -----
+	// The choices: the TV's own default, Hearth, then every app by name.
+	const powerOnChoices: PowerOnChoice[] = useMemo(() => {
+		const list: PowerOnChoice[] = [
+			{id: '', label: "Live TV or the last input (the TV's default)", detail: 'What the TV does on its own: the input you used last, usually Live TV'},
+			{id: APP_ID, label: 'Hearth', detail: 'This home screen'}
+		];
+		apps.filter((a) => a.id !== APP_ID).slice().sort((a, b) => a.title.localeCompare(b.title))
+			.forEach((a) => list.push({id: a.id, label: a.title, detail: 'App'}));
+		return list;
+	}, [apps]);
+	const powerOnTitle = useCallback((id: string): string => {
+		if (!id) return '';
+		const choice = powerOnChoices.filter((c) => c.id === id)[0];
+		return choice ? choice.label : id;
+	}, [powerOnChoices]);
+	const powerOnNames = useMemo(() => {
+		const status = systemInfo.powerOn;
+		return {chosen: powerOnTitle(status ? status.chosen : config.powerOnApp), loaded: powerOnTitle(status ? status.loaded : '')};
+	}, [systemInfo.powerOn, config.powerOnApp, powerOnTitle]);
+
+	/** Puts a choice on the TV: `id` ('' = the TV's default), with or without network wake-ups. */
+	const applyPowerOn = useCallback((id: string, network: boolean, done: string) => {
+		setPowerOnBusy(true);
+		showToast('Saving…');
+		(id ? setPowerOnApp(id, network) : clearPowerOnApp()).then(({result, detail, status}) => {
+			setPowerOnBusy(false);
+			setSystemInfo((previous) => ({...previous, powerOn: status}));
+			const ok = result === 'applied' || result === 'removed';
+			// the saved choice follows what the TV has now (a failed change leaves the earlier one in place)
+			const now = status ? {app: status.chosen, network: status.network} : (ok ? {app: id, network} : null);
+			if (now) setConfig((c) => { const next = {...c, powerOnApp: now.app, powerOnNetwork: now.network}; saveConfig(next); return next; });
+			if (ok && !needsRestart(status)) showToast(done);
+			else if (ok) showToast(powerOnMessage(result, powerOnTitle(id)));
+			else showToast(powerOnMessage(result, status ? powerOnName(status.chosen, powerOnTitle(status.chosen)) : '', detail), 'error');
+		}).catch((error: Error) => {
+			setPowerOnBusy(false);
+			showToast(powerOnMessage('failed', '', error && error.message ? error.message : ''), 'error');
+		});
+	}, [showToast, powerOnTitle]);
+
+	const powerOnNetwork = systemInfo.powerOn ? systemInfo.powerOn.network : config.powerOnNetwork;
+	const onPowerOnChoose = useCallback((id: string) => {
+		applyPowerOn(id, !!id && powerOnNetwork, `Done: the TV opens ${powerOnName(id, powerOnTitle(id))} when you turn it on`);
+	}, [applyPowerOn, powerOnNetwork, powerOnTitle]);
+	const onPowerOnNetwork = useCallback(() => {
+		const app = systemInfo.powerOn ? systemInfo.powerOn.chosen : config.powerOnApp;
+		if (app) applyPowerOn(app, !powerOnNetwork, powerOnNetwork ? 'Done: network wake-ups go where they ask again' : 'Done: network wake-ups open it too');
+	}, [applyPowerOn, powerOnNetwork, systemInfo.powerOn, config.powerOnApp]);
+
+	const onPowerOnRestart = useCallback(() => {
+		showToast('Restarting the TV…');
+		restartTv().then((started) => { if (!started) showToast(`The TV did not restart${whySuffix()}. Restart it from its own settings, or unplug it for a minute`, 'error'); });
+	}, [showToast]);
+
 	const tabs: SettingsTab[] = useMemo(() => [
 		{id: TAB.apps, label: 'Apps', noun: 'apps', refresh: true, items: orderTiles(apps.map((a) => appTile(a, config.appEdits)), (t) => t.key, config.appIds), shown: shownApps.map((a) => appTile(a, config.appEdits)), edit: true},
 		{id: TAB.sources, label: 'Sources', noun: 'sources', items: inputs.map((i) => inputTile(i, config.sourceEdits)), shown: shownInputs.map((i) => inputTile(i, config.sourceEdits)), edit: true},
@@ -509,10 +568,10 @@ export function App () {
 		{id: TAB.clock, label: 'Clock', noun: '', items: [], shown: [], options: optionsFor('clock', config)},
 		...(WEATHER_ENABLED ? [{id: TAB.weather, label: 'Weather', noun: '', items: [], shown: [], options: optionsFor('weather', config)}] : []),
 		{id: TAB.wallpaper, label: 'Wallpaper', noun: '', items: [], shown: [], options: optionsFor('wallpaper', config)},
-		{id: TAB.options, label: 'Options', noun: '', items: [], shown: [], options: optionsFor('options', config, {...systemInfo, tvInput})},
+		{id: TAB.options, label: 'Options', noun: '', items: [], shown: [], options: optionsFor('options', config, {...systemInfo, tvInput, powerOnNames})},
 		...(config.showDebug ? [{id: TAB.debug, label: 'Debug', noun: '', items: [], shown: [], pages: debugPagesNow}] : []),
 		...(PROBE_ENABLED && config.showDebug ? [{id: TAB.tests, label: 'Tests', noun: '', items: [], shown: [], options: probeOptions(probe)}] : [])
-	], [apps, inputs, shownApps, shownInputs, config, systemInfo, tvInput, probe, debugPagesNow]);
+	], [apps, inputs, shownApps, shownInputs, config, systemInfo, tvInput, powerOnNames, probe, debugPagesNow]);
 
 	const editedSource = editKey ? inputs.filter((i) => i.appId === editKey)[0] : undefined;
 	const editedApp = editKey && !editedSource ? apps.filter((a) => a.id === editKey)[0] : undefined;
@@ -593,6 +652,10 @@ export function App () {
 		if (optionId === 'wallpaper' && press === 'ok') { setScreen('picker'); return; }       // OK: pick a picture or folder; ← → step the built-in backgrounds
 		if (pref.kind === 'action') {
 			if (optionId === 'weatherCity') setScreen('cities');
+			else if (optionId === 'powerOnApp') {
+				if (systemInfo.powerOn && systemInfo.powerOn.foreign) showToast(powerOnMessage('foreign'), 'error');
+				else setScreen('poweron');
+			}
 			else if (optionId === 'resetLook') { updateConfig(resetLook(config)); showToast('Look and clock reset'); }
 			else if (optionId === 'takeover') {
 				const refresh = () => getTakeoverStatus().then((takeover) => setSystemInfo((previous) => ({...previous, takeover})));
@@ -774,6 +837,20 @@ export function App () {
 				/>
 			)}
 			{screen === 'picker' && <Picker onChoose={onChooseWallpaper} onClose={() => setScreen('settings')} />}
+			{screen === 'poweron' && (
+				<PowerOnPicker
+					choices={powerOnChoices}
+					chosen={systemInfo.powerOn ? systemInfo.powerOn.chosen : config.powerOnApp}
+					network={powerOnNetwork}
+					restartNeeded={needsRestart(systemInfo.powerOn)}
+					untilRestart={systemInfo.powerOn ? powerOnName(systemInfo.powerOn.loaded, powerOnNames.loaded) : powerOnName('')}
+					busy={powerOnBusy}
+					onChoose={onPowerOnChoose}
+					onNetwork={onPowerOnNetwork}
+					onRestart={onPowerOnRestart}
+					onClose={() => setScreen('settings')}
+				/>
+			)}
 			{WEATHER_ENABLED && screen === 'cities' && <CityPicker allowShell={isWebOS()} onChoose={onChooseCity} onClose={() => setScreen('settings')} />}
 			<Toast message={toast} />
 		</>

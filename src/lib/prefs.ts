@@ -18,6 +18,7 @@ import type {TempUnit} from './weather';
 import {lastFailure, rootState, type RootState} from './failure';
 import type {LogoState} from './system';
 import type {TakeoverStatus} from './takeovercmd';
+import {needsRestart, powerOnName, type PowerOnStatus} from './poweroncmd';
 
 export type PrefTab = 'look' | 'clock' | 'weather' | 'wallpaper' | 'options';
 
@@ -27,6 +28,10 @@ export interface SystemInfo {
 	homeHook: {running: boolean; linked: boolean} | null;
 	/** Hearth in LG Home's own place ("Replace LG Home with a script and SAM"): what is in place (null while unknown) */
 	takeover?: TakeoverStatus | null;
+	/** "When the TV turns on, open…": what is on the TV (null while unknown or not readable) */
+	powerOn?: PowerOnStatus | null;
+	/** the names of the chosen and the loaded power-on apps, for the row (the app list knows them, not the TV) */
+	powerOnNames?: {chosen?: string; loaded?: string};
 	/** the launcher is in the TV's input list (null while unknown) */
 	tvInput?: boolean | null;
 	/** the TV's "show the LG logo at start" setting (null while unknown) */
@@ -39,7 +44,7 @@ export interface SystemInfo {
 }
 
 /** The options that run shell commands, so they can't work without root. */
-export const ROOT_OPTIONS = ['takeover', 'replaceHome', 'tvInput', 'lgLogo'];
+export const ROOT_OPTIONS = ['takeover', 'replaceHome', 'tvInput', 'powerOnApp', 'lgLogo'];
 
 /** The two ways of replacing LG Home cannot be on together: the helper script reacts to LG Home coming to the front, the
  *  SAM method keeps LG Home from ever starting. Each greys the other out. */
@@ -54,6 +59,7 @@ function takeoverIsOn (info?: SystemInfo, config?: UserConfig): boolean {
 /** Why a row is greyed out, or null when it is usable. */
 export function disabledReason (id: string, info?: SystemInfo, config?: UserConfig): string | null {
 	if (id === 'lgLogo' && info && info.logo === 'unsupported') return "This TV doesn't have a setting for the LG logo at start.";
+	if (id === 'powerOnApp' && info && info.powerOn && !info.powerOn.supported) return "This TV's software doesn't have the power-on setting Hearth uses (tested on webOS 4.5).";
 	if (id === 'takeover' && helperIsOn(info, config)) return 'Switch "Replace LG Home with a helper script" off first. The two would fight over the Home button.';
 	if (id === 'replaceHome' && takeoverIsOn(info, config)) return 'Not used while "Replace LG Home with a script and SAM" is on, which already keeps LG Home from showing. Switch that off to use the helper instead.';
 	if (!info || info.root !== 'no' || ROOT_OPTIONS.indexOf(id) === -1) return null;
@@ -79,6 +85,17 @@ export interface Pref {
 	change?: (c: UserConfig, press: Press) => UserConfig;
 	/** false hides the row for this config (default: always shown) */
 	visible?: (c: UserConfig) => boolean;
+}
+
+/** The power-on row: the app chosen, and whether the TV still needs a restart to use it. */
+function powerOnText (c: UserConfig, info?: SystemInfo): string {
+	const status = info && info.powerOn;
+	const names = (info && info.powerOnNames) || {};
+	if (!status) return c.powerOnApp ? powerOnName(c.powerOnApp, names.chosen) + (c.powerOnNetwork ? ' + network' : '') : 'Unknown';
+	if (!status.supported) return 'Not on this TV';
+	if (status.foreign) return 'Set by another tool';
+	const chosen = status.chosen ? powerOnName(status.chosen, names.chosen) + (status.network ? ' + network' : '') : 'TV default';
+	return needsRestart(status) ? `${chosen} (after a restart)` : chosen;
 }
 
 const isSlideshow = (c: UserConfig): boolean => c.wallpaper.mode === 'folder' || (c.wallpaper.mode === 'gradient' && c.background === NATURE_SHOW);
@@ -277,6 +294,11 @@ const BASE_PREFS: Pref[] = [
 		text: (_c, info) => (!info || info.tvInput === null || info.tvInput === undefined ? 'Unknown' : info.tvInput ? 'Added' : 'Not added')
 	},
 	{
+		id: 'powerOnApp', tab: 'options', label: 'When the TV turns on, open…', kind: 'action',
+		description: 'What the TV shows when you switch it on with the remote or the TV\'s button: Live TV or the last input as usual, Hearth, or any app. Casting and HDMI-CEC go where they ask; so do network wake-ups (phone apps, Home Assistant) unless you include them in the list. Starts working after the TV restarts once. OK chooses.',
+		text: powerOnText
+	},
+	{
 		id: 'lgLogo', tab: 'options', label: 'Show the LG logo when the TV starts', kind: 'action',
 		description: 'LG\'s own switch (normally hidden): turn it off for a clean start straight into this launcher. OK turns it on or off.',
 		text: (_c, info) => (!info || info.logo === null || info.logo === undefined || info.logo === 'unsupported' ? 'Unknown' : info.logo === 'on' ? 'On' : 'Off')
@@ -299,7 +321,7 @@ export function findPref (id: string): Pref | undefined {
 }
 
 /** The order of the Options tab (anything not listed goes last). */
-const OPTIONS_ORDER = ['tvInput', 'takeover', 'replaceHome', 'lgLogo', 'tvApps', 'showDebug'];
+const OPTIONS_ORDER = ['tvInput', 'takeover', 'replaceHome', 'powerOnApp', 'lgLogo', 'tvApps', 'showDebug'];
 
 function orderOf (tab: PrefTab, id: string): number {
 	if (tab !== 'options') return 0;

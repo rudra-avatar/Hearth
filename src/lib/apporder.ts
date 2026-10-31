@@ -3,6 +3,19 @@
 // Older settings kept a list of the apps TO SHOW instead (anything not listed stayed hidden, which is
 // why new apps used to be hidden); those are converted once, see hiddenAfterUpgrade.
 
+/** Apps that start hidden, on new and existing settings alike, until switched on in Settings → Apps. LG's app store
+ *  (LG Content Store) was left out of the app list before; listing it must not add it to anybody's row. */
+export const HIDDEN_BY_DEFAULT = ['com.webos.app.discovery'];
+
+/** Put each HIDDEN_BY_DEFAULT app on the hide-list once. `done` lists the ones already put there, so an app the user
+ *  switched on stays on. `hidden === null` (old settings, not converted yet) waits for the next load: the conversion,
+ *  hiddenAfterUpgrade, hides these too when the live list has them, as they were never on the old list. */
+export function hideByDefault (hidden: string[] | null, done: string[]): {hidden: string[] | null; done: string[]} {
+	const todo = HIDDEN_BY_DEFAULT.filter((id) => done.indexOf(id) === -1);
+	if (!todo.length || hidden === null) return {hidden, done};
+	return {hidden: hidden.concat(todo.filter((id) => hidden.indexOf(id) === -1)), done: done.concat(todo)};
+}
+
 /** The apps to show: the user's saved order first (skipping hidden and uninstalled ones), then every other
  *  app that isn't hidden, in the TV's order. `hidden === null` means old settings that have not been
  *  converted yet: then only the apps in the saved list show, as before. */
@@ -27,6 +40,14 @@ export function visibleApps<T extends {id: string}> (apps: T[], order: string[] 
 export function hiddenAfterUpgrade<T extends {id: string}> (apps: T[], order: string[] | null): string[] {
 	if (!order) return [];
 	return apps.filter((a) => order.indexOf(a.id) === -1).map((a) => a.id);
+}
+
+/** The hide-list of the settings, converting old ones (`hiddenIds === null`) with hiddenAfterUpgrade. A HIDDEN_BY_DEFAULT
+ *  app that the conversion hid is noted as done, so showing it afterwards sticks. */
+export function hiddenOf<T extends {id: string}> (apps: T[], c: {appIds: string[] | null; hiddenIds: string[] | null; hiddenByDefault: string[]}): {hiddenIds: string[]; hiddenByDefault: string[]} {
+	if (c.hiddenIds !== null) return {hiddenIds: c.hiddenIds, hiddenByDefault: c.hiddenByDefault};
+	const hidden = hiddenAfterUpgrade(apps, c.appIds);
+	return {hiddenIds: hidden, hiddenByDefault: c.hiddenByDefault.concat(HIDDEN_BY_DEFAULT.filter((id) => c.hiddenByDefault.indexOf(id) === -1 && hidden.indexOf(id) !== -1))};
 }
 
 /** Add an app to the hide-list, or take it off (OK in Settings → Apps, or Hide in the hold-OK menu). */

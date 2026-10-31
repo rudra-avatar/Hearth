@@ -66,6 +66,7 @@ const BASE_CATALOG: CatalogApp[] = [
 	{id: 'com.webos.app.homeconnect', title: 'Home Dashboard', icon: 'com.webos.app.homeconnect.png'},
 	{id: 'amazon.alexa.view', title: 'Alexa', icon: 'amazon.alexa.view.png'},
 	{id: 'com.palm.app.settings', title: 'LG Settings', color: '#2f3339'},
+	{id: 'com.webos.app.discovery', title: 'LG Content Store', color: '#a50034'},
 	// webOS Homebrew
 	{id: 'org.webosbrew.hbchannel', title: 'Homebrew', icon: 'org.webosbrew.hbchannel.png'},
 	{id: 'org.webosbrew.inputhook', title: 'Input Hook', icon: 'org.webosbrew.inputhook.png'},

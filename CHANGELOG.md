@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **LG Content Store** (`com.webos.app.discovery`) can now be put on the home row: it is listed in Settings → Apps (it used to be left out of the list), also on TVs without root. It starts hidden, on new and existing settings alike, so nobody's row changes on update: press OK on it in Settings → Apps to show it. Requested in issue #24.
+
 ## 1.2.0
 
 - **Edit names and icons** (Settings → Apps or Sources, hold OK on an item): rename an app or input, pick another icon (16 input symbols, the bundled app logos), or use your own picture from a USB drive or the TV (rooted TVs, saved inside Hearth's settings). *Use the app's / TV's name and icon* resets it. See the README, "Edit a name or icon".

@@ -35,7 +35,7 @@ import {mark} from './lib/perfmarks';
 import {aboutText, readHomebrewVersion, readIp, readVersions, type Versions} from './lib/about';
 import {useTimeFormat} from './hooks/useTimeFormat';
 import {AppMenu} from './components/AppMenu';
-import {extendOrder, hiddenAfterUpgrade, toggleHidden, visibleApps} from './lib/apporder';
+import {extendOrder, hiddenOf, hideByDefault, toggleHidden, visibleApps} from './lib/apporder';
 import {addTvInput, removeTvInput, TV_INPUT_LOG} from './lib/tvinput';
 import {uninstallApp, uninstallVerdict, UNINSTALL_LOG} from './lib/uninstall';
 import {appTile, inputTile, pickInOrder} from './lib/tiles';
@@ -175,10 +175,12 @@ export function App () {
 		const rememberApps = (list: AppEntry[]) => {
 			if (list.length === 0) return;
 			setConfig((c) => {
-				if (c.hiddenIds === null) { const next = {...c, hiddenIds: hiddenAfterUpgrade(list, c.appIds)}; saveConfig(next); return next; }
+				if (c.hiddenIds === null) { const next = {...c, ...hiddenOf(list, c)}; saveConfig(next); return next; }
 				const order = extendOrder(list, c.appIds);
-				if (order === c.appIds) return c;
-				const next = {...c, appIds: order};
+				// an app hidden by default that was not listed yet when old settings were converted
+				const byDefault = hideByDefault(c.hiddenIds, c.hiddenByDefault);
+				if (order === c.appIds && byDefault.done === c.hiddenByDefault) return c;
+				const next = {...c, appIds: order, hiddenIds: byDefault.hidden, hiddenByDefault: byDefault.done};
 				saveConfig(next);
 				return next;
 			});
@@ -557,8 +559,8 @@ export function App () {
 	const onToggle = useCallback((tabId: string, key: string) => {
 		if (tabId === TAB.apps) {
 			// apps are shown unless hidden: OK adds the app to the hide-list, or takes it off
-			const hidden = config.hiddenIds !== null ? config.hiddenIds : hiddenAfterUpgrade(apps, config.appIds);
-			updateConfig({...config, hiddenIds: toggleHidden(hidden, key)});
+			const hidden = hiddenOf(apps, config);
+			updateConfig({...config, ...hidden, hiddenIds: toggleHidden(hidden.hiddenIds, key)});
 		} else {
 			updateConfig({...config, sourceIds: toggleId(config.sourceIds, key)});
 		}
@@ -569,8 +571,7 @@ export function App () {
 		// the tiles of this tab take the places they already hold on the shared row, in their new order
 		const whole = reslot(orderedTiles.map((t) => t.key), keys);
 		const update = orderUpdate(whole, shownApps.map((a) => a.id), shownInputs.map((i) => i.appId), config.appIds, config.sourceIds);
-		const hiddenIds = config.hiddenIds !== null ? config.hiddenIds : hiddenAfterUpgrade(apps, config.appIds);
-		updateConfig({...config, tileOrder: update.tileOrder, hiddenIds, appIds: tabId === TAB.apps ? keys.concat((config.appIds || []).filter((id) => keys.indexOf(id) === -1)) : update.appIds, sourceIds: tabId === TAB.sources ? keys : update.sourceIds});
+		updateConfig({...config, ...hiddenOf(apps, config), tileOrder: update.tileOrder, appIds: tabId === TAB.apps ? keys.concat((config.appIds || []).filter((id) => keys.indexOf(id) === -1)) : update.appIds, sourceIds: tabId === TAB.sources ? keys : update.sourceIds});
 	}, [config, apps, orderedTiles, shownApps, shownInputs]);
 
 	const changeOption = useCallback((optionId: string, press: Press) => {

@@ -47,17 +47,24 @@ eq(s.loadConfig().tileOrder, null, 'a bad tile order becomes none');
 // ---- apps: shown unless hidden ----
 store[KEY] = JSON.stringify({appIds: ['a', 'b']});
 eq(s.loadConfig().hiddenIds, null, 'settings from an older version (a list of apps to show) are flagged to be converted');
+const STORE = 'com.webos.app.discovery';
 store[KEY] = JSON.stringify({});
-eq(s.loadConfig().hiddenIds, [], 'new settings: nothing hidden');
+eq(s.loadConfig().hiddenIds, [STORE], 'new settings: nothing hidden but the LG Content Store');
 store[KEY] = JSON.stringify({appIds: null});
-eq(s.loadConfig().hiddenIds, [], 'older settings that showed every app: nothing hidden');
+eq(s.loadConfig().hiddenIds, [STORE], 'older settings that showed every app: only the LG Content Store hidden');
 store[KEY] = JSON.stringify({appIds: ['a'], hiddenIds: ['x']});
-eq(s.loadConfig().hiddenIds, ['x'], 'a saved hide-list is kept');
+eq([s.loadConfig().hiddenIds, s.loadConfig().hiddenByDefault], [['x', STORE], [STORE]], 'a saved hide-list is kept, and the LG Content Store is added to it once');
+store[KEY] = JSON.stringify({appIds: ['a', STORE], hiddenIds: ['x'], hiddenByDefault: [STORE]});
+eq(s.loadConfig().hiddenIds, ['x'], 'the LG Content Store, once switched on, stays on');
+store[KEY] = JSON.stringify({appIds: ['a', 'b']});
+eq([s.loadConfig().hiddenIds, s.loadConfig().hiddenByDefault], [null, []], 'settings still to be converted are left to the conversion first');
+store[KEY] = JSON.stringify({appIds: ['b', 'a'], hiddenIds: ['c']});
+eq(s.loadConfig().hiddenIds, ['c', STORE], 'and once converted, the LG Content Store is hidden at the next load');
 store[KEY] = JSON.stringify({rows: 3, showLabels: false});
 eq([s.loadConfig().rows, s.loadConfig().showLabels], [1, false], 'rows are 1 or 2 only; the app-names switch is read');
 store[KEY] = JSON.stringify({rows: 2});
 eq([s.loadConfig().rows, s.loadConfig().showLabels], [2, true], 'two rows are kept; app names default to shown');
-eq([s.DEFAULT_CONFIG.hiddenIds, s.DEFAULT_CONFIG.rows, s.DEFAULT_CONFIG.showLabels], [[], 1, true], 'defaults: nothing hidden, one row, names shown');
+eq([s.DEFAULT_CONFIG.hiddenIds, s.DEFAULT_CONFIG.rows, s.DEFAULT_CONFIG.showLabels], [['com.webos.app.discovery'], 1, true], 'defaults: only the LG Content Store hidden, one row, names shown');
 store[KEY] = '{not json';
 
 // ---- stepping ----

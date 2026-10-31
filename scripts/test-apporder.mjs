@@ -28,4 +28,19 @@ eq(ids(o.visibleApps(A.concat(app('later')), ['b', 'a'], converted)), ['b', 'a',
 
 eq(o.toggleHidden(['a'], 'b'), ['a', 'b'], 'hiding adds to the list');
 eq(o.toggleHidden(['a', 'b'], 'a'), ['b'], 'showing takes it off');
+
+// apps hidden by default (the LG Content Store): put on the hide-list once, then left to the user
+const S = 'com.webos.app.discovery';
+eq(o.hideByDefault([], []), {hidden: [S], done: [S]}, 'the LG Content Store starts hidden');
+eq(o.hideByDefault(['a', S], []), {hidden: ['a', S], done: [S]}, 'already on the hide-list: not added twice');
+eq(o.hideByDefault(['a'], [S]), {hidden: ['a'], done: [S]}, 'switched on after that: it stays on');
+eq(o.hideByDefault(null, []), {hidden: null, done: []}, 'old settings: not converted yet, so put off to the next load');
+eq(ids(o.visibleApps(A.concat(app(S)), ['b', 'a'], o.hiddenAfterUpgrade(A.concat(app(S)), ['b', 'a']))), ['b', 'a'], 'which hides it, as it was never on the old list');
+const old = {appIds: ['b', 'a'], hiddenIds: null, hiddenByDefault: []};
+eq(o.hiddenOf(A.concat(app(S)), old), {hiddenIds: ['c', 'd', S], hiddenByDefault: [S]}, 'converting old settings notes the store as done once the conversion hid it');
+const shown = {...old, hiddenIds: o.toggleHidden(o.hiddenOf(A.concat(app(S)), old).hiddenIds, S), hiddenByDefault: [S]};
+eq(o.hideByDefault(shown.hiddenIds, shown.hiddenByDefault).hidden, ['c', 'd'], 'so the store switched on after converting stays on at the next load');
+eq(o.hiddenOf(A, old), {hiddenIds: ['c', 'd'], hiddenByDefault: []}, 'converted from a list without the store: it is not done yet');
+eq(o.hideByDefault(['c', 'd'], []).hidden, ['c', 'd', S], 'and is hidden the next time (when the live list loads, or at the next start)');
+eq(o.hiddenOf(A, {appIds: null, hiddenIds: ['x'], hiddenByDefault: [S]}), {hiddenIds: ['x'], hiddenByDefault: [S]}, 'settings already converted are returned as they are');
 process.exit(fail ? 1 : 0);

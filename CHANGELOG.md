@@ -3,6 +3,7 @@
 ## Unreleased
 
 - **Recent apps panel** draws the same tiles as the home row, so it shows the names and icons you gave your apps and inputs (your own picture, a bundled logo or a drawn icon), and its messages (*Closed …*, *Couldn't open …*) use those names. An app that is not in Hearth's lists still shows the TV's name (issue #28).
+- **Recent apps panel opens at once:** it draws the list it last read (kept across restarts) instead of *Loading…* while the TV's list is read through the Homebrew Channel, then reads that list in the background and redraws only if it changed. Until you move along the row the highlight stays on the newest app; after that it stays on the app you chose. An app opened from Hearth goes to the front straight away, as the TV does. If the list cannot be read again, the last one stays and the reason is shown under the title. The first opening after installing still waits for the TV once (issue #27).
 
 ## 1.2.0
 

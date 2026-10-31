@@ -20,6 +20,7 @@ import {keepKnownIcons, sameApps} from './lib/appcache';
 import type {TimeFormat} from './lib/clock';
 import {listInputs, MOCK_INPUTS, type InputSource} from './lib/inputs';
 import {launchApp, launchLgHome, launchSystemSettings} from './lib/launch';
+import {noteOpened} from './lib/recents';
 import {isWebOS} from './lib/luna';
 import {hidePointerOnForeground} from './lib/pointer';
 import {startLogFile, writeReport, previousRunLines} from './lib/logfile';
@@ -548,7 +549,7 @@ export function App () {
 		// With the helper on: say the launcher is alive and note what is being opened, so the helper's check
 		// can never mistake this moment for a failure, and its log shows what happened if an app does not open.
 		if (config.replaceHome) markAliveSoon(`launcher: opening ${item.key}`, false);
-		launchApp(item.key).catch(() => {
+		launchApp(item.key).then(() => noteOpened(item.key, item.label), () => {
 			if (config.replaceHome) logLine(`launcher: the TV refused to open ${item.key}`);
 			showToast(`Couldn't open ${item.label}`, 'error');
 		});

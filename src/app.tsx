@@ -38,7 +38,7 @@ import {AppMenu} from './components/AppMenu';
 import {extendOrder, hiddenAfterUpgrade, toggleHidden, visibleApps} from './lib/apporder';
 import {addTvInput, removeTvInput, TV_INPUT_LOG} from './lib/tvinput';
 import {uninstallApp, uninstallVerdict, UNINSTALL_LOG} from './lib/uninstall';
-import {appTile, inputTile, pickInOrder} from './lib/tiles';
+import {appTile, inputTile, pickInOrder, tilesById} from './lib/tiles';
 import {moveKey, movesFor, orderTiles, orderUpdate, reslot, type MoveAction} from './lib/tileorder';
 import {APP_ID, TIMING, WALLPAPER} from './config/constants';
 import {PROBE_ENABLED, WEATHER_ENABLED} from './config/features';
@@ -264,8 +264,6 @@ export function App () {
 		return () => { document.removeEventListener('visibilitychange', onVisibility); document.removeEventListener('webOSRelaunch', onRelaunch); window.clearInterval(poll); };
 	}, []);
 
-	const recentIcons = useMemo(() => { const m: Record<string, string | undefined> = {}; apps.forEach((a) => { m[a.id] = a.iconUrl; }); return m; }, [apps]);
-
 	// The bundled-photo slideshow is drawn (and timed) by PhotoShow; it pauses while the launcher is in the background.
 	const natureShow = config.background === NATURE_SHOW && config.wallpaper.mode === 'gradient';
 
@@ -471,6 +469,8 @@ export function App () {
 		() => orderTiles(shownApps.map((a) => appTile(a, config.appEdits)).concat(shownInputs.map((i) => inputTile(i, config.sourceEdits))), (t) => t.key, config.tileOrder),
 		[shownApps, shownInputs, config.tileOrder, config.sourceEdits, config.appEdits]
 	);
+	// every app and input (hidden ones too) with the user's name and icon, for the Recent apps panel
+	const knownTiles = useMemo(() => tilesById(apps, inputs, config.appEdits, config.sourceEdits), [apps, inputs, config.appEdits, config.sourceEdits]);
 	const homeItems: TileModel[] = useMemo(
 		() => orderedTiles.concat(MISC_TILES.filter((t) => (t.key === MISC.lgHome ? config.showLgHome : t.key === MISC.system ? config.showSystem : true))),
 		[orderedTiles, config.showLgHome, config.showSystem]
@@ -744,7 +744,7 @@ export function App () {
 			{wallpaperOn && !natureShow && <Wallpaper config={config.wallpaper} opacity={config.wallpaperOpacity} onProblem={(text) => showToast(text, 'error')} />}
 			{/* Home stays mounted under the other screens so it keeps its focus position. */}
 			<Home items={homeItems} timeFormat={timeFormat} appearance={appearance} active={screen === 'home' && !menu && !recents} paused={asleep} onActivate={onActivate} onLongPress={onLongPress} onBack={openRecents} wake={wakes} focus={focus} weather={weatherLine} />
-			{recents && screen === 'home' && <Recents icons={recentIcons} width={config.recentsW} height={config.recentsH} onClose={closeRecents} onToast={showToast} />}
+			{recents && screen === 'home' && <Recents tiles={knownTiles} width={config.recentsW} height={config.recentsH} onClose={closeRecents} onToast={showToast} />}
 			{menu && <AppMenu title={menu.title} moves={menuMoves} hideDetail={menu.app ? 'You can add it back in Settings → Apps' : 'You can add it back in Settings → Sources'} showUninstall={!!menu.app} blockedReason={menuBlocked} onMove={(action) => moveTile(menu.key, action)} onHide={() => hideTile(menu)} onUninstall={() => { if (menu.app) removeApp(menu.app); }} onClose={() => setMenu(null)} />}
 			{/* Settings stays mounted under the picker so it keeps its tab. */}
 			{(screen !== 'home') && <Settings tabs={tabs} active={screen === 'settings'} onToggle={onToggle} onReorder={onReorder} onOption={onOption} onRefresh={onRefresh} onEdit={(key) => { setEditKey(key); setScreen('source'); }} onAdjust={onAdjust} onTab={onTab} onClose={() => setScreen('home')} about={aboutText(versions, rootState(), lastFailure())} />}

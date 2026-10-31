@@ -127,7 +127,7 @@ from the Homebrew Channel or Dev Manager.
 
 ### Edit a name or icon
 
-In **Settings → Apps** or **Sources**, move to an item and **hold OK** (release OK, then press ↓ to edit). The home row shows each change at once, and it is kept across restarts and updates.
+In **Settings → Apps** or **Sources**, move to an item and **hold OK** (release OK, then press ↓ to edit). The home row and the Recent apps panel show each change at once, and it is kept across restarts and updates.
 
 | | |
 |---|---|

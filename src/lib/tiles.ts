@@ -19,6 +19,21 @@ export function inputTile (input: InputSource, edits: SourceEdits = {}): TileMod
 	return {key: input.appId, label: edit.label || input.label, imageUrl: edit.iconData || undefined, sourceIcon: edit.icon || autoIcon(input.icon)};
 }
 
+/** Every app's and input's tile by id, with the user's names and icons: the Recent apps panel draws the same tiles as
+ *  the home row (an input, com.webos.app.hdmi1 say, can be a recent app too). An app wins over an input with the same id. */
+export function tilesById (apps: AppEntry[], inputs: InputSource[], appEdits: SourceEdits = {}, sourceEdits: SourceEdits = {}): Record<string, TileModel> {
+	const byId: Record<string, TileModel> = {};
+	for (const input of inputs) byId[input.appId] = inputTile(input, sourceEdits);
+	for (const app of apps) byId[app.id] = appTile(app, appEdits);
+	return byId;
+}
+
+/** A recent app (the TV's id and title) as a tile: its home-row tile when Hearth knows the app or input, otherwise the
+ *  TV's title over a monogram. */
+export function recentTile (id: string, title: string, tiles: Record<string, TileModel>): TileModel {
+	return Object.prototype.hasOwnProperty.call(tiles, id) ? tiles[id] : {key: id, label: title};
+}
+
 /** Order `items` by an ID list, dropping IDs that no longer exist. */
 export function pickInOrder<T> (items: T[], ids: string[], idOf: (item: T) => string): T[] {
 	const byId: Record<string, T> = {};

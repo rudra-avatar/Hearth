@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Recent apps panel** draws the same tiles as the home row, so it shows the names and icons you gave your apps and inputs (your own picture, a bundled logo or a drawn icon), and its messages (*Closed …*, *Couldn't open …*) use those names. An app that is not in Hearth's lists still shows the TV's name (issue #28).
+
 ## 1.2.0
 
 - **Edit names and icons** (Settings → Apps or Sources, hold OK on an item): rename an app or input, pick another icon (16 input symbols, the bundled app logos), or use your own picture from a USB drive or the TV (rooted TVs, saved inside Hearth's settings). *Use the app's / TV's name and icon* resets it. See the README, "Edit a name or icon".

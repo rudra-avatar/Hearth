@@ -38,3 +38,34 @@ export function hidePointerOnForeground (): () => void {
 		document.removeEventListener('webOSRelaunch', onVisible);
 	};
 }
+
+// Hover-select guard for the home row. When the row glides, tiles slide under a pointer that is not moving
+// and each one would "hover" and select itself, which scrolls the row further: a runaway. So a hover only
+// selects when the pointer really moved lately, and not again until the glide has settled.
+let lastX = -1;
+let lastY = -1;
+let movedAt = 0;
+let selectedAt = 0;
+let watching = false;
+const HOVER_MOVE_MS = 120;
+const HOVER_COOLDOWN_MS = 260;
+
+function watchPointer (): void {
+	if (watching || typeof window === 'undefined') return;
+	watching = true;
+	window.addEventListener('mousemove', (e: MouseEvent) => {
+		if (e.screenX !== lastX || e.screenY !== lastY) { lastX = e.screenX; lastY = e.screenY; movedAt = Date.now(); }
+	}, true);
+}
+
+/** Start listening (call once at start-up). */
+export function startPointerGuard (): void { watchPointer(); }
+
+/** May a hover on a home-row tile select it now? */
+export function hoverMayselect (now: number = Date.now()): boolean {
+	if (!watching) return true;
+	if (now - movedAt > HOVER_MOVE_MS) return false;
+	if (now - selectedAt < HOVER_COOLDOWN_MS) return false;
+	selectedAt = now;
+	return true;
+}

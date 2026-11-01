@@ -1,3 +1,4 @@
+import {t as tt} from '../i18n';
 // The weather line under the clock's date: data from Open-Meteo (free, no key). This file is the pure part
 // (reading the reply, describing it, formatting, the saved copy); weathernet.ts does the fetching.
 
@@ -88,28 +89,28 @@ export function parseCities (json: string): City[] {
 
 /** Words and a picture for a WMO weather code. */
 export function describe (code: number, isDay: boolean): {text: string; icon: WeatherIcon} {
-	if (code === 0) return {text: 'Clear', icon: isDay ? 'sun' : 'moon'};
-	if (code === 1) return {text: 'Mostly clear', icon: isDay ? 'sun' : 'moon'};
-	if (code === 2) return {text: 'Partly cloudy', icon: 'partly'};
-	if (code === 3) return {text: 'Overcast', icon: 'cloud'};
-	if (code === 45 || code === 48) return {text: 'Fog', icon: 'fog'};
-	if (code >= 51 && code <= 55) return {text: 'Drizzle', icon: 'rain'};
-	if (code === 56 || code === 57) return {text: 'Freezing drizzle', icon: 'rain'};
-	if (code === 61) return {text: 'Light rain', icon: 'rain'};
-	if (code === 63) return {text: 'Rain', icon: 'rain'};
-	if (code === 65) return {text: 'Heavy rain', icon: 'rain'};
-	if (code === 66 || code === 67) return {text: 'Freezing rain', icon: 'rain'};
-	if (code === 71) return {text: 'Light snow', icon: 'snow'};
-	if (code === 73) return {text: 'Snow', icon: 'snow'};
-	if (code === 75) return {text: 'Heavy snow', icon: 'snow'};
-	if (code === 77) return {text: 'Snow grains', icon: 'snow'};
-	if (code === 80) return {text: 'Light showers', icon: 'rain'};
-	if (code === 81) return {text: 'Showers', icon: 'rain'};
-	if (code === 82) return {text: 'Heavy showers', icon: 'rain'};
-	if (code === 85 || code === 86) return {text: 'Snow showers', icon: 'snow'};
-	if (code === 95) return {text: 'Thunderstorm', icon: 'storm'};
-	if (code === 96 || code === 99) return {text: 'Thunderstorm, hail', icon: 'storm'};
-	return {text: 'Cloudy', icon: 'cloud'};
+	if (code === 0) return {text: tt('weather.clear'), icon: isDay ? 'sun' : 'moon'};
+	if (code === 1) return {text: tt('weather.mostlyClear'), icon: isDay ? 'sun' : 'moon'};
+	if (code === 2) return {text: tt('weather.partlyCloudy'), icon: 'partly'};
+	if (code === 3) return {text: tt('weather.overcast'), icon: 'cloud'};
+	if (code === 45 || code === 48) return {text: tt('weather.fog'), icon: 'fog'};
+	if (code >= 51 && code <= 55) return {text: tt('weather.drizzle'), icon: 'rain'};
+	if (code === 56 || code === 57) return {text: tt('weather.freezingDrizzle'), icon: 'rain'};
+	if (code === 61) return {text: tt('weather.lightRain'), icon: 'rain'};
+	if (code === 63) return {text: tt('weather.rain'), icon: 'rain'};
+	if (code === 65) return {text: tt('weather.heavyRain'), icon: 'rain'};
+	if (code === 66 || code === 67) return {text: tt('weather.freezingRain'), icon: 'rain'};
+	if (code === 71) return {text: tt('weather.lightSnow'), icon: 'snow'};
+	if (code === 73) return {text: tt('weather.snow'), icon: 'snow'};
+	if (code === 75) return {text: tt('weather.heavySnow'), icon: 'snow'};
+	if (code === 77) return {text: tt('weather.snowGrains'), icon: 'snow'};
+	if (code === 80) return {text: tt('weather.lightShowers'), icon: 'rain'};
+	if (code === 81) return {text: tt('weather.showers'), icon: 'rain'};
+	if (code === 82) return {text: tt('weather.heavyShowers'), icon: 'rain'};
+	if (code === 85 || code === 86) return {text: tt('weather.snowShowers'), icon: 'snow'};
+	if (code === 95) return {text: tt('weather.thunderstorm'), icon: 'storm'};
+	if (code === 96 || code === 99) return {text: tt('weather.thunderstormHail'), icon: 'storm'};
+	return {text: tt('weather.cloudy'), icon: 'cloud'};
 }
 
 /** "29°" (always whole degrees, in the chosen unit). */

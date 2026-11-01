@@ -20,6 +20,10 @@ function lunaJson (uri: string, payload: object = {}): Promise<any> {
 	return exec(lunaCmd(uri, payload), 8000).then((out) => { try { return JSON.parse(out); } catch { return null; } });
 }
 
+/** L1b: the last list read, kept in memory only, so the panel can draw at once while the fresh list is read. */
+let lastList: RecentApp[] | null = null;
+export function cachedRecents (): RecentApp[] | null { return lastList; }
+
 /** The apps the TV lists as recent, newest first, without Hearth and LG Home. Rejects with a plain reason. */
 export function listRecents (): Promise<RecentApp[]> {
 	return lunaJson('luna://com.webos.service.recent/listRecents').then(
@@ -33,9 +37,10 @@ export function listRecents (): Promise<RecentApp[]> {
 				seen[id] = true;
 				apps.push({id, title: String(a.title || id)});
 			});
+			lastList = apps;
 			return apps;
 		},
-		() => { throw new Error('Recent apps needs the Homebrew Channel (a rooted TV)'); }
+		() => { lastList = null; throw new Error('Recent apps needs the Homebrew Channel (a rooted TV)'); }
 	);
 }
 
@@ -46,6 +51,7 @@ function running (): Promise<{id: string; appType?: string}[] | null> {
 /** Closes the given apps (web apps are killed, the rest closed by id), waits until they are gone, then drops them from the
  *  recent list. Rejects when the TV would not close one. */
 export function closeRecents (ids: string[]): Promise<void> {
+	if (lastList) lastList = lastList.filter((a) => ids.indexOf(a.id) === -1);
 	const refuse = (): never => { throw new Error('The TV would not close it'); };
 	const gone = (tries: number): Promise<void> => running().then((run) => {
 		if (!run) return refuse();

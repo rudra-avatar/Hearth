@@ -4,6 +4,7 @@
 
 import {APP_CATALOG} from '../config/catalog';
 import {APP_ID, LUNA} from '../config/constants';
+import {NOROOT_MOCK} from '../config/features';
 import type {OptionItem} from '../components/OptionList';
 import {classifyFailure} from './failure';
 import {lunaCall} from './luna';
@@ -175,7 +176,7 @@ const BASE_TESTS: ProbeTest[] = [
 	{
 		id: 'homebrew', label: '16. Homebrew Channel service',
 		description: 'Does the TV answer the Homebrew Channel\'s shell service (this is what "rooted" means for Hearth)?',
-		run: () => call(LUNA.homebrewExec, {command: 'id -u'}).then((r) => good(`answered; this shell runs as user ${String(r.stdoutString || '?').trim()} (0 = root)`), bad)
+		run: () => call(NOROOT_MOCK ? 'luna://mock.noroot.service/none' : LUNA.homebrewExec, {command: 'id -u'}).then((r) => good(`answered; this shell runs as user ${String(r.stdoutString || '?').trim()} (0 = root)`), bad)
 	},
 	{
 		id: 'storage', label: '17. Saving settings',

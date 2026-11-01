@@ -5,6 +5,7 @@ import {HEARTH_VERSION} from '../config/version';
 import {exec} from './apps';
 import {type Failure, type RootState} from './failure';
 import {lunaCall} from './luna';
+import {t as tt} from '../i18n';
 
 export interface Versions {
 	/** the webOS release, e.g. 11.2.0 */
@@ -52,11 +53,11 @@ function clean (value: unknown): string | undefined {
 /** Why root is not available, in a few words. */
 export function rootNote (kind: Failure | null): string {
 	switch (kind) {
-		case 'denied': return 'the TV refused the command';
-		case 'no-service': return 'Homebrew Channel service not found';
-		case 'timeout': return 'the Homebrew Channel did not answer';
-		case 'not-webos': return 'not running on a TV';
-		default: return 'the command failed';
+		case 'denied': return tt('about.theTvRefusedTheCommand');
+		case 'no-service': return tt('about.homebrewChannelServiceNotFound');
+		case 'timeout': return tt('about.theHomebrewChannelDidNot');
+		case 'not-webos': return tt('about.notRunningOnATv');
+		default: return tt('about.theCommandFailed');
 	}
 }
 

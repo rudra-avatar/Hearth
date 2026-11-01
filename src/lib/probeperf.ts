@@ -3,7 +3,6 @@
 // while you move through the Tests list. 31: the same on the Home screen (you close Settings, then move along the row).
 // A frame is the time between two screen refreshes: 17 ms is smooth at 60 fps, over 34 ms is a visible stutter.
 
-import {memAvailableMB} from './system';
 import {markList} from './perfmarks';
 import type {ProbeResult, ProbeTest} from './probe';
 
@@ -79,10 +78,10 @@ function startup (): Promise<ProbeResult> {
 	const marks = markList().map((m) => `${m[0]} ${m[1]} ms`).join(', ');
 	const mem = performance as unknown as {memory?: {usedJSHeapSize?: number}};
 	const heap = mem.memory && mem.memory.usedJSHeapSize ? `, JS memory ${Math.round(mem.memory.usedJSHeapSize / 1048576)} MB` : '';
-	return memAvailableMB().then((mb) => mb, () => -1).then((mb) => ({
+	return Promise.resolve({
 		ok: marks.length > 0,
-		text: clip(`Since the page began loading: ${marks || 'no marks'}${heap}${mb >= 0 ? `, free RAM ${mb} MB` : ''}`)
-	}));
+		text: clip(`Since the page began loading: ${marks || 'no marks'}${heap}`)
+	});
 }
 
 export const PERF_TESTS: ProbeTest[] = [

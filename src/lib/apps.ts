@@ -9,11 +9,15 @@
 
 import {APP_CATALOG, type CatalogApp} from '../config/catalog';
 import {APP_ID, LUNA} from '../config/constants';
+import {NOROOT_MOCK} from '../config/features';
 import {isWebOS, lunaCall, type LunaResponse} from './luna';
 import {appExists} from './launch';
 import {noteExec, rootState, type RootState} from './failure';
 import {listTvApps, iconAddress, iconLoads} from './ssap';
+import {keepIcons, readIconData, withKeptIcons} from './ssapicons';
+import {log} from './log';
 import {APPS_CACHE_KEY, deserializeApps, serializeApps} from './appcache';
+import {ICON_STAMPS_KEY, iconIsFresh, parseStamps, stampCommand} from './iconstamps';
 
 export interface AppEntry {
 	id: string;
@@ -22,6 +26,8 @@ export interface AppEntry {
 	iconUrl?: string;
 	/** where the icon file is on the TV (homebrew list only); lets the app cache find it again */
 	iconPath?: string;
+	/** P94b: the TV's own icon address (no-root list); kept in the saved list so the first screen can show the icon at once */
+	tvIcon?: string;
 	/** LG's own "can be removed" flag for this app (homebrew list only) */
 	removable?: boolean;
 	color?: string;
@@ -44,7 +50,13 @@ export function listApps (liveOnly: boolean = false, useTv: boolean = false): Pr
 	const catalog = () => listViaCatalog().then((apps): AppList => ({apps, source: 'catalog'}));
 	const brew = listViaHomebrew().then((apps): AppList => ({apps, source: 'homebrew'}));
 	// EXPERIMENTAL, no root: when the Homebrew list is not available, ask the TV itself (ssap.ts), if the person turned that on
-	const live = useTv ? brew.catch(() => listViaTv().then((apps): AppList => ({apps, source: 'tv'}))) : brew;
+	// P93: when root already failed go straight to the TV; otherwise ask the TV in parallel so a slow root failure costs no time
+	const viaTv = (): Promise<AppList> => listViaTv().then((apps): AppList => ({apps, source: 'tv'}));
+	let live = brew;
+	if (useTv) {
+		if (rootState() === 'no') { brew.catch(() => undefined); live = viaTv(); }
+		else { const tv = viaTv(); tv.catch(() => undefined); live = brew.catch(() => tv); }
+	}
 	return liveOnly ? live : live.catch(catalog);
 }
 
@@ -66,8 +78,21 @@ function listViaCatalog (): Promise<AppEntry[]> {
 
 // ---------- provider 3 (experimental): the TV's remote-control service, no root ----------
 
+const SSAP_ICONS_KEY = 'hearth-ssap-icons-v1';
+
+/** Icon addresses the page has already loaded once (P85): never probed again, so a refresh after boot needs no waiting. */
+function readGoodIcons (): Record<string, number> {
+	try { return JSON.parse(localStorage.getItem(SSAP_ICONS_KEY) || '{}') as Record<string, number>; } catch { return {}; }
+}
+
+function writeGoodIcons (good: Record<string, number>): void {
+	try { localStorage.setItem(SSAP_ICONS_KEY, JSON.stringify(good)); } catch { /* quota: they are probed again next time */ }
+}
+
 function listViaTv (): Promise<AppEntry[]> {
+	const t0 = Date.now();
 	return listTvApps().then((points) => {
+		const tList = Date.now() - t0;
 		const shown = points.filter((p) => p.id && p.title && HIDDEN_IDS.indexOf(p.id) === -1);
 		if (!shown.length) throw new Error('no launch points');
 		const entries = shown.map((p): AppEntry => {
@@ -75,14 +100,29 @@ function listViaTv (): Promise<AppEntry[]> {
 			return {
 				id: p.id,
 				title: known ? known.title : p.title,
-				// a bundled icon is certain to show; otherwise the TV's own picture, kept only if the page can load it (below)
-				iconUrl: known && known.icon ? ICON_DIR + known.icon : p.icon ? iconAddress(p.icon) : undefined,
+				// P84: the TV's own picture first; the bundled one only where the page cannot load it (below)
+				iconUrl: p.icon ? iconAddress(p.icon) : undefined,
+				tvIcon: p.icon ? iconAddress(p.icon) : undefined,
 				removable: p.removable,
 				color: known && known.color
 			};
 		});
-		return Promise.all(entries.map((e) => (e.iconUrl && e.iconUrl.indexOf(ICON_DIR) !== 0 ? iconLoads(e.iconUrl) : Promise.resolve(true))))
-			.then((good) => entries.map((e, i) => (good[i] ? e : {...e, iconUrl: undefined})));
+		const bundled = (e: AppEntry): string | undefined => { const c = APP_CATALOG.find((k) => k.id === e.id); return c && c.icon ? ICON_DIR + c.icon : undefined; };
+		const good = readGoodIcons();
+		const kept = readIconData();
+		const now: Record<string, number> = {};
+		return Promise.all(entries.map((e) => {
+			if (!e.iconUrl) return Promise.resolve(false);
+			if (good[e.iconUrl] || kept[e.iconUrl]) { now[e.iconUrl] = 1; return Promise.resolve(true); }     // P85/P91: loaded or kept before, no probe
+			// P93: only a real failure falls back to the bundled icon; a slow answer keeps the TV address (it may load a moment later)
+			return iconLoads(e.iconUrl).then((r) => { if (r === 'ok') now[e.iconUrl as string] = 1; return r !== 'fail'; });
+		})).then((ok) => {
+			log(`ssap list: ${Date.now() - t0} ms (apps ${tList} ms, icon check ${Date.now() - t0 - tList} ms)`);
+			writeGoodIcons(now);       // only addresses of apps on the TV now
+			const result = entries.map((e, i) => (ok[i] ? e : {...e, iconUrl: bundled(e), tvIcon: undefined}));
+			keepIcons(result.filter((e, i) => ok[i] && e.iconUrl).map((e) => e.iconUrl as string));     // P91: later, in the background
+			return result;
+		});
 	});
 }
 
@@ -91,8 +131,8 @@ function listViaTv (): Promise<AppEntry[]> {
 interface ExecResponse extends LunaResponse { stdoutString?: string; }
 interface LaunchPoint { id: string; title: string; largeIcon?: string; icon?: string; removable?: boolean; }
 
-/** Apps LG lists but that make no sense on a launcher (ourselves, promos). */
-const HIDDEN_IDS = [APP_ID, 'google.assistant.promo', 'com.webos.app.discovery'];
+/** Apps LG lists but that make no sense on a launcher (ourselves, promos). The LG Content Store (`com.webos.app.discovery`) is shown since P39a. */
+const HIDDEN_IDS = [APP_ID, 'google.assistant.promo'];
 
 const ICON_CACHE_KEY = 'launcher-icon-cache-v1';
 
@@ -107,6 +147,7 @@ export function shellQuote (value: string): string {
 
 /** Run a shell command as root through the Homebrew Channel service; resolves with stdout. */
 export function exec (command: string, timeoutMs = 8000): Promise<string> {
+	if (NOROOT_MOCK) { const e = new Error('Service does not exist: org.webosbrew.hbchannel.service (mock non-root build)'); noteExec(e); return Promise.reject(e); }
 	return lunaCall<ExecResponse>(LUNA.homebrewExec, {command}, timeoutMs).then(
 		(r) => { noteExec(); return r.stdoutString || ''; },
 		(error) => { noteExec(error); throw error; }
@@ -163,17 +204,34 @@ function readIcons (jobs: IconJob[]): Promise<Record<number, string>> {
 	}).catch(() => ({}));
 }
 
-/** Read the icons as data URIs, cached in localStorage by path. Batches of ICON_BATCH, run one after another; an icon
- *  missing from its batch is asked for once more on its own. The cache is saved after every batch, so a slow TV keeps
- *  what it has already read. */
+/** Each icon file's size and change time, in one command (see iconstamps.ts). Resolves with {} when it can't. */
+function readStamps (paths: string[]): Promise<Record<string, string>> {
+	if (!paths.length) return Promise.resolve({});
+	return exec(stampCommand(paths.map(shellQuote)), 8000).then(parseStamps, () => ({}));
+}
+
+/** Read the icons as data URIs, cached in localStorage by path. A cached icon is used only while its file's size and
+ *  change time are the ones saved with it, so an app update with a new icon at the same path shows the new one.
+ *  Batches of ICON_BATCH, run one after another; an icon missing from its batch is asked for once more on its own.
+ *  The cache is saved after every batch, so a slow TV keeps what it has already read. */
 function loadIcons (points: LaunchPoint[]): Promise<Record<string, string>> {
+	const paths: string[] = [];
+	for (const p of points) {
+		const path = p.largeIcon || p.icon;
+		if (path && SAFE_PATH.test(path) && paths.indexOf(path) === -1) paths.push(path);
+	}
+	return readStamps(paths).then((now) => loadIconsWith(points, now));
+}
+
+function loadIconsWith (points: LaunchPoint[], now: Record<string, string>): Promise<Record<string, string>> {
 	const cache = readIconCache();
+	const saved = readIconStamps();
 	const result: Record<string, string> = {};
 	const missing: IconJob[] = [];
 	for (const p of points) {
 		const path = p.largeIcon || p.icon;
 		if (!path || !SAFE_PATH.test(path)) continue;
-		if (cache[path]) result[p.id] = cache[path];
+		if (cache[path] && iconIsFresh(path, now, saved)) result[p.id] = cache[path];
 		else missing.push({id: p.id, path});
 	}
 	if (!missing.length) return Promise.resolve(result);
@@ -181,13 +239,23 @@ function loadIcons (points: LaunchPoint[]): Promise<Record<string, string>> {
 	const keep = (): void => {
 		// keep only the icons of apps that are still installed, so the cache does not grow past the storage limit
 		const kept: Record<string, string> = {};
+		const keptStamps: Record<string, string> = {};
 		for (const p of points) {
 			const path = p.largeIcon || p.icon;
-			if (path && cache[path]) kept[path] = cache[path];
+			if (path && cache[path]) {
+				kept[path] = cache[path];
+				if (saved[path]) keptStamps[path] = saved[path];
+			}
 		}
 		writeIconCache(kept);
+		writeIconStamps(keptStamps);
 	};
-	const store = (job: IconJob, url: string): void => { result[job.id] = url; cache[job.path] = url; };
+	const store = (job: IconJob, url: string): void => {
+		result[job.id] = url;
+		cache[job.path] = url;
+		if (now[job.path]) saved[job.path] = now[job.path];
+		else delete saved[job.path];
+	};
 
 	const batches: IconJob[][] = [];
 	for (let i = 0; i < missing.length; i += ICON_BATCH) batches.push(missing.slice(i, i + ICON_BATCH));
@@ -203,7 +271,7 @@ function loadIcons (points: LaunchPoint[]): Promise<Record<string, string>> {
 export function cachedApps (): AppEntry[] {
 	try {
 		const icons = readIconCache();
-		return deserializeApps(localStorage.getItem(APPS_CACHE_KEY), (path) => icons[path]);
+		return withKeptIcons(deserializeApps(localStorage.getItem(APPS_CACHE_KEY), (path) => icons[path]));
 	} catch { return []; }
 }
 
@@ -220,4 +288,14 @@ function readIconCache (): Record<string, string> {
 function writeIconCache (cache: Record<string, string>): void {
 	try { localStorage.setItem(ICON_CACHE_KEY, JSON.stringify(cache)); }
 	catch { /* quota exceeded: icons will simply be re-fetched next time */ }
+}
+
+function readIconStamps (): Record<string, string> {
+	try { return JSON.parse(localStorage.getItem(ICON_STAMPS_KEY) || '{}'); }
+	catch { return {}; }
+}
+
+function writeIconStamps (stamps: Record<string, string>): void {
+	try { localStorage.setItem(ICON_STAMPS_KEY, JSON.stringify(stamps)); }
+	catch { /* quota exceeded: icons are read again next time, which is harmless */ }
 }

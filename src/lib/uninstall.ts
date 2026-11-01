@@ -5,16 +5,17 @@
 
 import {APP_ID} from '../config/constants';
 import {exec} from './apps';
+import {t as tt} from '../i18n';
 
 export const UNINSTALL_LOG = '/tmp/launcher-uninstall.log';
 
 const ID_PATTERN = /^[A-Za-z0-9._-]+$/;
 
 /** Never offered for removal, with the reason shown to the user. */
-const PROTECTED: Record<string, string> = {
-	[APP_ID]: 'This is the launcher itself',
-	'com.webos.app.home': 'LG Home is part of the TV',
-	'org.webosbrew.hbchannel': 'The launcher needs the Homebrew Channel to run its commands'
+const PROTECTED: Record<string, () => string> = {
+	[APP_ID]: () => tt('uninstall.thisIsTheLauncherItself'),
+	'com.webos.app.home': () => tt('uninstall.lgHomeIsPartOfThe'),
+	'org.webosbrew.hbchannel': () => tt('uninstall.theLauncherNeedsTheHomebrew')
 };
 const SYSTEM_PREFIXES = ['com.webos.', 'com.palm.', 'com.lge.'];
 /** Where apps installed by the user live (developer-mode apps, and apps from the LG Content Store). */
@@ -36,13 +37,13 @@ export interface Verdict {
 
 /** May this app be offered for uninstalling? Needs positive evidence that it is user-installed. */
 export function uninstallVerdict (app: UninstallCandidate): Verdict {
-	if (!ID_PATTERN.test(app.id)) return {ok: false, reason: "That app's ID can't be used"};
-	if (PROTECTED[app.id]) return {ok: false, reason: PROTECTED[app.id]};
-	if (SYSTEM_PREFIXES.some((prefix) => app.id.indexOf(prefix) === 0)) return {ok: false, reason: "System apps can't be uninstalled"};
-	if (app.removable === false) return {ok: false, reason: 'The TV says this app cannot be removed'};
+	if (!ID_PATTERN.test(app.id)) return {ok: false, reason: tt('uninstall.thatAppSIdCan')};
+	if (PROTECTED[app.id]) return {ok: false, reason: PROTECTED[app.id]()};
+	if (SYSTEM_PREFIXES.some((prefix) => app.id.indexOf(prefix) === 0)) return {ok: false, reason: tt('uninstall.systemAppsCanTBe')};
+	if (app.removable === false) return {ok: false, reason: tt('uninstall.theTvSaysThisApp')};
 	if (app.removable === true) return {ok: true, reason: ''};
 	if (app.iconPath && USER_APP_DIRS.some((dir) => (app.iconPath as string).indexOf(dir) === 0)) return {ok: true, reason: ''};
-	return {ok: false, reason: "This doesn't look like an app you installed"};
+	return {ok: false, reason: tt('uninstall.thisDoesnTLookLike')};
 }
 
 export type UninstallResult = 'removed' | 'still-installed' | 'failed';

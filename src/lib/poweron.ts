@@ -11,12 +11,13 @@ import {
 	ABANDON_COMMAND, READ_NEW_COMMAND, READ_STOCK_COMMAND, REMOVE_COMMAND, RESTART_COMMAND, STATUS_COMMAND, buildOverride,
 	finishCommand, parseStatus, powerOnMessage, writeSteps, type PowerOnResult, type PowerOnStatus
 } from './poweroncmd';
+import {t as tt} from '../i18n';
 
 export type {PowerOnResult, PowerOnStatus};
 export {powerOnMessage};
 
 const lf = (text: string): string => text.replace(/\r\n?/g, '\n');     // plain line ends even from a Windows checkout
-const why = (error: unknown): string => (error && (error as Error).message ? (error as Error).message : 'no answer');
+const why = (error: unknown): string => (error && (error as Error).message ? (error as Error).message : tt('poweron.noAnswer'));
 
 /** What is on the TV, or null when it could not be read. */
 export function readPowerOn (): Promise<PowerOnStatus | null> {
@@ -41,9 +42,9 @@ export interface PowerOnOutcome {
  *  moved into place in one step. A failure takes back only what this attempt wrote, so an earlier choice stays; the
  *  outcome then carries what the TV has now. */
 export function setPowerOnApp (appId: string, network = false): Promise<PowerOnOutcome> {
-	if (!isWebOS()) return Promise.resolve({result: 'failed', detail: 'not running on a TV'});
+	if (!isWebOS()) return Promise.resolve({result: 'failed', detail: tt('poweron.notRunningOnATv')});
 	return readPowerOn().then((status): PowerOnOutcome | Promise<PowerOnOutcome> => {
-		if (!status) return {result: 'failed', detail: 'the TV did not answer', status};
+		if (!status) return {result: 'failed', detail: tt('poweron.theTvDidNotAnswer'), status};
 		if (!status.supported) return {result: 'unsupported', detail: '', status};
 		if (status.foreign) return {result: 'foreign', detail: '', status};
 		return exec(READ_STOCK_COMMAND, 6000).then((stock) => {
@@ -61,7 +62,7 @@ export function setPowerOnApp (appId: string, network = false): Promise<PowerOnO
 					return readPowerOn();
 				})
 				.then((now): PowerOnOutcome => {
-					if (!now || now.chosen !== appId || now.network !== network) return {result: 'failed', detail: 'the TV did not keep it', status: now};
+					if (!now || now.chosen !== appId || now.network !== network) return {result: 'failed', detail: tt('poweron.theTvDidNotKeep'), status: now};
 					log(`Power-on app: ${appId}${network ? ' (network wake-ups too)' : ''} (from the next start)`);
 					return {result: 'applied', detail: '', status: now};
 				});
@@ -79,7 +80,7 @@ export function setPowerOnApp (appId: string, network = false): Promise<PowerOnO
 
 /** Back to the TV's own behaviour (from the next start). */
 export function clearPowerOnApp (): Promise<PowerOnOutcome> {
-	if (!isWebOS()) return Promise.resolve({result: 'failed', detail: 'not running on a TV'});
+	if (!isWebOS()) return Promise.resolve({result: 'failed', detail: tt('poweron.notRunningOnATv')});
 	return exec(REMOVE_COMMAND, 6000).then(
 		(out) => ({result: (/removed/.test(out) ? 'removed' : 'foreign') as PowerOnResult, detail: ''}),
 		(error: Error) => ({result: 'failed' as PowerOnResult, detail: why(error)})

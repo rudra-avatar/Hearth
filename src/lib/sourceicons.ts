@@ -1,4 +1,5 @@
 import {isAppIcon} from '../config/appicons';
+import {t as tt} from '../i18n';
 
 // Icons and names for the Sources (HDMI inputs and so on): drawn as simple line art in the theme's colours, and
 // editable per source (Settings → Apps or Sources → hold OK on a tile). The TV's own name and icon are used until edited.
@@ -11,30 +12,32 @@ export interface SourceIcon {
 }
 
 export const SOURCE_ICONS: readonly SourceIcon[] = [
-	{id: 'hdmi', label: 'HDMI port', path: 'M4 7.5h16v6.2l-2.3 3.3H6.3L4 13.7zM8.5 11h7'},
-	{id: 'tv', label: 'TV', path: 'M3 5.5h18v11H3zM8.5 20h7M12 16.5V20'},
-	{id: 'console', label: 'Game console', path: 'M3.5 8.5h17v7.5h-17zM7 12.2h6.5M17 12.2h.01M9 19h6'},
-	{id: 'controller', label: 'Game controller', path: 'M7 7.5h10a4 4 0 0 1 4 4v1.5a3 3 0 0 1-5.2 2L14.5 14h-5l-1.3 1A3 3 0 0 1 3 13v-1.5a4 4 0 0 1 4-4zM8 10v3M6.5 11.5h3M15.5 10.8h.01M17.5 12.6h.01'},
-	{id: 'desktop', label: 'Desktop PC', path: 'M3.5 4.5h17v11h-17zM9 20h6M12 15.5V20'},
-	{id: 'laptop', label: 'Laptop', path: 'M5.5 6h13v9h-13zM3 18.5h18l-1.2-3.5H4.2z'},
-	{id: 'tvbox', label: 'TV box / stick', path: 'M4 9.5h16v6.5H4zM8 12.8h4M17 12.8h.01'},
-	{id: 'settop', label: 'Cable / satellite box', path: 'M3.5 9h17v7h-17zM7 12.5h3M17 11.2h.01M17 13.8h.01'},
-	{id: 'disc', label: 'Disc player', path: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM12 10.3a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4z'},
-	{id: 'speaker', label: 'Soundbar / speaker', path: 'M3 9.5h18v6H3zM7 12.5h.01M17 12.5h.01M10 12.5h4'},
-	{id: 'antenna', label: 'Antenna', path: 'M12 12.5v8M8 20.5h8M7.5 9a6 6 0 0 1 9 0M4.7 6.5a10 10 0 0 1 14.6 0M12 12.5h.01'},
-	{id: 'phone', label: 'Phone / tablet', path: 'M8 3.5h8a1.5 1.5 0 0 1 1.5 1.5v14a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 19V5A1.5 1.5 0 0 1 8 3.5zM11 18h2'},
-	{id: 'camera', label: 'Camera', path: 'M4 8h3.5l1.5-2h6l1.5 2H20v10.5H4zM12 10.3a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'},
-	{id: 'usb', label: 'USB', path: 'M12 3.5v13M12 16.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM12 11l4-2.5v-2M12 13.5L8 11V9M15 4.5h2.5v2H15zM6.8 7h2.4v2H6.8z'},
-	{id: 'input', label: 'Other input', path: 'M14 4.5h5.5v15H14M3.5 12h11M10.5 8l4 4-4 4'}
+	{id: 'hdmi', get label () { return tt('sourceicons.hdmiPort'); }, path: 'M4 7.5h16v6.2l-2.3 3.3H6.3L4 13.7zM8.5 11h7'},
+	{id: 'tv', get label () { return tt('sourceicons.tv'); }, path: 'M3 5.5h18v11H3zM8.5 20h7M12 16.5V20'},
+	{id: 'console', get label () { return tt('sourceicons.gameConsole'); }, path: 'M3.5 8.5h17v7.5h-17zM7 12.2h6.5M17 12.2h.01M9 19h6'},
+	{id: 'controller', get label () { return tt('sourceicons.gameController'); }, path: 'M7 7.5h10a4 4 0 0 1 4 4v1.5a3 3 0 0 1-5.2 2L14.5 14h-5l-1.3 1A3 3 0 0 1 3 13v-1.5a4 4 0 0 1 4-4zM8 10v3M6.5 11.5h3M15.5 10.8h.01M17.5 12.6h.01'},
+	{id: 'desktop', get label () { return tt('sourceicons.desktopPc'); }, path: 'M3.5 4.5h17v11h-17zM9 20h6M12 15.5V20'},
+	{id: 'laptop', get label () { return tt('sourceicons.laptop'); }, path: 'M5.5 6h13v9h-13zM3 18.5h18l-1.2-3.5H4.2z'},
+	{id: 'tvbox', get label () { return tt('sourceicons.tvBoxStick'); }, path: 'M4 9.5h16v6.5H4zM8 12.8h4M17 12.8h.01'},
+	{id: 'settop', get label () { return tt('sourceicons.cableSatelliteBox'); }, path: 'M3.5 9h17v7h-17zM7 12.5h3M17 11.2h.01M17 13.8h.01'},
+	{id: 'disc', get label () { return tt('sourceicons.discPlayer'); }, path: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM12 10.3a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4z'},
+	{id: 'speaker', get label () { return tt('sourceicons.soundbarSpeaker'); }, path: 'M3 9.5h18v6H3zM7 12.5h.01M17 12.5h.01M10 12.5h4'},
+	{id: 'antenna', get label () { return tt('sourceicons.antenna'); }, path: 'M12 12.5v8M8 20.5h8M7.5 9a6 6 0 0 1 9 0M4.7 6.5a10 10 0 0 1 14.6 0M12 12.5h.01'},
+	{id: 'phone', get label () { return tt('sourceicons.phoneTablet'); }, path: 'M8 3.5h8a1.5 1.5 0 0 1 1.5 1.5v14a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 19V5A1.5 1.5 0 0 1 8 3.5zM11 18h2'},
+	{id: 'camera', get label () { return tt('sourceicons.camera'); }, path: 'M4 8h3.5l1.5-2h6l1.5 2H20v10.5H4zM12 10.3a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'},
+	{id: 'usb', get label () { return tt('sourceicons.usb'); }, path: 'M12 3.5v13M12 16.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM12 11l4-2.5v-2M12 13.5L8 11V9M15 4.5h2.5v2H15zM6.8 7h2.4v2H6.8z'},
+	{id: 'input', get label () { return tt('sourceicons.otherInput'); }, path: 'M14 4.5h5.5v15H14M3.5 12h11M10.5 8l4 4-4 4'}
 ];
 
 export const SOURCE_ICON_IDS: string[] = SOURCE_ICONS.map((i) => i.id);
 
 /** Names to step through with ← → (typing a name is also possible). */
-export const SUGGESTED_NAMES: readonly string[] = [
-	'PlayStation 5', 'PlayStation 4', 'Xbox', 'Nintendo Switch', 'PC', 'Laptop', 'Apple TV', 'Fire TV', 'Chromecast',
-	'Roku', 'Cable box', 'Blu-ray', 'Soundbar', 'Camera', 'Game console'
-];
+export function suggestedNames (): string[] {
+	return [
+		'PlayStation 5', 'PlayStation 4', 'Xbox', 'Nintendo Switch', 'PC', tt('sourceicons.laptop'), 'Apple TV', 'Fire TV', 'Chromecast',
+		'Roku', tt('sourceicons.cableBox'), 'Blu-ray', tt('sourceicons.soundbar'), tt('sourceicons.camera'), tt('sourceicons.gameConsole')
+	];
+}
 
 /** What the TV's own icon file name stands for (the file names are LG's). */
 const LG_ICON: Record<string, string> = {
@@ -92,5 +95,5 @@ export function iconPath (id: string): string {
 
 export function iconLabel (id: string): string {
 	const icon = SOURCE_ICONS.filter((i) => i.id === id)[0];
-	return icon ? icon.label : 'Other input';
+	return icon ? icon.label : tt('sourceicons.otherInput');
 }

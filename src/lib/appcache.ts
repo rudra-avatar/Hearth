@@ -12,6 +12,7 @@ export function serializeApps (apps: AppEntry[]): string {
 		title: a.title,
 		color: a.color,
 		iconPath: a.iconPath,
+		tvIcon: a.tvIcon,
 		removable: a.removable,
 		// data: icons are rebuilt from the icon cache; bundled ones are plain relative paths
 		iconUrl: a.iconUrl && a.iconUrl.indexOf('data:') === 0 ? undefined : a.iconUrl
@@ -30,8 +31,9 @@ export function deserializeApps (json: string | null, iconByPath: (path: string)
 				title: a.title as string,
 				color: a.color,
 				iconPath: a.iconPath,
+				tvIcon: a.tvIcon,
 				removable: typeof a.removable === 'boolean' ? a.removable : undefined,
-				iconUrl: a.iconUrl || (a.iconPath ? iconByPath(a.iconPath) : undefined)
+				iconUrl: a.iconUrl || a.tvIcon || (a.iconPath ? iconByPath(a.iconPath) : undefined)
 			}));
 	} catch {
 		return [];

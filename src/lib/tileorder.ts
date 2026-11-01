@@ -16,6 +16,14 @@ export function orderTiles<T> (items: T[], keyOf: (item: T) => string, order: st
 	return listed.concat(items.filter((item) => !placed[keyOf(item)]));
 }
 
+/** The keys `key` moves among: with favourites on the row, its own row (the favourites, or all the others); else all of them. */
+export function moveGroup (keys: string[], favourites: string[], key: string): string[] {
+	const favs = favourites.filter((k) => keys.indexOf(k) !== -1);
+	if (favs.length === 0) return keys;
+	const isFav = favs.indexOf(key) !== -1;
+	return keys.filter((k) => (favs.indexOf(k) !== -1) === isFav);
+}
+
 /** Which moves are possible for `key` in `keys`. */
 export function movesFor (keys: string[], key: string): {start: boolean; left: boolean; right: boolean; end: boolean} {
 	const at = keys.indexOf(key);

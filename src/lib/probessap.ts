@@ -4,11 +4,14 @@
 
 import {lunaCall} from './luna';
 import type {ProbeResult, ProbeTest} from './probe';
+import {closedError, isEarlyClose, registerMessage, variantOf} from './ssapreg';
+import type {Variant} from './ssapreg';
+import {askViaService, pairViaService, summaryOf, variantAt} from './ssapsvc';
+import type {SvcRoute} from './ssapsvc';
 
 type Json = Record<string, unknown>;
 
 const KEY_STORE = 'hearth-probe-ssap';
-const PERMISSIONS = ['LAUNCH', 'READ_INSTALLED_APPS', 'READ_INPUT_DEVICE_LIST', 'READ_RUNNING_APPS', 'READ_APP_STATUS'];
 
 const clip = (text: string, n = 230): string => (text.length > n ? text.slice(0, n - 1) + '…' : text);
 const ok = (text: string): ProbeResult => ({ok: true, text: clip('OK: ' + text)});
@@ -57,22 +60,22 @@ function parse (data: unknown): Json | null {
 }
 
 /** register with PROMPT pairing; resolves with the client key. `onPrompt` runs when the TV says it is asking the user. */
-function register (ws: WebSocket, key: string, ms: number): Promise<{key: string; prompted: boolean}> {
+function register (ws: WebSocket, key: string, ms: number, variant: Variant): Promise<{key: string; prompted: boolean}> {
 	return new Promise((resolve, reject) => {
 		let prompted = false;
+		let replied = false;
 		const timer = window.setTimeout(() => reject(new Error(prompted ? 'prompt shown, but nobody pressed OK in time' : 'no reply to register')), ms);
 		ws.onmessage = (ev) => {
 			const m = parse(ev.data);
 			if (!m) return;
+			replied = true;
 			const p = (m.payload || {}) as Json;
 			if (m.type === 'response' && p.pairingType) prompted = true;
 			if (m.type === 'registered') { window.clearTimeout(timer); resolve({key: String(p['client-key'] || ''), prompted}); }
 			if (m.type === 'error') { window.clearTimeout(timer); reject(new Error(String(m.error || 'TV refused the pairing'))); }
 		};
-		ws.onclose = () => { window.clearTimeout(timer); reject(new Error('TV closed the connection')); };
-		const payload: Json = {pairingType: 'PROMPT', forcePairing: false, manifest: {manifestVersion: 1, appVersion: '1.0', permissions: PERMISSIONS}};
-		if (key) payload['client-key'] = key;
-		ws.send(JSON.stringify({id: 'register_0', type: 'register', payload}));
+		ws.onclose = (ev) => { window.clearTimeout(timer); reject(closedError(ev && ev.code, replied)); };
+		ws.send(registerMessage(key, variant));
 	});
 }
 
@@ -93,17 +96,18 @@ function request (ws: WebSocket, uri: string, ms = 8000): Promise<Json> {
 	});
 }
 
-interface Saved {url: string; key: string}
+interface Saved {url: string; key: string; m?: Variant; svc?: SvcRoute}
 
 function loadSaved (): Saved | null {
-	try { const s = JSON.parse(window.localStorage.getItem(KEY_STORE) || 'null') as Saved | null; return s && s.url && s.key ? s : null; } catch { return null; }
+	try { const s = JSON.parse(window.localStorage.getItem(KEY_STORE) || 'null') as Saved | null; return s && s.url && s.key ? {url: s.url, key: s.key, m: variantOf(s.m), svc: s.svc && s.svc.port ? s.svc : undefined} : null; } catch { return null; }
 }
 
 /** Reconnects to the saved endpoint with the saved key and runs `fn` on it. */
 function withSession<T> (fn: (ws: WebSocket) => Promise<T>): Promise<T> {
 	const saved = loadSaved();
 	if (!saved) return Promise.reject(new Error('no saved pairing: run test 21 first'));
-	return openSocket(saved.url).then((ws) => register(ws, saved.key, 8000).then((r) => {
+	if (saved.svc) return Promise.reject(new Error('paired through the helper service (21b): this test needs the page route; see 21c for the list'));
+	return openSocket(saved.url).then((ws) => register(ws, saved.key, 8000, variantOf(saved.m)).then((r) => {
 		if (r.prompted) throw new Error('the TV asked for pairing again (the saved key was not accepted)');
 		return fn(ws);
 	}).then((v) => { ws.close(); return v; }, (e) => { try { ws.close(); } catch { /* ignore */ } throw e; }));
@@ -161,13 +165,51 @@ export const SSAP_TESTS: ProbeTest[] = [
 				(ws) => ({url, ws}), () => null as null | {url: string; ws: WebSocket})), Promise.resolve(null as null | {url: string; ws: WebSocket}))).then((found) => {
 				if (!found) return no('no remote-control port could be opened (see tests 19 and 20)');
 				const saved = loadSaved();
-				return register(found.ws, saved && saved.url === found.url ? saved.key : '', 65000).then((r) => {
-					found.ws.close();
+				const key = saved && saved.url === found.url ? saved.key : '';
+				const first: Variant = key ? variantOf(saved && saved.m) : 'new';
+				const done = (ws: WebSocket, r: {key: string; prompted: boolean}, variant: Variant): ProbeResult => {
+					ws.close();
 					if (!r.key) return no('paired, but the TV gave no key');
-					try { window.localStorage.setItem(KEY_STORE, JSON.stringify({url: found.url, key: r.key})); } catch { /* ignore */ }
-					return ok(`paired on ${short(found.url)} after ${Math.round((Date.now() - started) / 1000)} s; ${r.prompted ? 'the TV asked for permission' : 'no prompt was needed'}; key saved`);
-				}, (e) => { try { found.ws.close(); } catch { /* ignore */ } return no(`on ${short(found.url)}: ${msg(e)}`); });
+					try { window.localStorage.setItem(KEY_STORE, JSON.stringify({url: found.url, key: r.key, m: variant})); } catch { /* ignore */ }
+					return ok(`paired on ${short(found.url)} after ${Math.round((Date.now() - started) / 1000)} s with the ${variant} request; ${r.prompted ? 'the TV asked for permission' : 'no prompt was needed'}; key saved`);
+				};
+				return register(found.ws, key, 65000, first).then((r) => done(found.ws, r, first), (e) => {
+					try { found.ws.close(); } catch { /* ignore */ }
+					if (first === 'new' && isEarlyClose(e)) {
+						const firstText = msg(e);
+						return openSocket(found.url).then((ws2) => register(ws2, key, 65000, 'old').then((r) => done(ws2, r, 'old'), (e2) => { try { ws2.close(); } catch { /* ignore */ } return no(`on ${short(found.url)}: new request: ${firstText}; old request: ${msg(e2)}`); }), (e3) => no(`on ${short(found.url)}: new request: ${firstText}; old request: ${msg(e3)}`));
+					}
+					return no(`on ${short(found.url)}: ${msg(e)}`);
+				});
 			}, (e) => no(msg(e)));
+		}
+	},
+	{
+		id: 'ssapsvcpair', manual: true, label: '21b. SSAP: pair through the helper service (press OK)',
+		description: 'Hearth\'s helper service (in the app package) opens the remote-control port with other Origin headers. Press OK on the TV if it asks, within 60 seconds.',
+		run: () => {
+			const started = Date.now();
+			return pairViaService(65000).then((r) => {
+				if (!r.key || !r.route) return no(summaryOf(r.results) || 'the helper gave no result');
+				try { window.localStorage.setItem(KEY_STORE, JSON.stringify({url: 'service', key: r.key, m: variantAt(r.route.reg), svc: {port: r.route.port, tls: r.route.tls, origin: r.route.origin}})); } catch { /* ignore */ }
+				const prompted = r.results.some((a) => a.prompted);
+				return ok(`paired on port ${r.route.port} with Origin ${r.route.origin || '(none)'}, ${variantAt(r.route.reg)} request, ${Math.round((Date.now() - started) / 1000)} s; ${prompted ? 'the TV asked for permission' : 'no prompt was needed'}; key saved. Failed before: ${summaryOf(r.results.filter((a) => !a.replied))}`);
+			}, (e) => no('helper service: ' + msg(e)));
+		}
+	},
+	{
+		id: 'ssapsvclist', label: '21c. SSAP: app list through the helper service',
+		description: 'Reads the list of apps through the helper service with the key saved by 21b.',
+		run: () => {
+			const saved = loadSaved();
+			if (!saved || !saved.svc) return Promise.resolve(no('no pairing through the helper service: run test 21b first'));
+			return askViaService(saved.svc, saved.key, variantOf(saved.m), 'ssap://com.webos.applicationManager/listLaunchPoints').then((r) => {
+				if (!r) return no('the TV asked to pair again (the saved key was not accepted)');
+				const pts = r.launchPoints;
+				if (!Array.isArray(pts)) return no('the TV answered but gave no list: ' + JSON.stringify(r).slice(0, 120));
+				const first = (pts[0] || {}) as Json;
+				return ok(`${pts.length} apps, e.g. ${pts.slice(0, 5).map((p) => titleOf((p || {}) as Json)).join(', ')}. Icon address looks like ${hide(String(first.largeIcon || first.icon || 'none'))}`);
+			}, (e) => no('helper service: ' + msg(e)));
 		}
 	},
 	{

@@ -11,6 +11,8 @@
 import {WALLPAPER} from '../config/constants';
 import {exec, shellQuote} from './apps';
 import {isWebOS} from './luna';
+import {setRootVars} from './cssvars';
+import {t as tt} from '../i18n';
 
 export interface DirEntry {
 	name: string;
@@ -26,7 +28,21 @@ const IMAGE_NAME = /\.(jpe?g|png|webp|bmp)$/i;
 /** Control characters (including newline) can never be part of a path we pass to a shell. */
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
 
-export const INTERNAL_ROOT: StorageRoot = {label: 'Internal storage', path: '/media/developer'};
+export const INTERNAL_ROOT: StorageRoot = {get label () { return tt('wallpaper.internalStorage'); }, path: '/media/developer'};
+/** The folders Hearth advises for your own pictures (wallpaper) and pictures or videos (screen saver); made once on a rooted TV. */
+export const WALLPAPER_FOLDER: StorageRoot = {get label () { return tt('wallpaper.wallpapersFolder'); }, path: '/media/developer/wallpapers'};
+export const SAVER_FOLDER: StorageRoot = {get label () { return tt('wallpaper.screenSaversFolder'); }, path: '/media/developer/screensavers'};
+const FOLDERS_KEY = 'hearth-folders-made';
+
+/** Makes the two folders once (`mkdir -p`, never again once it worked, so a folder you delete stays deleted). A TV that cannot run
+ *  commands is tried again at the next start. Never throws. */
+export function ensureUserFolders (): Promise<void> {
+	if (!isWebOS()) return Promise.resolve();
+	try { if (localStorage.getItem(FOLDERS_KEY)) return Promise.resolve(); } catch (e) { return Promise.resolve(); }
+	return exec(`mkdir -p ${shellQuote(WALLPAPER_FOLDER.path)} ${shellQuote(SAVER_FOLDER.path)}; [ -d ${shellQuote(WALLPAPER_FOLDER.path)} ] && [ -d ${shellQuote(SAVER_FOLDER.path)} ] && echo made`, 6000).then((out) => {
+		if (/^made$/m.test(out)) { try { localStorage.setItem(FOLDERS_KEY, '1'); } catch (e) { /* not saved: tried again next start */ } }
+	}, () => undefined);
+}
 
 // ---------- path helpers ----------
 
@@ -69,8 +85,15 @@ export function shuffled<T> (list: T[]): T[] {
 // One persisted deck per selected folder, consumed only as photos are loaded.
 const SHUFFLE_KEY = 'customlauncher-wallpaper-deck-v1';
 
+/** A short fingerprint of a list of paths (a big folder tree would otherwise fill the storage with its own list). */
+function listHash (files: string[]): string {
+	let h = 5381;
+	for (const f of files) for (let i = 0; i < f.length; i++) h = ((h * 33) ^ f.charCodeAt(i)) >>> 0;
+	return h.toString(36);
+}
+
 export function createShuffleOrder (files: string[], folderId: string) {
-	const id = JSON.stringify([folderId, files]);
+	const id = `${folderId}#${files.length}#${listHash(files)}`;
 	let remaining: string[] = [];
 	let last = '';
 	try {
@@ -111,29 +134,56 @@ export function createShuffleOrder (files: string[], folderId: string) {
 /** Turns the output of `ls -1p` into entries: folders first, then pictures, each A–Z.
  *  Hidden files (including the "._" files macOS leaves on USB drives) and other file
  *  types are dropped. */
-export function parseListing (output: string): DirEntry[] {
+export function parseListing (output: string, gifs = false, zips = false, ext?: RegExp): DirEntry[] {
 	const dirs: DirEntry[] = [];
 	const pictures: DirEntry[] = [];
 	for (const line of output.split('\n')) {
 		const name = line.replace(/\r$/, '');
 		if (!name || name.charAt(0) === '.') continue;
 		if (name.charAt(name.length - 1) === '/') dirs.push({name: name.slice(0, -1), isDir: true});
-		else if (isPicture(name)) pictures.push({name, isDir: false});
+		else if (ext ? ext.test(name) : zips ? /\.zip$/i.test(name) : isPicture(name) || (gifs && name.charAt(0) !== '.' && /\.(gif|mp4|m4v|mov|mkv|webm)$/i.test(name))) pictures.push({name, isDir: false});
 	}
 	const byName = (a: DirEntry, b: DirEntry) => a.name.toLowerCase() < b.name.toLowerCase() ? -1 : a.name.toLowerCase() > b.name.toLowerCase() ? 1 : 0;
 	return dirs.sort(byName).concat(pictures.sort(byName));
 }
 
-export function listDir (path: string): Promise<DirEntry[]> {
+/** `gifs`: animated GIFs and videos are listed too (the screen saver plays them; wallpapers do not). */
+export function listDir (path: string, gifs = false, zips = false, ext?: RegExp): Promise<DirEntry[]> {
 	if (!isWebOS()) return Promise.resolve(mockListing(path));
 	if (!isSafePath(path)) return Promise.reject(new Error('Unsafe path'));
-	return exec(`ls -1p -- ${shellQuote(path)} 2>/dev/null`).then(parseListing);
+	return exec(`ls -1p -- ${shellQuote(path)} 2>/dev/null`).then((out) => parseListing(out, gifs, zips, ext));
 }
 
-/** Full paths of the pictures directly inside `path` (not its sub-folders). */
-export function listImages (path: string): Promise<string[]> {
+/** Full paths of every picture in `path` and in all folders inside it (no limit). The list is made in a temporary file on the TV
+ *  and read back in pages, so a very large tree never hits the shell service's output limit. Hidden files and folders are skipped. */
+const DEEP_FILE = '/tmp/hearth-wallpaper-list';
+const DEEP_PAGE = 250;
+const DEEP_NAMES = ['jpg', 'jpeg', 'png', 'webp', 'bmp'].map((x) => `-iname '*.${x}'`).join(' -o ');
+export function listImagesDeep (path: string): Promise<string[]> {
+	if (!isWebOS()) return Promise.resolve(listImages(path));
+	if (!isSafePath(path)) return Promise.reject(new Error('Unsafe path'));
+	const out: string[] = [];
+	const page = (from: number, total: number): Promise<string[]> => {
+		if (from > total) return Promise.resolve(out);
+		return exec(`sed -n '${from},${from + DEEP_PAGE - 1}p' ${DEEP_FILE}`).then((text) => {
+			for (const line of text.split('\n')) {
+				const f = line.replace(/\r$/, '');
+				if (f && isPicture(baseName(f)) && f.slice(path.length).indexOf('/.') < 0) out.push(f);
+			}
+			return page(from + DEEP_PAGE, total);
+		});
+	};
+	return exec(`find -L ${shellQuote(path)} -type f \\( ${DEEP_NAMES} \\) 2>/dev/null | sort > ${DEEP_FILE}; wc -l < ${DEEP_FILE}`).then((n) => {
+		const total = parseInt(n.trim(), 10) || 0;
+		return page(1, total);
+	}).then((list) => exec(`rm -f ${DEEP_FILE}; true`).then(() => list, () => list));
+}
+
+/** Full paths of the pictures directly inside `path`; with `recursive`, also those in the folders inside it. No limit on the count. */
+export function listImages (path: string, recursive = false): Promise<string[]> {
+	if (recursive) return listImagesDeep(path);
 	return listDir(path).then((entries) =>
-		entries.filter((e) => !e.isDir).slice(0, WALLPAPER.maxFiles).map((e) => joinPath(path, e.name))
+		entries.filter((e) => !e.isDir).map((e) => joinPath(path, e.name))
 	);
 }
 
@@ -149,12 +199,12 @@ export function parseMounts (output: string): StorageRoot[] {
 		if (!isUsb || !isSafePath(mount) || roots.some((r) => r.path === mount)) continue;
 		roots.push({label: 'USB drive', path: mount});
 	}
-	if (roots.length > 1) roots.forEach((r, i) => { r.label = `USB drive ${i + 1}`; });
+	if (roots.length > 1) roots.forEach((r, i) => { r.label = tt('wallpaper.usbDriveV1', {v1: i + 1}); });
 	return roots;
 }
 
 export function listRoots (): Promise<StorageRoot[]> {
-	if (!isWebOS()) return Promise.resolve([{label: 'USB drive', path: '/tmp/usb/sda/sda1'}, INTERNAL_ROOT]);
+	if (!isWebOS()) return Promise.resolve([{label: tt('wallpaper.usbDrive'), path: '/tmp/usb/sda/sda1'}, INTERNAL_ROOT]);
 	// Rejects when the shell service isn't reachable, so the picker can say why it is empty.
 	return exec('cat /proc/mounts').then((out) => parseMounts(out).concat(INTERNAL_ROOT));
 }
@@ -192,7 +242,7 @@ function decodeBase64 (text: string): Uint8Array {
 /** Reads a file through the shell, `chunkBytes` per call, a few calls at a time.
  *  Resolves with the pieces in order. `run` is the shell (injectable for tests). */
 export function readFileChunks (path: string, run: Run = exec): Promise<Uint8Array[]> {
-	if (!isSafePath(path)) return Promise.reject(pictureError('bad-path', "That file name can't be used"));
+	if (!isSafePath(path)) return Promise.reject(pictureError('bad-path', tt('wallpaper.thatFileNameCanT')));
 	const quoted = shellQuote(path);
 	const chunk = WALLPAPER.chunkBytes;
 
@@ -248,7 +298,7 @@ export function isOversized (width: number, height: number): boolean {
 /** Resolves with the picture to show, or rejects with a PictureError whose message says what
  *  went wrong. */
 export function loadPicture (path: string): Promise<LoadedPicture> {
-	if (!isSafePath(path)) return Promise.reject(pictureError('bad-path', "That file name can't be used"));
+	if (!isSafePath(path)) return Promise.reject(pictureError('bad-path', tt('wallpaper.thatFileNameCanT')));
 	const source: Promise<string> = isWebOS()
 		? readFileChunks(path).then((parts) => URL.createObjectURL(new Blob(parts as unknown as BlobPart[], {type: mimeType(path)})))
 		: Promise.resolve(fileUrl(path));        // desktop preview: file:// works there
@@ -294,7 +344,7 @@ function prepare (url: string, img: HTMLImageElement): Promise<LoadedPicture> {
 function decode (url: string): Promise<HTMLImageElement> {
 	return new Promise<HTMLImageElement>((resolve, reject) => {
 		const img = new Image();
-		const timer = window.setTimeout(() => done(() => reject(pictureError('not-a-picture', 'The picture took too long to open'))), WALLPAPER.probeTimeoutMs);
+		const timer = window.setTimeout(() => done(() => reject(pictureError('not-a-picture', tt('wallpaper.thePictureTookTooLong')))), WALLPAPER.probeTimeoutMs);
 		const done = (fn: () => void) => {
 			window.clearTimeout(timer);
 			img.onload = null;
@@ -304,10 +354,10 @@ function decode (url: string): Promise<HTMLImageElement> {
 		img.onload = () => done(() => {
 			const megapixels = Math.round(img.naturalWidth * img.naturalHeight / 1000000);
 			if (img.naturalWidth * img.naturalHeight > WALLPAPER.maxPixels) {
-				reject(pictureError('too-many-pixels', `That picture is ${megapixels} megapixels; the limit is ${WALLPAPER.maxPixels / 1000000}`));
+				reject(pictureError('too-many-pixels', tt('wallpaper.thatPictureIsMegapixelsMegapixels', {megapixels, v2: WALLPAPER.maxPixels / 1000000})));
 			} else resolve(img);
 		});
-		img.onerror = () => done(() => reject(pictureError('not-a-picture', "The TV couldn't open that picture. Use JPG or PNG")));
+		img.onerror = () => done(() => reject(pictureError('not-a-picture', tt('wallpaper.theTvCouldnTOpen'))));
 		img.src = url;
 	});
 }
@@ -330,6 +380,38 @@ export function readWallpaperCache (id: string): string | null {
 	} catch { return null; }
 }
 
+// P56: a single saved picture (or a folder's saved picture) is painted by CSS before the first render, the way the bundled
+// photos are: main.tsx calls `startEarlyStatic`, which reads the saved copy once and puts it into `--wallpaper-image`.
+// `Wallpaper` takes the same copy (no second read) and, once its own layer is drawn, calls `endEarlyStatic`. At a lower opacity a black veil is added (P67). Nothing else changes.
+let earlyStatic: {id: string; data: string} | null = null;
+let earlyTimer = 0;
+
+export function startEarlyStatic (mode: string, path: string, recursive: boolean, opacity: number): void {
+	if (mode === 'gradient' || !path || opacity <= 0) return;
+	const id = wallpaperCacheId(mode, path + (recursive ? '|sub' : ''));
+	const data = readWallpaperCache(id);
+	if (!data) return;
+	earlyStatic = {id, data};
+	// P67: below full strength a black veil of the missing share stands in for the lower opacity (exact on black themes)
+	const share = ((100 - opacity) / 100).toFixed(2);
+	setRootVars({'--wallpaper-image': `url(\"${data}\")`, '--wallpaper-veil': opacity < 100 ? `linear-gradient(rgba(0,0,0,${share}),rgba(0,0,0,${share}))` : 'none'});
+	earlyTimer = window.setTimeout(endEarlyStatic, 5000);       // never stays if the component does not take over
+}
+
+/** The saved copy read in main.tsx for this choice, once (null when none). */
+export function takeEarlyStatic (id: string): string | null {
+	const e = earlyStatic;
+	return e && e.id === id ? e.data : null;
+}
+
+/** The component's own layer is drawn: the early picture goes (the same picture is underneath). */
+export function endEarlyStatic (): void {
+	if (!earlyStatic) return;
+	window.clearTimeout(earlyTimer);
+	earlyStatic = null;
+	setRootVars({'--wallpaper-image': 'none', '--wallpaper-veil': 'none'});
+}
+
 export function writeWallpaperCache (id: string, data: string): boolean {
 	try {
 		localStorage.setItem(CACHE_DATA_KEY, data);
@@ -346,7 +428,7 @@ export function clearWallpaperCache (): void {
 
 function mockListing (path: string): DirEntry[] {
 	if (path === '/tmp/usb/sda/sda1') return [
-		{name: 'Wallpapers', isDir: true}, {name: 'Holiday 2025', isDir: true}, {name: 'cover.jpg', isDir: false}
+		{name: tt('wallpaper.wallpapers'), isDir: true}, {name: tt('wallpaper.holiday2025'), isDir: true}, {name: 'cover.jpg', isDir: false}
 	];
 	return [
 		{name: 'mountains.jpg', isDir: false}, {name: 'night-sky.png', isDir: false}, {name: 'sea.jpg', isDir: false}

@@ -3,7 +3,7 @@
 
 import type {City} from './weather';
 
-/** The city a fresh install (and "Reset look and clock") starts with. */
+/** The city a fresh install (and "Reset Hearth visual settings to default") starts with. */
 export const DEFAULT_CITY: City = {name: 'Delhi', lat: 28.6139, lon: 77.2090, detail: 'India'};
 
 export const PRESET_CITIES: City[] = [

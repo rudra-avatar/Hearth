@@ -14,23 +14,6 @@ export function closeLgHome (): Promise<void> {
 	return exec(CLOSE_HOME_COMMAND, 5000).then(() => undefined);
 }
 
-/** Ends LG Home and reports available memory before and after (-1 when unknown). */
-export function closeHomeAndMeasure (): Promise<{before: number; after: number}> {
-	return memAvailableMB().then((before) => closeLgHome()
-		.then(() => new Promise<void>((resolve) => window.setTimeout(resolve, 1500)))
-		.then(() => memAvailableMB())
-		.then((after) => ({before, after})));
-}
-
-/** Available memory in MB (MemAvailable from /proc/meminfo), or -1 when unknown. */
-export function memAvailableMB (): Promise<number> {
-	if (!isWebOS()) return Promise.resolve(-1);
-	return exec("grep MemAvailable /proc/meminfo", 5000).then((out) => {
-		const match = /MemAvailable:\s+(\d+) kB/.exec(out);
-		return match ? Math.round(Number(match[1]) / 1024) : -1;
-	}).catch(() => -1);
-}
-
 // ---------- which app the Home button (and leaving an app with Back) opens ----------
 // webOS keeps this in a system setting, defaultApps.home. LG's default is com.webos.app.home.
 
@@ -94,19 +77,15 @@ export function setLogo (on: boolean): Promise<boolean> {
 
 // ---------- apps the TV keeps ready (experimental) ----------
 
-// ---------- memory and storage figures for the Debug tab (read once when that tab opens) ----------
+// ---------- storage figures for the Debug tab (read once when that tab opens) ----------
 
 export interface DiskInfo {mount: string; totalMB: number; freeMB: number}
-export interface SystemStats {ramTotalMB: number; ramFreeMB: number; disks: DiskInfo[]}
+export interface SystemStats {disks: DiskInfo[]}
 
-export const STATS_COMMAND = 'grep -E "^(MemTotal|MemAvailable):" /proc/meminfo; echo ---; df -k / /var /tmp /media/internal 2>/dev/null';
+export const STATS_COMMAND = 'echo ---; df -k / /var /tmp /media/internal 2>/dev/null';
 
 /** The output of STATS_COMMAND as figures (-1 where a figure is missing). */
 export function parseStats (out: string): SystemStats {
-	const kb = (name: string): number => {
-		const m = new RegExp(name + ':\\s+(\\d+) kB').exec(out);
-		return m ? Math.round(Number(m[1]) / 1024) : -1;
-	};
 	const disks: DiskInfo[] = [];
 	const seen: Record<string, boolean> = {};
 	const lines = out.split('---')[1] ? out.split('---')[1].split('\n') : [];
@@ -118,7 +97,7 @@ export function parseStats (out: string): SystemStats {
 		seen[key] = true;
 		disks.push({mount: f[5], totalMB: Math.round(Number(f[1]) / 1024), freeMB: Math.round(Number(f[3]) / 1024)});
 	}
-	return {ramTotalMB: kb('MemTotal'), ramFreeMB: kb('MemAvailable'), disks};
+	return {disks};
 }
 
 export function readStats (): Promise<SystemStats | null> {

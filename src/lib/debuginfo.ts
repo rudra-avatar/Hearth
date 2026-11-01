@@ -26,11 +26,10 @@ export interface DebugPage {
 	right?: {title: string; lines: string[]};
 }
 
-const WIDTH = 118;
+const WIDTH = 100;     // P94b: was 118 (lines ran over the right screen edge on the TV)
 const LEFT_WIDTH = 76;     // page 2, left column (this TV), 20px type
-const RIGHT_WIDTH = 60;    // page 2, right column (events)
+const RIGHT_WIDTH = 50;    // page 2, right column (events); P94b: was 60
 export const DENSE_ROWS = 22;   // event rows in the right column (28 ran off the bottom of the TV's screen)
-export const LOW_RAM_MB = 100;   // below this free RAM the Debug page warns
 const APP_STORAGE = '/mnt/lg/appstore';
 export const REPORT_FILE = '/tmp/hearth-debug.txt';
 
@@ -49,19 +48,17 @@ export function debugPages (s: DebugSnapshot): DebugPage[] {
 		'',
 		`Theme ${c.theme}, background ${c.background}, icons ${c.iconScale}%, ${c.rows} row${c.rows === 1 ? '' : 's'}, labels ${yn(c.showLabels)}, minimal ${yn(c.minimal)}`,
 		`Wallpaper ${c.wallpaper.mode}${c.wallpaper.path ? ' ' + c.wallpaper.path : ''}`,
-		`Close LG Home ${c.closeHome ? 'on' : 'switched off (it kept coming back)'}, helper ${yn(c.replaceHome)}, SAM method ${yn(c.takeoverHome)}`,
+		`Close LG Home ${c.closeHome ? 'on' : 'switched off (it kept coming back)'}, helper ${yn(c.replaceHome)}`,
 		`Hidden apps ${c.hiddenIds ? c.hiddenIds.length : '?'}, sources shown ${c.sourceIds.length}, edited sources ${Object.keys(c.sourceEdits).length}`,
 		`LG Home tile ${yn(c.showLgHome)}, System Settings tile ${yn(c.showSystem)}`
 	].filter((l, i) => l !== '' || i === 5);
 	const st = s.stats;
 	state.push('');
 	if (st) {
-		if (st.ramFreeMB >= 0 && st.ramFreeMB < LOW_RAM_MB) state.unshift('FREE RAM TOO LOW: HEARTH MIGHT BEHAVE UNEXPECTEDLY', '');
-		state.push(`Memory: ${gb(st.ramFreeMB)} free of ${gb(st.ramTotalMB)}`);
 		// only the app storage matters (the other mounts are read-only or temporary); other TVs without it show all
 		const appStore = st.disks.filter((d) => d.mount === APP_STORAGE);
 		(appStore.length ? appStore : st.disks).forEach((d) => state.push(`Storage ${d.mount}: ${gb(d.freeMB)} free of ${gb(d.totalMB)}`));
-	} else state.push('Memory and storage: not available (needs a rooted TV)');
+	} else state.push('Storage: not available (needs a rooted TV)');
 	const help = [
 		'To send the report, photograph page 2 (the report file holds all events, not just these).',
 		'',

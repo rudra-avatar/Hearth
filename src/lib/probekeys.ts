@@ -43,7 +43,7 @@ function captureKeys (): Promise<ProbeResult> {
 }
 
 const SCRIPT = [
-	'for d in /media/developer/apps/usr/palm/services/org.webosbrew.hbchannel.service /var/lib/webosbrew /home/root/.config/lg-input-hook /media/developer/apps/usr/palm/applications/*input*hook*; do [ -e "$d" ] && echo "have: $d"; done',
+	'for d in /media/developer/apps/usr/palm/services/org.webosbrew.hbchannel.service /var/lib/webosbrew /home/root/.config/lginputhook /home/root/.config/lg-input-hook /media/developer/apps/usr/palm/applications/*input*hook*; do [ -e "$d" ] && echo "have: $d"; done',
 	'find /var/lib /home/root /media/developer -maxdepth 5 -iname "keybinds*" 2>/dev/null | head -4 | sed "s/^/file: /"',
 	'ls /tmp/lginput* 2>/dev/null | head -3 | sed "s/^/log: /"',
 	'tail -n 4 /tmp/lginput-hook-micomservice.log 2>/dev/null | cut -c1-80 | sed "s/^/last: /"'

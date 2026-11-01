@@ -9,6 +9,7 @@ import watchSh from '../homehook/watch.sh?raw';
 import {exec} from './apps';
 import {classifyFailure, failureReason} from './failure';
 import {isWebOS} from './luna';
+import {t as tt} from '../i18n';
 import {
 	ALIVE_FILE, APPLY_COMMAND, HOOK_VERSION, installSteps, lastLine, parseExit, parseHookResult,
 	parseHookStatus, REMOVE_COMMAND, STATUS_COMMAND, STOCK_COMMAND, VERSION_COMMAND, withStatus,
@@ -36,7 +37,7 @@ export interface HookOutcome {
 /** Writes the scripts, adds the boot link, and starts the watcher, one small step at a time.
  *  If it can't be done everything it added is removed again, and the outcome says why. */
 export function installHomeHook (): Promise<HookOutcome> {
-	if (!isWebOS()) return Promise.resolve({result: 'failed', detail: 'not running on a TV'});
+	if (!isWebOS()) return Promise.resolve({result: 'failed', detail: tt('homehook.notRunningOnATv')});
 	const steps = installSteps(FILES);
 	const run = (i: number): Promise<HookOutcome> => {
 		const step = steps[i];
@@ -63,9 +64,9 @@ export interface Reapplied extends HookOutcome {
 /** Makes sure the watcher is running (after a reboot, or when the launcher opens). If the copy on the TV
  *  is from an older version of the launcher, it is rewritten first, so updating the launcher updates it. */
 export function reapplyHomeHook (): Promise<Reapplied> {
-	if (!isWebOS()) return Promise.resolve({result: 'failed', detail: 'not running on a TV', fatal: false});
+	if (!isWebOS()) return Promise.resolve({result: 'failed', detail: tt('homehook.notRunningOnATv'), fatal: false});
 	return exec(VERSION_COMMAND, 6000).then((out) => out.trim(), () => null).then((installed): Reapplied | Promise<Reapplied> => {
-		if (installed === null) return {result: 'failed', detail: 'the Homebrew service did not answer', fatal: false, unreachable: true};
+		if (installed === null) return {result: 'failed', detail: tt('homehook.theHomebrewServiceDidNot'), fatal: false, unreachable: true};
 		if (installed !== HOOK_VERSION) {
 			return installHomeHook().then((outcome): Reapplied => ({...outcome, fatal: outcome.result !== 'applied'}));
 		}
@@ -100,7 +101,28 @@ function cleanForLog (text: string): string {
 /** Adds a line to the helper's log, e.g. how long the launcher took to show its first screen. */
 export function logLine (text: string): void {
 	if (!isWebOS()) return;
-	exec(`echo "$(date '+%H:%M:%S') ${cleanForLog(text)}" >> ${LOG_FILE}`, 4000).catch(() => undefined);
+	exec(`echo "${logText(text)}" >> ${LOG_FILE}`, 4000).catch(() => undefined);
+}
+
+/** The page's own clock, HH:MM:SS: the time the event happened (a log line is written later, when exec answers). */
+function eventStamp (): string {
+	const d = new Date();
+	const two = (n: number) => (n < 10 ? '0' : '') + n;
+	return `${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+}
+
+/** One log line: event time, text, then the time and uptime when the TV wrote it (a gap shows a late write). */
+function logText (text: string): string {
+	return `${eventStamp()} ${cleanForLog(text)} (written $(date '+%H:%M:%S') up=$(cut -d. -f1 /proc/uptime)s)`;
+}
+
+/** How this page was started (PalmSystem.launchParams), short and safe for the log; 'none' when empty. */
+export function launchParams (): string {
+	try {
+		const ps = (window as unknown as {PalmSystem?: {launchParams?: string}}).PalmSystem;
+		const raw = ps && ps.launchParams ? String(ps.launchParams) : '';
+		return raw && raw !== '{}' ? cleanForLog(raw).slice(0, 80) : 'none';
+	} catch (e) { return 'none'; }
 }
 
 /** Tells the helper this launcher is on screen (it checks for this after opening the launcher). */
@@ -116,16 +138,16 @@ export function markAlive (): void {
 export function markAliveSoon (note?: string, repeat: boolean = true): void {
 	if (!isWebOS()) return;
 	const parts = [`touch '${ALIVE_FILE}'`];
-	if (note) parts.push(`echo "$(date '+%H:%M:%S') ${cleanForLog(note)}" >> ${LOG_FILE}`);
+	if (note) parts.push(`echo "${logText(note)}" >> ${LOG_FILE}`);
 	if (repeat) parts.push(`( nohup sh -c "sleep 1; touch '${ALIVE_FILE}'; sleep 1; touch '${ALIVE_FILE}'" >/dev/null 2>&1 </dev/null & )`);
 	exec(parts.join('; '), 4000).catch(() => undefined);
 }
 
 export function hookMessage (result: HookResult, detail = ''): string {
 	switch (result) {
-		case 'applied': return 'On: LG Home now hands over to this launcher';
-		case 'launcher-missing': return 'The launcher must be installed to do this';
-		case 'files-missing': return 'The helper files are missing, nothing was changed';
-		default: return `Couldn't set that up${detail ? ': ' + detail : ''}. Nothing was changed`;
+		case 'applied': return tt('homehook.onLgHomeNow');
+		case 'launcher-missing': return tt('homehook.theLauncherMustBe');
+		case 'files-missing': return tt('homehook.theHelperFilesAre');
+		default: return tt('homehook.couldnTSetThat', {detail: detail ? ': ' + detail : ''});
 	}
 }

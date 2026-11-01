@@ -1,24 +1,23 @@
+import {t as tt, td} from '../i18n';
 // Time-of-day text. Pure functions so they are trivially testable.
 
 export type TimeFormat = '12h' | '24h';
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export function greeting (date: Date): string {
 	const h = date.getHours();
-	if (h < 12) return 'Good morning';
-	if (h < 18) return 'Good afternoon';
-	return 'Good evening';
+	if (h < 12) return tt('clock.goodMorning');
+	if (h < 18) return tt('clock.goodAfternoon');
+	return tt('clock.goodEvening');
 }
 
 export function dayName (date: Date): string {
-	return DAYS[date.getDay()];
+	return td('clock.day' + date.getDay());
 }
 
 /** "23 September" */
 export function dateText (date: Date): string {
-	return `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+	return `${date.getDate()} ${td('clock.month' + date.getMonth())}`;
 }
 
 /** "Sunday, 11 October 2026" */

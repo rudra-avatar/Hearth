@@ -18,6 +18,7 @@
 // update changes LG's file (so an old copy never hides the new one). Needs root: both files belong to root.
 
 import {writeFileCommands, type InstallStep} from './homehookcmd';
+import {t as tt} from '../i18n';
 
 export const BOOTD_FILE = '/etc/palm/bootd.json';
 export const OVERRIDE_FILE = '/var/luna/preferences/bootd.json';
@@ -52,6 +53,8 @@ export function buildOverride (stockText: string, appId: string, network = false
 	if (!isObject(stock) || !isObject(stock.common) || !isObject(stock.common.firstAppByPowerOnReason)) throw new Error('unknown start-up file');
 	const common = stock.common as Json;
 	const table: Json = {...(common.firstAppByPowerOnReason as Json)};
+	// as the PR wrote it (user, P57a: other TVs may honour keys this one's table lacks, so all of them are set; a key bootd does
+	// not know is presumably ignored: untested on webOS 7.6 for micomPower and the network keys)
 	POWER_ON_REASONS.forEach((reason) => { table[reason] = appId; });
 	if (network) NETWORK_REASONS.forEach((reason) => { table[reason] = appId; });
 	return JSON.stringify({...stock, common: {...common, firstAppByPowerOnReason: table}}, null, 4) + '\n';
@@ -94,6 +97,8 @@ export interface PowerOnStatus {
 	loadedNetwork: boolean;
 	/** a copy is in place that Hearth did not write (left alone; this method stays off) */
 	foreign: boolean;
+	/** LG's table has the network wake-up keys (not on webOS 7.6: then the network choice is not offered) */
+	networkKeys: boolean;
 }
 
 const SEPARATOR = '--- start-up file ---';
@@ -109,6 +114,7 @@ export const STATUS_COMMAND = [
 	`if [ -f '${OVERRIDE_FILE}' ]; then echo override=yes; else echo override=no; fi`,
 	`if ${OURS}; then echo ours=yes; else echo ours=no; fi`,
 	`echo "loaded=$(cat '${LOADED_FILE}' 2>/dev/null)"`,
+	`if grep -q wakeOnWiFi '${BOOTD_FILE}' 2>/dev/null; then echo networkkeys=yes; else echo networkkeys=no; fi`,
 	`echo '${SEPARATOR}'`,
 	`cat '${OVERRIDE_FILE}' 2>/dev/null; true`
 ].join('; ');
@@ -136,7 +142,8 @@ export function parseStatus (output: string): PowerOnStatus | null {
 		network: !!chosen && overrideNetwork(file),
 		loaded,
 		loadedNetwork: !!loaded && loadedExtra === 'network',
-		foreign: override && !ours
+		foreign: override && !ours,
+		networkKeys: fields.networkkeys === 'yes'
 	};
 }
 
@@ -222,10 +229,10 @@ export function powerOnName (appId: string, title?: string): string {
 
 export function powerOnMessage (result: PowerOnResult, name = '', detail = ''): string {
 	switch (result) {
-		case 'applied': return `Saved: the TV will open ${name || 'that app'} when you turn it on. It starts working after the TV restarts once`;
-		case 'removed': return 'Turned off. After the TV restarts once, it opens Live TV or the last input again';
-		case 'unsupported': return "This TV's software has no power-on setting Hearth can use, so nothing was changed";
-		case 'foreign': return `Another start-up file is already in place (${OVERRIDE_FILE}), so Hearth left it alone`;
-		default: return `Couldn't change the power-on app${detail ? ' (' + detail + ')' : ''}. ${name ? `It is set to: ${name}` : "Hearth couldn't check what is set now"}`;
+		case 'applied': return tt('poweroncmd.saved', {name: name || tt('poweroncmd.thatApp')});
+		case 'removed': return tt('poweroncmd.turnedOffAfterThe');
+		case 'unsupported': return tt('poweroncmd.thisTvSSoftware');
+		case 'foreign': return tt('poweroncmd.anotherStartUpFile', {OVERRIDE_FILE});
+		default: return tt('poweroncmd.couldntChange', {detail: detail ? ' (' + detail + ')' : '', now: name ? tt('poweroncmd.setTo', {name}) : tt('poweroncmd.noCheck')});
 	}
 }

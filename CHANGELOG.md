@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.1
+
+### Fixes
+
+- Updating from 1.2.0: a bundled photo you had chosen now maps to the same picture in 2.0 (before, some became another photo, and *Restore my settings from before the update* brought back the wrong one). The old *Nature 1* picture is no longer included and becomes the default photo. Thanks to Obednal97 for the report and the table (issue #32).
+
 ## 2.0.0
 
 A big update: a new Settings layout, many more looks, a screen saver, a Home button that needs no other app, languages, and a full app list on TVs without root. Your apps, their order, names, favourites and TV-installed features are kept when you update. **Once**, the look, widget, wallpaper, home-row and quiet-mode values you had saved are reset to the new defaults (*Restore my settings from before the update* in Settings, Look brings them back once).

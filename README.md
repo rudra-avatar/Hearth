@@ -172,7 +172,7 @@ New to this? The [Beginners guide](https://rudra-avatar.github.io/Hearth/BEGINNE
    `https://raw.githubusercontent.com/rudra-avatar/Hearth/main/repo/apps.json`
 
 3. Go back to the app list, open **Hearth** and choose **Install**.
-4. **Updating:** when a new version is released, open the Homebrew Channel, open Hearth and it shows the new version (for example "2.0.0 (installed: 1.2.0)") with an **Update** button.
+4. **Updating:** when a new version is released, open the Homebrew Channel, open Hearth and it shows the new version (for example "2.0.1 (installed: 2.0.0)") with an **Update** button.
 
 **Typing with the TV remote is slow. Easier ways to enter the address:**
 
@@ -184,7 +184,7 @@ New to this? The [Beginners guide](https://rudra-avatar.github.io/Hearth/BEGINNE
 
 ### Option 2: install the file yourself
 
-Download `tld.my.customlauncher_2.0.0_all.ipk` from the [Releases](../../releases) page, then use one of these:
+Download `tld.my.customlauncher_2.0.1_all.ipk` from the [Releases](../../releases) page, then use one of these:
 
 - **webOS Dev Manager on a computer** (Windows, Mac, Linux; [download](https://github.com/webosbrew/dev-manager-desktop)). No root needed, Developer Mode is enough.
 - **webOS Dev Manager on an Android phone** (the app *webOS Dev Manager* on Google Play). The downloaded file is in *Downloads*.
@@ -199,9 +199,9 @@ With Dev Manager:
 With SSH on a rooted TV:
 
 ```
-scp -O tld.my.customlauncher_2.0.0_all.ipk root@TV_IP:/tmp/
+scp -O tld.my.customlauncher_2.0.1_all.ipk root@TV_IP:/tmp/
 ssh root@TV_IP
-luna-send -i luna://com.webos.appInstallService/dev/install '{"id":"com.ares.defaultName","ipkUrl":"/tmp/tld.my.customlauncher_2.0.0_all.ipk","subscribe":true}'
+luna-send -i luna://com.webos.appInstallService/dev/install '{"id":"com.ares.defaultName","ipkUrl":"/tmp/tld.my.customlauncher_2.0.1_all.ipk","subscribe":true}'
 luna-send -n 1 luna://com.webos.applicationManager/launch '{"id":"tld.my.customlauncher"}'
 ```
 

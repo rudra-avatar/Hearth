@@ -5,6 +5,7 @@
 import {STORAGE_KEY, WALLPAPER} from '../config/constants';
 import type {ThemeName} from '../theme/tokens';
 import {BACKGROUND_IDS} from './backgrounds';
+import {currentPhotoId, currentSaverSource} from './legacyids';
 import {cleanEdits, type SourceEdits} from './sourceicons';
 import {CLOCK_FONT_IDS, restoreThemeFonts, type ClockFont} from './clockfont';
 import {SCROLL_SPEED_IDS, type ScrollSpeed} from './scrollspeed';
@@ -466,9 +467,9 @@ export function loadConfig (): UserConfig {
 		if (!raw) return {...DEFAULT_CONFIG};
 		restoreThemeFonts();          // P80: the kept theme's font ids must be known before the saved font is checked
 		const parsed = JSON.parse(raw) as Partial<UserConfig> & {wallpaper?: Partial<WallpaperConfig>; clock?: Partial<ClockConfig>; weather?: Partial<WeatherConfig>};
-		// P41d: the bundled photos were renamed (older settings name the former 11 photos and their slideshow): they now point at the new ones
-		if (typeof parsed.background === 'string') parsed.background = parsed.background.replace(/^nature-/, 'photo-');
-		if (typeof parsed.screensaverSource === 'string') parsed.screensaverSource = parsed.screensaverSource.replace(/^@photo:nature-/, '@photo:photo-');
+		// Issue #32: the 1.2.0 photos (nature-NN) are other numbers in 2.0: a lookup table (lib/legacyids.ts), never a plain rename; runs BEFORE the backup below, so the backup carries the right id
+		if (typeof parsed.background === 'string') parsed.background = currentPhotoId(parsed.background);
+		if (typeof parsed.screensaverSource === 'string') parsed.screensaverSource = currentSaverSource(parsed.screensaverSource);
 		const w: Partial<WallpaperConfig> = parsed.wallpaper || {};
 		const c: Partial<ClockConfig> = parsed.clock || {};
 		const wx: Partial<WeatherConfig> = parsed.weather || DEFAULT_WEATHER;

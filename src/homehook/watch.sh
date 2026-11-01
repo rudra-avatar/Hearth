@@ -23,6 +23,10 @@ VLOCK="${VLOCK:-/tmp/launcher-verify-lock}"          # holds the time a check st
 VFIX="${VFIX:-/tmp/launcher-verify-fix}"             # holds the time a check last had to ask for the launcher again
 FRONT_URI="luna://com.webos.applicationManager/getForegroundAppInfo"
 HOME_PATTERN='*"appId":"com.webos.app.home"*'
+# webOS 4.x: Home opens LG's full-screen overlay (com.webos.app.fullhome) instead. It is usually shown over the app in
+# front without becoming it (then only "Set Hearth as the TV's Home app" helps), but where the TV does report it, it is
+# handled like LG Home. (PR #18, Obednal97)
+FULLHOME_PATTERN='*"appId":"com.webos.app.fullhome"*'
 LAUNCHER_PATTERN="*\"appId\":\"$LAUNCHER_ID\"*"
 # webOS 3 has no LG Home app: Home shows a launcher bar over the app in front, which never changes
 # the app in front. The surface manager logs each time the bar is shown, so on those TVs this
@@ -32,10 +36,34 @@ SYSLOG="${SYSLOG:-/var/log/messages}"
 BAR_PATTERN='*NL_HOME_SHOWN*'
 BAR_ON_LAUNCHER="*\"foregroundId\":\"$LAUNCHER_ID\"*"
 
-log () { echo "$(date '+%H:%M:%S') watcher: $*" >> "$LOG"; }
+log () { { read _up _ < /proc/uptime; } 2>/dev/null; echo "$(date '+%H:%M:%S') up=${_up%%.*}s watcher: $*" >> "$LOG"; }   # P70e: no extra process for the uptime
 
+# "Keep Hearth ready" (on; its own script makes the file) makes every opening that starts the launcher ask for keepAlive,
+# so the TV keeps the launcher in memory when another app is opened (P69, one switch since P73).
+KEEP_FLAG="${KEEP_FLAG:-/media/developer/launcher-keepready/on}"
+# P70e: the clock and the log note use shell built-ins only (no extra process while the hand-over is running).
+now_cs () { { read _u _ < /proc/uptime; } 2>/dev/null; NOW_CS="${_u%.*}${_u#*.}"; }   # uptime in 1/100 s
+LAUNCH_NOTE="no keepAlive"
+keep_note () { echo "$LAUNCH_NOTE"; }   # for the log: how the last opening was made, and how long it took
 open_launcher () {
-    "$LUNA" -n 1 luna://com.webos.applicationManager/launch "{\"id\":\"$LAUNCHER_ID\"}" >/dev/null 2>&1
+    # keepAlive only when the launcher is not in memory: a relaunch of a kept page that carries launch parameters made the TV
+    # load the page again (P70c; TV log of P70b). A plain launch of a kept page is just brought to the front.
+    if [ -s "$KEEP_FLAG" ]; then
+        now_cs; t0="$NOW_CS"
+        run=$("$LUNA" -n 1 luna://com.webos.applicationManager/running '{}' 2>/dev/null)
+        now_cs; tq=$(( (NOW_CS - t0) * 10 ))
+        case "$run" in
+            *"\"id\":\"$LAUNCHER_ID\""*)
+                "$LUNA" -n 1 luna://com.webos.applicationManager/launch "{\"id\":\"$LAUNCHER_ID\"}" >/dev/null 2>&1
+                now_cs; LAUNCH_NOTE="keep on, plain launch (launcher in memory), running-query $tq ms, launch done $(( (NOW_CS - t0) * 10 )) ms"
+                return ;;
+        esac
+        "$LUNA" -n 1 luna://com.webos.applicationManager/launch "{\"id\":\"$LAUNCHER_ID\",\"keepAlive\":true}" >/dev/null 2>&1
+        now_cs; LAUNCH_NOTE="keep on, keepAlive launch (launcher not in memory), running-query $tq ms, launch done $(( (NOW_CS - t0) * 10 )) ms"
+    else
+        "$LUNA" -n 1 luna://com.webos.applicationManager/launch "{\"id\":\"$LAUNCHER_ID\"}" >/dev/null 2>&1
+        LAUNCH_NOTE="no keepAlive"
+    fi
 }
 
 # After the launcher was asked for: wait, and if it has not shown itself (or LG Home is still
@@ -43,21 +71,27 @@ open_launcher () {
 verify () {
     [ -f "$MARK" ] || touch "$MARK"
     tries=0
+    polls="${VERIFY_FIRST:-8}"                                   # P67: a reloaded page needs 5-6.5 s to draw its first frame
     while [ "$tries" -lt 3 ]; do
-        sleep "${VERIFY_WAIT:-3}"
-        [ -f "$ALIVE" ] && [ "$ALIVE" -nt "$MARK" ] && return   # the launcher has shown itself
-        [ -f "$ALLOW" ] && return                                # LG's own Home was asked for
+        waited=0
+        while [ "$waited" -lt "$polls" ]; do                     # one-second steps; stops as soon as the launcher shows itself
+            sleep "${VERIFY_WAIT:-1}"
+            waited=$((waited + 1))
+            [ -f "$ALIVE" ] && [ "$ALIVE" -nt "$MARK" ] && return   # the launcher has shown itself
+            [ -f "$ALLOW" ] && return                                # LG's own Home was asked for
+        done
+        polls="${VERIFY_LATER:-4}"
         front=$("$LUNA" -n 1 "$FRONT_URI" '{}' 2>/dev/null)
         case "$front" in
-            $HOME_PATTERN|$LAUNCHER_PATTERN) ;;                  # nothing showing yet: ask again
+            $HOME_PATTERN|$FULLHOME_PATTERN|$LAUNCHER_PATTERN) ;; # nothing showing yet: ask again
             *) return ;;                                         # another app is in front: done
         esac
         tries=$((tries + 1))
         case "$front" in
-            $HOME_PATTERN) where="LG Home" ;;
+            $HOME_PATTERN|$FULLHOME_PATTERN) where="LG Home" ;;
             *) where="the launcher" ;;
         esac
-        log "the launcher has not shown itself ($where is in front): opening it again (try $tries of 3)"
+        log "the launcher has not shown itself ($where is in front): opening it again (try $tries of 3; $(keep_note))"
         echo "${FAKE_NOW:-$(date +%s)}" > "$VFIX"
         open_launcher
         touch "$MARK"
@@ -98,7 +132,7 @@ handle () {
         *) return ;;                                  # not a report about the app in front
     esac
     case "$line" in
-        $HOME_PATTERN)
+        $HOME_PATTERN|$FULLHOME_PATTERN)
             if [ "$was_home" = 1 ]; then              # LG Home was already in front: a repeat report
                 now="${FAKE_NOW:-$(date +%s)}"
                 [ $((now - last_launch)) -lt 3 ] && return
@@ -108,7 +142,7 @@ handle () {
             [ -f "$LAUNCHER/appinfo.json" ] || return # nothing to open (launcher uninstalled)
             open_launcher
             last_launch="${FAKE_NOW:-$(date +%s)}"
-            log "LG Home is in front: opened the launcher"
+            log "LG Home is in front: opened the launcher ($(keep_note))"
             touch "$MARK"                             # a check that is already running waits for this opening
             start_verify
             ;;
@@ -157,7 +191,7 @@ handle_bar () {
     fi
     [ -f "$LAUNCHER/appinfo.json" ] || return
     open_launcher
-    log "the home bar was shown: opened the launcher"
+    log "the home bar was shown: opened the launcher ($(keep_note))"
     start_verify
 }
 

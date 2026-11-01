@@ -9,31 +9,49 @@
 	src: url('../assets/inter-latin-wght.woff2') format('woff2');
 }
 
+/* LA3: Arabic for menu texts and the widget; fetched only when an Arabic letter is drawn. */
+@font-face { font-family: 'Noto Sans Arabic'; font-style: normal; font-weight: 400; font-display: swap; unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFC; src: url('../assets/noto-sans-arabic-400.woff2') format('woff2'); }
+@font-face { font-family: 'Noto Sans Arabic'; font-style: normal; font-weight: 700; font-display: swap; unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFC; src: url('../assets/noto-sans-arabic-700.woff2') format('woff2'); }
+
 /* Fonts for the clock (Look → Clock font). The browser fetches a file only when the clock uses it. */
 @font-face { font-family: 'Poppins'; font-style: normal; font-weight: 200; font-display: block; src: url('../assets/poppins-latin-200.woff2') format('woff2'); }
 @font-face { font-family: 'Poppins'; font-style: normal; font-weight: 300; font-display: block; src: url('../assets/poppins-latin-300.woff2') format('woff2'); }
+@font-face { font-family: 'Nunito'; font-style: normal; font-weight: 800; font-display: block; src: url('../assets/nunito-latin-800.woff2') format('woff2'); }
 @font-face { font-family: 'Poppins'; font-style: normal; font-weight: 400; font-display: block; src: url('../assets/poppins-latin-400.woff2') format('woff2'); }
 @font-face { font-family: 'Oswald'; font-style: normal; font-weight: 200; font-display: block; src: url('../assets/oswald-latin-200.woff2') format('woff2'); }
 @font-face { font-family: 'Oswald'; font-style: normal; font-weight: 300; font-display: block; src: url('../assets/oswald-latin-300.woff2') format('woff2'); }
 @font-face { font-family: 'Oswald'; font-style: normal; font-weight: 400; font-display: block; src: url('../assets/oswald-latin-400.woff2') format('woff2'); }
-@font-face { font-family: 'Roboto Mono'; font-style: normal; font-weight: 200; font-display: block; src: url('../assets/roboto-mono-latin-200.woff2') format('woff2'); }
-@font-face { font-family: 'Roboto Mono'; font-style: normal; font-weight: 300; font-display: block; src: url('../assets/roboto-mono-latin-300.woff2') format('woff2'); }
-@font-face { font-family: 'Roboto Mono'; font-style: normal; font-weight: 400; font-display: block; src: url('../assets/roboto-mono-latin-400.woff2') format('woff2'); }
 @font-face { font-family: 'Cormorant Garamond'; font-style: normal; font-weight: 300; font-display: block; src: url('../assets/cormorant-garamond-latin-300.woff2') format('woff2'); }
 /* more clock fonts (WOFF, subset to Latin) */
 @font-face { font-family: 'Poppins'; font-style: normal; font-weight: 500; font-display: block; src: url('../assets/hearth-poppins-500.woff') format('woff'); }
 @font-face { font-family: 'Poppins'; font-style: normal; font-weight: 700; font-display: block; src: url('../assets/hearth-poppins-700.woff') format('woff'); }
 @font-face { font-family: 'Outfit'; font-style: normal; font-weight: 400 700; font-display: block; src: url('../assets/hearth-outfit.woff') format('woff'); }
+@font-face { font-family: 'Big Shoulders'; font-style: normal; font-weight: 400 700; font-display: block; src: url('../assets/hearth-bigshoulders.woff') format('woff'); }
+@font-face { font-family: 'Lora'; font-style: normal; font-weight: 400 700; font-display: block; src: url('../assets/hearth-lora.woff') format('woff'); }
+@font-face { font-family: 'Poiret One'; font-style: normal; font-weight: 400; font-display: block; src: url('../assets/hearth-poiret.woff') format('woff'); }
+@font-face { font-family: 'Cormorant Garamond'; font-style: normal; font-weight: 400; font-display: block; src: url('../assets/cormorant-garamond-latin-400.woff2') format('woff2'); }
+
+@font-face { font-family: 'Roboto Mono'; font-style: normal; font-weight: 200; font-display: block; src: url('../assets/roboto-mono-latin-200.woff2') format('woff2'); }
+@font-face { font-family: 'Roboto Mono'; font-style: normal; font-weight: 300; font-display: block; src: url('../assets/roboto-mono-latin-300.woff2') format('woff2'); }
+@font-face { font-family: 'Roboto Mono'; font-style: normal; font-weight: 400; font-display: block; src: url('../assets/roboto-mono-latin-400.woff2') format('woff2'); }
 @font-face { font-family: 'Work Sans'; font-style: normal; font-weight: 400 700; font-display: block; src: url('../assets/hearth-worksans.woff') format('woff'); }
 @font-face { font-family: 'Bricolage Grotesque'; font-style: normal; font-weight: 400 700; font-display: block; src: url('../assets/hearth-bricolage.woff') format('woff'); }
-@font-face { font-family: 'Big Shoulders'; font-style: normal; font-weight: 400 700; font-display: block; src: url('../assets/hearth-bigshoulders.woff') format('woff'); }
 @font-face { font-family: 'Jura'; font-style: normal; font-weight: 300 500; font-display: block; src: url('../assets/hearth-jura.woff') format('woff'); }
 @font-face { font-family: 'Tektur'; font-style: normal; font-weight: 400 500; font-display: block; src: url('../assets/hearth-tektur.woff') format('woff'); }
 @font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400 700; font-display: block; src: url('../assets/hearth-jetbrains.woff') format('woff'); }
-@font-face { font-family: 'Lora'; font-style: normal; font-weight: 400 700; font-display: block; src: url('../assets/hearth-lora.woff') format('woff'); }
-@font-face { font-family: 'Poiret One'; font-style: normal; font-weight: 400; font-display: block; src: url('../assets/hearth-poiret.woff') format('woff'); }
 @font-face { font-family: 'Pixelify Sans'; font-style: normal; font-weight: 500; font-display: block; src: url('../assets/hearth-pixelify.woff') format('woff'); }
-@font-face { font-family: 'Cormorant Garamond'; font-style: normal; font-weight: 400; font-display: block; src: url('../assets/cormorant-garamond-latin-400.woff2') format('woff2'); }
+
+/* more clock fonts, from the Fontsource packages (Latin subset; variable ones keep their weight range) */
+@font-face { font-family: 'Montserrat'; font-style: normal; font-weight: 100 900; font-display: block; src: url('../assets/hearth-montserrat.woff2') format('woff2'); }
+@font-face { font-family: 'Jost'; font-style: normal; font-weight: 100 900; font-display: block; src: url('../assets/hearth-jost.woff2') format('woff2'); }
+@font-face { font-family: 'Raleway'; font-style: normal; font-weight: 100 900; font-display: block; src: url('../assets/hearth-raleway.woff2') format('woff2'); }
+@font-face { font-family: 'Playfair Display'; font-style: normal; font-weight: 400 900; font-display: block; src: url('../assets/hearth-playfair.woff2') format('woff2'); }
+@font-face { font-family: 'Bebas Neue'; font-style: normal; font-weight: 400; font-display: block; src: url('../assets/hearth-bebas.woff2') format('woff2'); }
+@font-face { font-family: 'Bevan'; font-style: normal; font-weight: 400; font-display: block; src: url('../assets/hearth-bevan.woff2') format('woff2'); }
+@font-face { font-family: 'Alfa Slab One'; font-style: normal; font-weight: 400; font-display: block; src: url('../assets/hearth-alfaslab.woff2') format('woff2'); }
+@font-face { font-family: 'Great Vibes'; font-style: normal; font-weight: 400; font-display: block; src: url('../assets/hearth-greatvibes.woff2') format('woff2'); }
+@font-face { font-family: 'Pinyon Script'; font-style: normal; font-weight: 400; font-display: block; src: url('../assets/hearth-pinyon.woff2') format('woff2'); }
+@font-face { font-family: 'Kaushan Script'; font-style: normal; font-weight: 400; font-display: block; src: url('../assets/hearth-kaushan.woff2') format('woff2'); }
 
 * { box-sizing: border-box; }
 
@@ -76,10 +94,10 @@ html, body {
 	width: 100%; height: 100%;
 	z-index: 0;
 	overflow: hidden;
-	background-image: var(--wallpaper-image, none), linear-gradient(155deg, var(--color-wallpaper-start) 0%, var(--color-wallpaper-mid) 55%, var(--color-wallpaper-end) 100%);
-	background-size: cover, 100% 100%;
-	background-position: center, 0 0;
-	background-repeat: no-repeat, no-repeat;
+	background-image: var(--wallpaper-veil, none), var(--wallpaper-image, none), linear-gradient(155deg, var(--color-wallpaper-start) 0%, var(--color-wallpaper-mid) 55%, var(--color-wallpaper-end) 100%);
+	background-size: 100% 100%, cover, 100% 100%;
+	background-position: 0 0, center, 0 0;
+	background-repeat: no-repeat, no-repeat, no-repeat;
 }
 .wallpaper__layer {
 	z-index: 1;
@@ -96,7 +114,7 @@ html, body {
 /* A soft shade at the top and bottom keeps the clock and the app row readable on any picture. */
 .wallpaper__scrim {
 	z-index: 3;
-	display: var(--scrim-display, block);       /* none on the light themes: nothing to draw */
+	display: var(--scrim-display, block);       /* none when all its strengths are 0: nothing to draw */
 	position: absolute;
 	left: 0; top: 0;
 	width: 100%; height: 100%;
@@ -114,35 +132,57 @@ html, body {
 	width: 100%;
 	height: var(--fade-height, 60%);
 	background: linear-gradient(to top, rgba(0, 0, 0, var(--fade-a, 0)) 0%, rgba(0, 0, 0, var(--fade-b, 0)) 35%, rgba(0, 0, 0, var(--fade-c, 0)) 70%, rgba(0, 0, 0, 0) 100%);
+	transition: opacity 500ms ease-out;
 }
+/* Quiet mode dim: a dark layer over everything, fading in; it exists only while the screen is dimmed. */
+/* the keyframes only name the start: the animation ends at the layer's own opacity (set per strength below) */
+@-webkit-keyframes hearth-dim-in { from { opacity: 0; } }
+@keyframes hearth-dim-in { from { opacity: 0; } }
+.hearth-dim::after {
+	content: '';
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: #000;
+	opacity: 0.5;
+	z-index: 4;
+	pointer-events: none;
+	-webkit-animation: hearth-dim-in 1500ms ease-out;
+	animation: hearth-dim-in 1500ms ease-out;
+}
+/* strength: % darkness */
+.hearth-dim-10::after { opacity: 0.1; }
+.hearth-dim-20::after { opacity: 0.2; }
+.hearth-dim-30::after { opacity: 0.3; }
+.hearth-dim-40::after { opacity: 0.4; }
+.hearth-dim-50::after { opacity: 0.5; }
+.hearth-dim-60::after { opacity: 0.6; }
+.hearth-dim-70::after { opacity: 0.7; }
+.hearth-dim-80::after { opacity: 0.8; }
+/* Quiet mode: the fade goes with the apps. */
+.hearth-quiet .wallpaper__fade { opacity: 0; }
 
 /* ---------- clock ---------- */
 
 .clock {
 	position: absolute;       /* top and left (the clock's centre) are set from the settings */
+	color: var(--color-widget-ink);   /* P95a: Follow theme (was --color-text-primary, near white on every theme); a plain colour is set inline and wins */
 	text-align: center;
 	white-space: nowrap;
 	transform: translateX(-50%);
 	pointer-events: none;
 	--clock-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);   /* the slight drop shadow; the Widget shadow switch sets it to none */
+	z-index: 0;
 }
 .clock--noshadow { --clock-shadow: none; }
+/* Widget alignment: the clock's position is its centre (default), its left edge or its right edge */
+.clock--left { text-align: left; transform: none; }
+.clock--right { text-align: right; transform: translateX(-100%); }
+.clock--left .clock__weather { justify-content: flex-start; }
+.clock--right .clock__weather { justify-content: flex-end; }
 .clock--dark .clock__time, .clock--dark .clock__period, .clock--dark .clock__date, .clock--dark .clock__weather { text-shadow: none; }
-/* A gradient fills the letters. Each line gets its own fill (a line with its own opacity cannot be filled from its parent),
-   and the soft shadow becomes a drop shadow (a text shadow would show through the transparent letters). */
-.clock--gradient { filter: var(--clock-drop, drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4))); }
-.clock--gradient.clock--noshadow { filter: none; }
-.clock--gradient .clock__time, .clock--gradient .clock__date {
-	display: table;
-	margin-left: auto; margin-right: auto;
-}
-.clock--gradient .clock__time, .clock--gradient .clock__period, .clock--gradient .clock__date, .clock--gradient .clock__weather > span {
-	background-image: var(--clock-gradient);
-	-webkit-background-clip: text; background-clip: text;
-	-webkit-text-fill-color: transparent; color: transparent;
-	text-shadow: none;
-}
-.clock--gradient .clock__weather-icon { stroke: var(--clock-accent); }
 .clock__time {
 	line-height: 1;
 	text-shadow: var(--clock-shadow);
@@ -189,9 +229,18 @@ html, body {
 }
 /* Quiet mode: the apps are hidden until a key is pressed. */
 .rows--quiet { opacity: 0; }
+/* Favourites: Down / Up swap between the favourites row alone and the pair. The rows change place at once while the whole block is invisible and then fades in (opacity only: no gliding, no overshoot). */
+.rows--fav-open { -webkit-animation: hearth-rows-a 0.3s ease-out; animation: hearth-rows-a 0.3s ease-out; }
+.rows--fav-shut { -webkit-animation: hearth-rows-b 0.3s ease-out; animation: hearth-rows-b 0.3s ease-out; }
+@-webkit-keyframes hearth-rows-a { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hearth-rows-a { from { opacity: 0; } to { opacity: 1; } }
+@-webkit-keyframes hearth-rows-b { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hearth-rows-b { from { opacity: 0; } to { opacity: 1; } }
 /* OLED shift: the clock and the apps move by a few pixels (set on .screen as --shift-x / --shift-y). */
 .screen--shift .rows { transform: translate3d(var(--shift-x), var(--shift-y), 0); }
 .screen--shift .clock { transform: translateX(-50%) translate3d(var(--shift-x), var(--shift-y), 0); }
+.screen--shift .clock.clock--left { transform: translate3d(var(--shift-x), var(--shift-y), 0); }
+.screen--shift .clock.clock--right { transform: translateX(-100%) translate3d(var(--shift-x), var(--shift-y), 0); }
 
 .row { margin-bottom: var(--layout-row-gap); }
 .row:last-child { margin-bottom: 0; }
@@ -227,7 +276,7 @@ html, body {
 .row__track--centered { justify-content: center; }
 /* Left/right held down: each step is short and linear, so the steps run together into one smooth glide
    (an ease-out curve restarting on every key repeat looks like stuttering). */
-.row__track--fast { transition: transform 150ms linear; }
+.row__track--fast { transition: transform 200ms linear; }
 
 .row__empty {
 	font-size: var(--font-tile-label);
@@ -270,6 +319,43 @@ html, body {
 	overflow: hidden;
 }
 .tile--focused .tile__box { background: var(--color-tile-bg-focus); }
+.mono .tile:not(.tile--focused) .tile__box { background: var(--color-icon-tile); }   /* Dark mono (P39): each theme has its own tile background (pitch black in OLED black) and shape colour */
+.tile__mono {
+	position: absolute;
+	left: 0; top: 0;
+	width: 100%; height: 100%;
+	background: var(--color-icon-ink);
+	-webkit-mask-size: cover;
+	-webkit-mask-position: center;
+	-webkit-mask-repeat: no-repeat;
+}
+.mono .tile__monogram { color: var(--color-icon-ink); }
+/* P39c: Soft, Accent and Gradient mono reuse the same mask; only colours differ (variables are read directly, not redefined, so the legacy bundle follows) */
+.mono-soft .tile:not(.tile--focused) .tile__box { background: var(--color-soft-tile); }
+.mono-soft .tile__mono { background: var(--color-soft-ink); }
+.mono-soft .tile__monogram { color: var(--color-soft-ink); }
+.mono-accent .tile__mono { background: var(--color-accent-ink); }
+.mono-accent .tile__monogram { color: var(--color-accent-ink); }
+.mono-gradient .tile__mono { background: -webkit-linear-gradient(top, var(--color-icon-ink), var(--color-grad-ink)); background: linear-gradient(to bottom, var(--color-icon-ink), var(--color-grad-ink)); }
+/* P59b: light tile, dark shape (Settings -> Look -> Icon tile). Same variables swapped; the tile stays light when focused so the shape stays readable. Later rules win at equal weight: Dark, then Soft, then Accent. */
+.mono-light.mono .tile .tile__box { background: var(--color-icon-ink); }
+.mono-light.mono .tile__mono { background: var(--color-icon-tile); }
+.mono-light.mono .tile__monogram { color: var(--color-icon-tile); }
+.mono-light.mono-soft .tile .tile__box { background: var(--color-soft-ink); }
+.mono-light.mono-soft .tile__mono { background: var(--color-soft-tile); }
+.mono-light.mono-soft .tile__monogram { color: var(--color-soft-tile); }
+.mono-light.mono-accent .tile .tile__box { background: var(--color-accent-ink); }
+.mono-light.mono-accent .tile__mono { background: var(--color-icon-tile); }
+.mono-light.mono-accent .tile__monogram { color: var(--color-icon-tile); }
+/* B4: drawn icons on the dark tile follow the shape colour of the style too (they stayed white); Soft and Accent later, so they win; Gradient uses the top colour */
+.mono .tile__glyph { stroke: var(--color-icon-ink); }
+.mono-soft .tile__glyph { stroke: var(--color-soft-ink); }
+.mono-accent .tile__glyph { stroke: var(--color-accent-ink); }
+/* P66b: drawn icons (sources, LG Home, Settings) follow the dark shape colour on the light tile too (they stayed white); same variables as the monogram above */
+.mono-light.mono .tile__glyph, .mono-light.mono-accent .tile__glyph { stroke: var(--color-icon-tile); }
+.mono-light.mono-soft .tile__glyph { stroke: var(--color-soft-tile); }
+/* P66: light tile: the focus ring is black with a thin white edge (was the theme's light ring only), readable on the light tile and on dark or light pictures */
+.mono-light.mono .tile:not(.tile--lifted) .tile__ring, .mono-light.mono-soft .tile:not(.tile--lifted) .tile__ring, .mono-light.mono-accent .tile:not(.tile--lifted) .tile__ring { box-shadow: 0 0 0 5px #000000, 0 0 0 7px #F2F2F2; }
 .tile__ring {
 	position: absolute;
 	left: 0; top: 0;
@@ -302,6 +388,9 @@ html, body {
 	width: 100%; height: 100%;
 	object-fit: cover;
 }
+/* Tinted tile (P48): the artwork keeps its colours, smaller, on the theme's dark tile */
+.tinted .tile:not(.tile--focused) .tile__box { background: var(--color-icon-tile); }
+.tinted .tile__image:not(.tile__image--glyph) { left: 15%; top: 15%; width: 70%; height: 70%; border-radius: 18%; }
 .tile__image--glyph {
 	/* LG's input glyphs are dark grey line art on transparency: lift them to light grey. */
 	left: 18%; top: 18%;
@@ -382,17 +471,17 @@ html, body {
 .settings__tabs {
 	display: flex;
 	flex-direction: row;
-	margin: 36px 0 22px;
+	margin: 36px 0 28px;
 }
 .settings__toolbar {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	margin: 0 0 8px;
+	margin: 0 0 18px;
 	min-height: 64px;
 }
 .settings__toolbar .settings__button { margin-left: 0; margin-right: 22px; flex: none; }
-.settings__about { position: absolute; right: 0; bottom: -44px; margin: 0; max-width: 1500px; text-align: right; font-size: 20px; letter-spacing: 0.02em; color: var(--color-text-muted); opacity: 0.8; }
+.settings__about { position: absolute; left: auto; right: calc(48px - var(--layout-edge-padding)); bottom: -44px; margin: 0; white-space: nowrap; text-align: right; font-size: 20px; letter-spacing: 0.02em; color: var(--color-text-muted); opacity: 0.8; }
 .settings__log { padding: 8px 0; max-height: 700px; overflow: hidden; }
 .settings__log-title { font-size: var(--font-option-label); color: var(--color-text-primary); margin-bottom: 14px; }
 .settings__log-line { font-family: "Roboto Mono", monospace; font-size: 22px; line-height: 1.45; color: var(--color-text-secondary); white-space: pre; }
@@ -405,19 +494,26 @@ html, body {
 .settings__log-sub { font-family: "Roboto Mono", monospace; font-size: 20px; line-height: 1.3; color: var(--color-text-primary); }
 .settings__note { margin: 0; font-size: var(--font-tile-label); line-height: 1.35; color: var(--color-text-muted); max-width: 900px; }
 .tab {
-	margin-right: 40px;
-	padding: 10px 4px;
+	margin-right: 16px;
+	padding: 10px 24px;
+	border-radius: 999px;
 	font-size: var(--font-settings-tab);
 	font-weight: 500;
-	letter-spacing: 0.12em;
+	letter-spacing: 0.1em;
 	text-transform: uppercase;
+	white-space: nowrap;          /* LF1b: a longer label widens the pill, never a second line (old: none) */
+	flex: none;
+	line-height: 1.21;          /* LF1b: same row height for every font, Arabic included (old: normal) */
 	color: var(--color-text-muted);
-	border-bottom: 3px solid transparent;
-	transition: color var(--motion-focus-ms) ease-out, border-color var(--motion-focus-ms) ease-out;
+	box-shadow: 0 0 0 3px var(--color-outline);
+	transition: color var(--motion-focus-ms) ease-out, box-shadow var(--motion-focus-ms) ease-out, background var(--motion-focus-ms) ease-out;
 }
-.tab--active { color: var(--color-text-secondary); border-bottom-color: var(--color-tile-border); }
-.tab--focused { color: var(--color-text-primary); border-bottom-color: var(--color-tile-border-focus); }
+.tab--active { color: var(--color-text-primary); box-shadow: 0 0 0 3px var(--color-outline-strong); }
+.tab--focused, .tab--active.tab--focused { color: var(--color-text-primary); box-shadow: 0 0 0 5px var(--color-tile-border-focus); }
 .tab--locked { opacity: 0.35; }
+.settings__tabs--sub { margin: -4px 0 26px; }
+.settings__tabs--tight .tab, .settings__tabs--snug .tab { padding: 10px 16px; margin-right: 10px; letter-spacing: 0.05em; white-space: nowrap; }          /* 8 tabs (Debug and Tests shown): keep every label on one line */
+.settings__tabs--sub .tab { font-size: calc(var(--font-settings-tab) * 0.8); padding: 8px 20px; margin-right: 14px; }
 
 /* the row of buttons under the tabs */
 .settings__button {
@@ -437,6 +533,7 @@ html, body {
 	box-shadow: 0 0 0 4px var(--color-tile-border-focus);
 	transform: scale(1.06);
 }
+.settings__button--off { opacity: 0.4; }
 .settings__button--active {
 	background: var(--color-button-active-bg);
 	color: var(--color-button-active-text);
@@ -460,6 +557,9 @@ html, body {
 }
 .grid__track .tile { margin-right: var(--layout-tile-gap); margin-bottom: 40px; }
 .tile--dimmed .tile__box { opacity: 0.45; }
+/* a second line under the name: "Not connected", or the device plugged into an input (HDMI-CEC name; P62) */
+.tile__note { display: block; margin-top: 2px; font-size: 0.8em; font-weight: 400; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile--noted .tile__label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* the Settings grid has smaller tiles: smaller letter and tick badge to match */
 .grid__track .tile__monogram { font-size: 50px; }
 .grid__track .tile__badge { right: 8px; top: 8px; width: 28px; height: 28px; }
@@ -482,12 +582,15 @@ html, body {
 .rows--multi .row + .row { margin-top: 14px; }
 /* Look → Name colour */
 .rows--label-color .tile .tile__label { color: var(--label-color); }
+/* Look → Name font / Name thickness */
+.rows--label-font .tile .tile__label { font-family: var(--label-font); }
+.rows--label-weight .tile .tile__label { font-weight: var(--label-weight); }
 /* Look → Show app names: off */
 .rows--no-labels .tile__label { display: none; }
 
 /* ---------- options ---------- */
 
-.options { width: 1116px; margin-left: -8px; overflow: hidden; }     /* a window: the height is set from the real screen size (OptionList) */
+.options { width: 1116px; margin-left: -8px; overflow: hidden; }   /* width: set from the tab bar (OptionList `width`) */     /* a window: the height is set from the real screen size (OptionList) */
 .options__track {
 	position: relative;
 	padding: 8px 8px;         /* room for a focused row's border, so the window does not clip it */
@@ -501,14 +604,21 @@ html, body {
 	padding: 15px 28px;       /* compact: the Clock tab has seven settings and must fit the screen */
 	margin-bottom: 11px;
 	border-radius: var(--layout-tile-radius);
-	background: var(--color-tile-bg);
-	box-shadow: 0 0 0 2px var(--color-tile-border);
+	background: transparent;
+	box-shadow: 0 0 0 1px var(--color-outline);
 	transition: box-shadow var(--motion-focus-ms) ease-out, background var(--motion-focus-ms) ease-out;
 }
 .option--focused {
-	background: var(--color-tile-bg-focus);
 	box-shadow: 0 0 0 5px var(--color-tile-border-focus);
 }
+.option--group { justify-content: space-between; padding-top: 24px; padding-bottom: 24px; box-shadow: 0 0 0 3px var(--color-outline); }
+.option--group.option--open { box-shadow: 0 0 0 3px var(--color-outline-strong); }
+.option--group .option__label { font-size: var(--font-settings-tab); font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-text-secondary); }
+.option--group.option--focused, .option--group.option--open.option--focused { box-shadow: 0 0 0 5px var(--color-tile-border-focus); }
+.option--in-group { margin-left: 44px; margin-right: 44px; box-shadow: none; }
+.option--in-group.option--focused { box-shadow: 0 0 0 5px var(--color-tile-border-focus); }
+/* group expand symbol: a drawn chevron (no font glyph), points down when closed, up when open */
+.option__chev { display: block; width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
 .option__text { flex: 1 1 auto; margin-right: 40px; }
 .option__label { font-size: var(--font-option-label); color: var(--color-text-primary); }
 .option--disabled .option__label, .option--disabled .option__value, .option--disabled .switch { opacity: 0.4; }
@@ -580,6 +690,10 @@ html, body {
 	background: var(--color-tile-bg-focus);
 	box-shadow: 0 0 0 5px var(--color-tile-border-focus);
 }
+.picker__row--danger, .picker__row--danger.picker__row--focused { background: #b3261e; }
+.picker__row--danger .picker__label, .picker__row--danger .picker__detail { color: #ffffff; }
+.picker__row--light, .picker__row--light.picker__row--focused { background: #f2f2f2; }
+.picker__row--light .picker__label, .picker__row--light .picker__detail { color: #111111; }
 .picker__row--info { background: transparent; box-shadow: none; opacity: 0.8; }
 .picker__icon {
 	flex: 0 0 auto;
@@ -687,3 +801,22 @@ html, body {
 	pointer-events: none;
 }
 .toast--error { color: var(--color-danger); }
+
+/* P61c: remote drawing on the Remote control pages */
+.remote-draw { position: absolute; right: 70px; top: 90px; height: 880px; width: 300px; }
+.remote-draw__body { fill: var(--color-tile-bg); stroke: var(--color-tile-border); stroke-width: 3; }
+.remote-draw__shape > * { fill: inherit; stroke: none; }
+.remote-draw__key .remote-draw__shape { fill: var(--color-tile-bg-focus); }
+.remote-draw__key--white .remote-draw__shape { fill: #f2f2f2; }
+.remote-draw__text { fill: var(--color-text-secondary); text-anchor: middle; font-weight: 600; pointer-events: none; }
+.remote-draw__key--white .remote-draw__text { fill: #222222; }
+.remote-draw__key--focus .remote-draw__shape { fill: #ffffff !important; }
+.remote-draw__key--focus .remote-draw__text { fill: #111111; }
+.remote-draw__ring > *, .remote-draw__mapped > * { fill: none; stroke: #f5c518; stroke-width: 5; }
+.remote-draw__mapped > * { stroke-width: 2.5; stroke: var(--color-text-secondary); }
+.remote-draw__name { fill: var(--color-text-muted); text-anchor: middle; font-size: 13px; }
+.picker__credit { width: 1300px; margin-top: 8px; font-size: 15px; line-height: 1.4; color: var(--color-text-muted); }
+
+/* Settings -> Widget: miniature of the widget only (P76d). Left, width and height come from WidgetPreview (free space right of the option list). */
+.widget-preview { position: absolute; top: 540px; z-index: 5; pointer-events: none; }
+.widget-preview__strip { position: absolute; left: 0; top: 0; -webkit-transform-origin: 0 0; transform-origin: 0 0; }

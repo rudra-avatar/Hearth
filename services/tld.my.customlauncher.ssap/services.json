@@ -1,0 +1,10 @@
+{
+  "id": "tld.my.customlauncher.ssap",
+  "description": "Hearth SSAP helper",
+  "services": [
+    {
+      "name": "tld.my.customlauncher.ssap",
+      "description": "Hearth SSAP helper"
+    }
+  ]
+}

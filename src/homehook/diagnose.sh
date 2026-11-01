@@ -28,8 +28,10 @@ echo "== is a launcher process running? (pgrep -f)"; pgrep -f tld.my.customlaunc
 echo "== files in /tmp";                ls -l /tmp/launcher-* 2>&1
 echo "== stand-in still mounted over LG Home's QML? (should be 'no')"; grep " $APP_QML " /proc/mounts || echo "no"
 echo "== user asked for LG's own Home? (file exists = yes)"; ls -l /tmp/launcher-allow-stock-home 2>&1
-echo "== LG Home process(es)";        ps 2>&1 | grep -i "[c]om.webos.app.home"
+echo "== LG Home process(es)";        ps 2>&1 | grep -iE "[c]om.webos.app.(full)?home([^A-Za-z0-9._-]|$)"
 echo "== launcher installed?";        ls /media/developer/apps/usr/palm/applications/tld.my.customlauncher 2>&1 | head -5
+echo "== which app the Home button opens (defaultApps.home; com.webos.app.fullhome on webOS 4.x)"
+luna-send -n 1 luna://com.webos.settingsservice/getSystemSettings '{"category":"general","keys":["defaultApps"]}' 2>&1
 echo "== app in front right now";     luna-send -n 1 luna://com.webos.applicationManager/getForegroundAppInfo '{}' 2>&1
 echo "== log (/tmp/launcher-homehook.log)";  tail -n 60 /tmp/launcher-homehook.log 2>&1
 echo "== end"

@@ -4,11 +4,13 @@
 
 import {setRootVars} from '../lib/cssvars';
 
-export type ThemeName = 'black' | 'grey' | 'midnight' | 'forest' | 'cloud' | 'sand' | 'mist';
+export type ThemeName = 'black' | 'grey' | 'midnight' | 'forest' | 'teal' | 'graphite';
 
 export interface Colors {
 	bg: string; wallpaperStart: string; wallpaperMid: string; wallpaperEnd: string;
 	textPrimary: string; textSecondary: string; textMuted: string;
+	/** P95a: the widget's ink while its colour is Follow theme (legible on this theme's wallpaper); plain colours win */
+	widgetInk: string;
 	tileBg: string; tileBgFocus: string; tileBorder: string; tileBorderFocus: string;
 	badge: string; badgeText: string; liftShadow: string;
 	buttonBorder: string; buttonActiveBg: string; buttonActiveText: string;
@@ -17,9 +19,13 @@ export interface Colors {
 	/** dim layer behind Settings, so a wallpaper doesn't fight the text */
 	overlay: string;
 	pickerBg: string;
-	/** r, g, b of the soft fade over the wallpaper (black on dark themes, white on light ones) */
+	/** Dark mono icon style (P39): the colour of the icon shapes, and the tile background behind them */
+	iconInk: string; iconTile: string;
+	/** Soft mono (P39c): a muted shape on a slightly lifted tile; Accent mono: the shape in an accent colour; Gradient mono: the shape fades from iconInk down to gradInk */
+	softInk: string; softTile: string; accentInk: string; gradInk: string;
+	/** r, g, b of the soft fade over the wallpaper */
 	scrim: string;
-	/** opacity of the shade at the top, middle and bottom of the wallpaper (0: none, as on light themes, where a pale shade glows) */
+	/** opacity of the shade at the top, middle and bottom of the wallpaper (all 0: the shade is not drawn) */
 	scrimTop: string; scrimMid: string; scrimBottom: string;
 }
 
@@ -32,6 +38,7 @@ const BLACK: Colors = {
 	textPrimary: '#F2F2F2',
 	textSecondary: '#A8A8A8',
 	textMuted: '#6A6A6A',
+	widgetInk: '#F2F2F2',
 	tileBg: '#101010',
 	tileBgFocus: '#1D1D1D',
 	tileBorder: '#2A2A2A',
@@ -47,8 +54,10 @@ const BLACK: Colors = {
 	switchKnob: '#A8A8A8',
 	switchKnobOn: '#000000',
 	danger: '#EF7A73',
-	overlay: 'rgba(0, 0, 0, 0.88)',
+	overlay: 'rgba(0, 0, 0, 0.78)',
 	pickerBg: '#000000',
+	iconInk: '#B9B9B9', iconTile: '#000000',
+	softInk: '#7A7A7A', softTile: '#0A0A0A', accentInk: '#E6E6E6', gradInk: '#6E6E6E',
 	scrim: '0, 0, 0', scrimTop: '0.22', scrimMid: '0.08', scrimBottom: '0.5'
 };
 
@@ -61,6 +70,7 @@ const GREY: Colors = {
 	textPrimary: '#F2F5F8',
 	textSecondary: '#B9C6D3',
 	textMuted: '#7F90A1',
+	widgetInk: '#CFE3F5',
 	tileBg: '#1a2733',
 	tileBgFocus: '#243546',
 	tileBorder: '#34485c',
@@ -76,8 +86,10 @@ const GREY: Colors = {
 	switchKnob: '#B9C6D3',
 	switchKnobOn: '#101a24',
 	danger: '#EF7A73',
-	overlay: 'rgba(10, 17, 24, 0.82)',
+	overlay: 'rgba(10, 17, 24, 0.72)',
 	pickerBg: '#0a1118',
+	iconInk: '#B9B9B9', iconTile: '#0f1923',
+	softInk: '#6F8294', softTile: '#121e29', accentInk: '#6FB3D9', gradInk: '#617688',
 	scrim: '0, 0, 0', scrimTop: '0.22', scrimMid: '0.08', scrimBottom: '0.5'
 };
 
@@ -86,31 +98,21 @@ function rgba (hex: string, alpha: number): string {
 	return `rgba(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)}, ${alpha})`;
 }
 
+/** P46: the thin outline of Settings tabs, groups and rows, and the stronger one of the active tab and the open group (the text colour at 22 % and 70 %). */
+function outlineVars (c: Colors): Record<string, string> {
+	return {'--color-outline': rgba(c.textPrimary, 0.22), '--color-outline-strong': rgba(c.textPrimary, 0.7)};
+}
+
 /** A dark theme from its background, tiles and accent. */
-function dark (bg: string, w: [string, string, string], tile: string, focus: string, edge: string, ink: [string, string, string]): Colors {
+function dark (bg: string, w: [string, string, string], tile: string, focus: string, edge: string, ink: [string, string, string], mono: [string, string, string, string, string, string], widgetInk: string): Colors {
 	return {
 		bg, wallpaperStart: w[0], wallpaperMid: w[1], wallpaperEnd: w[2],
-		textPrimary: ink[0], textSecondary: ink[1], textMuted: ink[2],
+		textPrimary: ink[0], textSecondary: ink[1], textMuted: ink[2], widgetInk,
 		tileBg: tile, tileBgFocus: focus, tileBorder: edge, tileBorderFocus: ink[0],
 		badge: ink[0], badgeText: bg, liftShadow: 'rgba(0, 0, 0, 0.6)',
 		buttonBorder: edge, buttonActiveBg: ink[0], buttonActiveText: bg,
 		switchTrack: edge, switchTrackOn: ink[0], switchKnob: ink[1], switchKnobOn: bg,
-		danger: '#EF7A73', overlay: rgba(bg, 0.82), pickerBg: bg, scrim: '0, 0, 0', scrimTop: '0.22', scrimMid: '0.08', scrimBottom: '0.5'
-	};
-}
-
-/** A light theme: dark text on soft, mid-light backgrounds and off-white tiles. `dim` is the darker backdrop of Settings and
- *  the pickers, so the bright rows stand out and the screen is easy on the eyes. Nothing is pure white, so a bright
- *  room or an OLED panel is not dazzled. */
-function light (bg: string, w: [string, string, string], tile: string, edge: string, focus: string, dim: string): Colors {
-	return {
-		bg, wallpaperStart: w[0], wallpaperMid: w[1], wallpaperEnd: w[2],
-		textPrimary: '#1B2430', textSecondary: '#2E3946', textMuted: '#434F5C',
-		tileBg: tile, tileBgFocus: focus, tileBorder: edge, tileBorderFocus: '#1B2430',
-		badge: '#1B2430', badgeText: '#E4E9EE', liftShadow: 'rgba(0, 0, 0, 0.25)',
-		buttonBorder: '#6F7C8A', buttonActiveBg: '#1B2430', buttonActiveText: '#E4E9EE',
-		switchTrack: '#9AA6B2', switchTrackOn: '#1B2430', switchKnob: '#566372', switchKnobOn: '#E4E9EE',
-		danger: '#C0392B', overlay: rgba(dim, 0.95), pickerBg: dim, scrim: '0, 0, 0', scrimTop: '0', scrimMid: '0', scrimBottom: '0'
+		danger: '#EF7A73', overlay: rgba(bg, 0.72), pickerBg: bg, iconInk: mono[0], iconTile: mono[1], softInk: mono[2], softTile: mono[3], accentInk: mono[4], gradInk: mono[5], scrim: '0, 0, 0', scrimTop: '0.22', scrimMid: '0.08', scrimBottom: '0.5'
 	};
 }
 
@@ -119,18 +121,15 @@ const SOFT_INK: [string, string, string] = ['#F2F5F8', '#B9C6D3', '#7F90A1'];
 export const THEMES: Record<ThemeName, Colors> = {
 	black: BLACK,
 	grey: GREY,
-	midnight: dark('#0a1020', ['#101a36', '#1b2a5c', '#0a1020'], '#121a30', '#1c2848', '#2c3d66', SOFT_INK),
-	forest: dark('#0b1a12', ['#12281b', '#1d4030', '#0b1a12'], '#12231a', '#1b3326', '#2d4a3a', ['#F1F6F2', '#B7C9BC', '#7C927F']),
-	cloud: light('#B4C0CE', ['#C6D0DC', '#AEBBCA', '#93A5B8'], '#D6DEE6', '#9AA9BA', '#E8EEF3', '#8895A4'),
-	sand: light('#CFC0A8', ['#DCCFB9', '#CBBB9F', '#B4A183'], '#E6DBC8', '#B2A183', '#F2EADC', '#A29478'),
-	mist: light('#AFC4C9', ['#C2D4D8', '#A8C0C6', '#8BA8B0'], '#D3E1E4', '#94ADB3', '#E6EFF1', '#82999F')
+	midnight: dark('#0a1020', ['#101a36', '#1b2a5c', '#0a1020'], '#121a30', '#1c2848', '#2c3d66', SOFT_INK, ['#B9B9B9', '#070c18', '#6B7AA3', '#0b1122', '#7F9BFF', '#5D6B96'], '#C3CEFF'),
+	forest: dark('#0b1a12', ['#12281b', '#1d4030', '#0b1a12'], '#12231a', '#1b3326', '#2d4a3a', ['#F1F6F2', '#B7C9BC', '#7C927F'], ['#B9B9B9', '#08140d', '#6E8A78', '#0c1a12', '#7FD19A', '#607A68'], '#C2EBCF'),
+	// P48 (colours are the agent's; the user picked these two themes)
+	teal: dark('#08191b', ['#0d2528', '#154447', '#08191b'], '#0f2427', '#183639', '#2a4d50', ['#EFF7F6', '#B5CFCD', '#7B9A98'], ['#B9B9B9', '#061314', '#6B9A97', '#0a1b1d', '#6FD3CC', '#5E8280'], '#A9EFE8'),
+	graphite: dark('#17140f', ['#201c15', '#332c20', '#17140f'], '#211d17', '#322b21', '#4a4132', ['#F4EFE6', '#CFC6B6', '#968C7A'], ['#B9B9B9', '#110f0b', '#9A8E78', '#1a1712', '#D9B36C', '#85785F'], '#F0CF8E')
 };
 
-/** The themes with dark text (the clock turns dark grey on them, see prefs). */
-export const LIGHT_THEMES: ThemeName[] = ['cloud', 'sand', 'mist'];
-
 export const FONT = {
-	family: '"Inter Variable", "LG Smart UI", "Helvetica Neue", Arial, sans-serif',
+	family: '"Inter Variable", "Noto Sans Arabic", "LG Smart UI", "Helvetica Neue", Arial, sans-serif',
 	rowLabel: 20,
 	tileLabel: 19,
 	settingsTitle: 40,
@@ -163,7 +162,7 @@ export const MOTION = {
 	unfocusedRowOpacity: 0.55
 } as const;
 
-/** The scrim is not drawn at all when all three of its strengths are 0 (the light themes): nothing to paint or blend. */
+/** The scrim is not drawn at all when all three of its strengths are 0: nothing to paint or blend. */
 function scrimDisplay (c: {scrimTop: string; scrimMid: string; scrimBottom: string}): string {
 	return Number(c.scrimTop) === 0 && Number(c.scrimMid) === 0 && Number(c.scrimBottom) === 0 ? 'none' : 'block';
 }
@@ -180,6 +179,7 @@ export function applyTokens (theme: ThemeName = 'black'): void {
 			vars[`--${group}-${kebab(key)}`] = `${value}${unit}`;
 		}
 	}
+	Object.assign(vars, outlineVars(THEMES[theme]));
 	vars['--scrim-display'] = scrimDisplay(THEMES[theme]);
 	setRootVars(vars);
 }
@@ -189,6 +189,7 @@ export function applyTheme (theme: ThemeName): void {
 	const colors = THEMES[theme] as unknown as Record<string, string>;
 	const vars: Record<string, string> = {};
 	for (const key in colors) vars[`--color-${kebab(key)}`] = colors[key];
+	Object.assign(vars, outlineVars(THEMES[theme]));
 	vars['--scrim-display'] = scrimDisplay(THEMES[theme]);
 	setRootVars(vars);
 }

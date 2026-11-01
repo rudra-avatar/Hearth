@@ -1,6 +1,6 @@
 # When the TV turns on, open… (rooted TVs)
 
-Settings → Options → **When the TV turns on, open…** chooses what the TV shows when you switch it on: Live TV or the
+Settings → System → **When the TV turns on, open…** chooses what the TV shows when you switch it on: Live TV or the
 last input (the TV's own default), Hearth, or any installed app.
 
 ## How it works
@@ -23,7 +23,7 @@ own button (`localKey`) there is no app (`{LAST_APP}` only resumes Netflix), so 
 TV on most sets, which shows "No signal" when no aerial is plugged in.
 
 `bootd` reads `/var/luna/preferences/bootd.json` **instead of** its own file when that file exists (LG left it in for
-debugging). Hearth writes that file: LG's own file with `remoteKey`, `localKey` and `micomPower` (a cold start, e.g. after
+debugging). On webOS 7.6 LG's table lists only `remoteKey`, `localKey` and `upDownKey` (checked on a TV, 2026-10-29); Hearth still sets all three reasons below (as the PR did), so on that TV it adds `micomPower`, which bootd presumably ignores (untested there). Hearth writes that file: LG's own file with `remoteKey`, `localKey` and `micomPower` (a cold start, e.g. after
 a power cut or a restart) set to the chosen app (plus `wakeOnWiFi` and `wakeOnLan` when network wake-ups are on). Nothing runs in the background.
 
 - **Only when you switch it on yourself.** Every other reason keeps LG's behaviour, so the TV still goes where it is
@@ -71,3 +71,5 @@ reboot
 To check what is in place: `grep -A6 firstAppByPowerOnReason /var/luna/preferences/bootd.json`, and after a start
 `cat /tmp/launcher-poweron.log` (one line per start: in place, or what it removed and why). The reason the TV was last switched on:
 `luna-send -n 1 luna://com.webos.service.tvpower/power/getPowerOnReason '{}'`.
+
+Adapted for Hearth's System tab from pull request #25 by Obednal97. Unverified on webOS 7.6: that bootd honours the copy, what the physical power button reports, and wake from standby.

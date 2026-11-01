@@ -1,0 +1,43 @@
+{
+  "format": 1,
+  "name": "Theme name",
+  "author": "Your name",
+  "colors": {
+    "theme": "teal",
+    "widget": "theme",
+    "icon": "amber"
+  },
+  "iconStyle": {
+    "style": "mono",
+    "tile": "dark"
+  },
+  "icons": [
+    {
+      "app": "youtube.leanback.v4",
+      "file": "icons/example.png"
+    }
+  ],
+  "apps": [
+    {
+      "id": "youtube.leanback.v4",
+      "name": "Videos"
+    },
+    {
+      "id": "netflix"
+    }
+  ],
+  "cities": [
+    {
+      "name": "Delhi",
+      "lat": 28.6139,
+      "lon": 77.209,
+      "detail": "India"
+    },
+    {
+      "name": "London",
+      "lat": 51.5072,
+      "lon": -0.1276,
+      "detail": "England, United Kingdom"
+    }
+  ]
+}

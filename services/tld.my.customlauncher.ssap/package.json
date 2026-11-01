@@ -1,0 +1,6 @@
+{
+  "name": "tld.my.customlauncher.ssap",
+  "version": "1.0.0",
+  "description": "Hearth helper: talks to the TV's own remote-control port for the app list without root",
+  "main": "service.js"
+}

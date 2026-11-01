@@ -265,7 +265,7 @@ Every feature is explained in plain words in the [guides](https://rudra-avatar.g
 | ![Look: Theme](docs/screenshots/settings-theme.jpg) | ![Look: Icons](docs/screenshots/settings-icons.jpg) |
 | ![Look: Home row](docs/screenshots/settings-home-row.jpg) | ![Apps & Sources](docs/screenshots/settings-apps.jpg) |
 | ![Widget](docs/screenshots/settings-widget.jpg) | ![Screen saver](docs/screenshots/settings-saver.jpg) |
-| ![System](docs/screenshots/settings-system.jpg) | |
+| ![System](docs/screenshots/settings-system.jpg) | ![The wallpaper picker](docs/screenshots/wallpaper-picker.jpg) |
 
 ### Icon styles
 

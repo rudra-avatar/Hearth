@@ -1,0 +1,49 @@
+name: Update tested TVs table
+
+# A maintainer reads a compatibility report and adds the label `verified`.
+# This workflow then rebuilds the table in docs/COMPATIBILITY.md from every issue that has that label.
+# It runs only on label changes (not on edits), so a report cannot change after it was checked
+# until the next label change; issue text is cut down to short plain cells by the script.
+on:
+  issues:
+    types: [labeled, unlabeled]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: read
+  actions: write
+
+concurrency:
+  group: compat-table
+  cancel-in-progress: false
+
+jobs:
+  table:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'verified'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Rebuild the table
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/compat-table.mjs
+      - name: Commit and publish the guides
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- docs/COMPATIBILITY.md; then
+            echo "nothing to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/COMPATIBILITY.md
+          git commit -m "Update tested TVs table"
+          git push origin HEAD:main
+          gh workflow run pages.yml --ref main

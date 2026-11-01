@@ -1,27 +1,95 @@
 # Changelog
 
-## Unreleased
+## 2.0.0
 
-- **When the TV turns on, open…** (Settings → Options, rooted TVs): Live TV or the last input (the TV's default), Hearth, or any installed app. Hearth writes a copy of the TV's start-up table (`/etc/palm/bootd.json` → `/var/luna/preferences/bootd.json`) with the power button, the TV's own button and a cold start pointed at the app; casting, network wake-ups and HDMI-CEC are left as they are, unless **Also when woken over the network** is switched on (off by default; for phone apps and Home Assistant, at the cost of casting to a TV that is off opening the app first). Starts working after one restart of the TV (*Restart the TV now* is offered). A start-up check notes what the TV loaded, and removes the copy if Hearth is uninstalled or LG's file changes. Tested on webOS 4.5. See `src/poweron/README.md`.
+A big update: a new Settings layout, many more looks, a screen saver, a Home button that needs no other app, languages, and a full app list on TVs without root. Your apps, their order, names, favourites and TV-installed features are kept when you update. **Once**, the look, widget, wallpaper, home-row and quiet-mode values you had saved are reset to the new defaults (*Restore my settings from before the update* in Settings, Look brings them back once).
+
+### New defaults
+
+- A fresh install starts with the photo *Photo: 1*, a centred widget near the top, OLED black, weather off, quiet mode (apps hide after 20 s, the screen dims 20 s later), *When Home is pressed* = the app you opened last, the LG Home and System Settings tiles hidden, input status on, and the built-in video screen saver on (the TV switches off 5 minutes after it starts).
+- *Reset look and clock* is now *Reset Hearth visual settings to default*.
+
+### Settings
+
+- New layout: tabs *Apps & Sources*, *Look*, *Widget*, *Wallpaper*, *Screen saver*, *System*. Rows live in groups that start closed and close again when you leave them; Back closes an open group first.
+- *Show widget* switch; the widget has a live preview beside the list.
+- Fewer rows: icon styles, shadow, fade, panel size and saver brightness are one row each.
+- Settings background is a little more see-through; every row has one short description.
+
+### Home screen
+
+- **Favourites row:** hold OK on an app, *Add to favourites*. Home then shows only that row; Down shows all the other apps.
+- **Order by last opened:** one switch puts the apps you opened last first.
+- **When Home is pressed:** the highlight starts on the first app, or on the app you opened last. After switching the TV on it starts on the first app. A second Home press goes to the first app. (Idea and first code by Obednal97, pull request #20, built on an idea by iulyax27.)
+- **Input status:** inputs with nothing plugged in are greyed out; a connected HDMI device's name shows under its input (rooted TVs). (Pull request #16 by Obednal97, adapted.)
+- **Home row loops** (Right on the last app goes to the first); held keys start slowly and speed up; *Row scroll speed* (Slow, Medium, Fast); the Magic Remote pointer no longer runs away.
+- App icons that change after an app update are noticed (pull request #21 by Obednal97). The Settings list keeps the rows above and below the highlighted one in view (pull request #17 by Obednal97).
+- *Close all* in Recent apps closes the panel. Quiet mode also hides the bottom fade.
+
+### Look and widget
+
+- Themes: OLED black, Calm blue-grey, Midnight blue, Deep forest, **Deep teal** and **Warm graphite**. The light themes are gone (a saved one loads as OLED black).
+- Icon styles: Original, Minimal, Dark mono, Soft mono, Accent mono, Gradient mono and **Tinted tile**; *Icon tile* Dark or Light; *Icon colour*; *Icon opacity*.
+- **27 fonts** (ten new ones) for the widget and the app names; name font, size and thickness; widget alignment left, centre or right; widget colour *Follow theme* with its own ink on every theme; widget shadow levels.
+- **Quiet mode** can also dim the screen (strength 10-80 %); **OLED shift** moves the clock and apps a few pixels each minute.
+- Wallpaper: 25 new bundled photos (1920x1080), slideshows with subfolders and no picture-count limit, smooth cross-fade, and the chosen photo is painted in the very first frame.
+
+### Custom themes (rooted TVs)
+
+- Load a theme zip (Settings, Look, Theme): colours, widget colour, fonts, icon style, app pictures, app order and names, cities and a wallpaper or slideshow. *Save this theme*, browse saved themes with the arrows, *Delete this theme*.
+- *Export theme base* writes your apps, names and icons as a starting zip for you or an AI helper. Format: `docs/theme/theme-guide.md`.
+
+### Screen saver (rooted TVs, experimental)
+
+- Replaces the TV's saver with your pictures, GIFs, videos or a slideshow, or the **built-in night fireplace video** (Night Stock Videos by Vecteezy). Own picture time, shuffle, fit or fill, OLED care, brightness, *Show it now*, and switch the TV off after a chosen time. A restart puts LG's saver back. On webOS 10 and newer it is untested.
+
+### Home button, remote and TV start (rooted TVs)
+
+- **Home button opens Hearth, no other app needed:** Hearth carries the Input Hook key hook (GPL-3.0, credited). *Map home button* finds LG's Home code (773, 774, 125) and maps it by itself, then a pop-up says whether it worked; a guide with a drawing of your remote helps when it does not. The mapping survives restarts. A separately installed Input Hook app with its own settings is never changed; Hearth then greys the rows out with the reason.
+- **Map additional keys:** give the remote's colour buttons and other dedicated buttons a new job (open an app or input, Hearth, mute, or nothing). Home, arrows, OK, Back, power, volume, channels and numbers are never taken. (Pull requests #19 and #22 by Obednal97, adapted.)
+- **When the TV turns on, open...:** the TV opens Hearth (or any app) at power-on, after one restart. It replaces *Add the launcher as a TV input*, which is gone (Hearth removes the old input once). (Method and first code from pull request #25 by Obednal97.)
+- **Set Hearth as the TV's Home app** (experimental; worked on webOS 4.5, not on 7.6). (Pull request #18 by Obednal97.)
+- **Replace LG Home (helper)** is one click and also starts the bundled key hook; the old *script and SAM* method is removed (it started late and broke the aspect-ratio setting; a TV that had it is cleaned up once).
+- **Keep Hearth ready** (experimental): asks the TV to keep Hearth in memory so Home opens it at once; a warning shows first, a failing step switches it off with the reason, and *Reopen Hearth if the TV closed it* is a second switch. Both grey out on a TV without a memory list.
+- **LG preloaded apps** (experimental): see which apps LG keeps loaded in the background and switch some off; nothing is closed; *Everything back to LG's setting* undoes it. (Approach from Glasshouse.)
+
+### Languages
+
+- *Hearth language* (System, first row): English, languages that come with Hearth (no root: **Indonesian, Spanish, German, Arabic**; written by Claude, marked *(machine translated)* until a native speaker reviews them) and your own language file (rooted TVs). Every menu text can be translated; guide `docs/language_packs.md` and the *Translation* issue form. Scripts other than Latin, Cyrillic, Greek and Arabic are not supported yet; Arabic stays left to right.
+
+### Without root
+
+- The **full app list with icons now loads on a non-rooted TV** (*LG Connect Apps* switched on): newer LG firmware (webOS 11.2, 43.21.x) refuses a web page's own connection, so a small helper service packaged with Hearth makes it. Tested on a non-rooted LG TV, webOS 11.2.0, firmware 43.21.44. The method for the helper service is from free-my-tv pull request #285 by simbasjungles. TV icons are kept after the first load, so they show at once after a restart.
+- *Open Hearth without root: guide* explains Quick Access (hold a number key 1-9) and the second-device watcher. Replacing LG Home without root is not possible; the guide says why.
+
+### Faster start
+
+- The Home button work goes first; the app list refresh, weather and other checks wait 20-30 s; the key hook and helper start after the first frame; saved wallpapers are painted by CSS before the first render; converted icons are saved between starts.
+
+### Guides and reporting
+
+- Guides on GitHub Pages: a beginner guide for people who have never done this before, a full guide to every feature, custom themes, language files and troubleshooting. The README is rewritten.
+- *Compatibility report* form: tell us your TV, webOS, firmware and whether Hearth works. A maintainer checks the report and marks it `verified`; a workflow then adds it to the **Tested TVs** table by itself.
+- Fixes: the key hook and the helper no longer overwrite each other's start-up link after a restart; the key hook start marker is written only after the hook is really up; held-key and pointer scrolling; the free-RAM reading is gone for good; scripts clean up their links and folders if Hearth is uninstalled without switching them off.
 
 ## 1.2.0
 
 - **Edit names and icons** (Settings → Apps or Sources, hold OK on an item): rename an app or input, pick another icon (16 input symbols, the bundled app logos), or use your own picture from a USB drive or the TV (rooted TVs, saved inside Hearth's settings). *Use the app's / TV's name and icon* resets it. See the README, "Edit a name or icon".
 - **Hearth for WebOS** is the public name; the README now explains the two ways to replace LG Home (helper script, SAM), their known problems, and a recommended setup with Input Hook. The Home key code is 773 on the test remote; others may differ.
 - **Back on the home row** always opens the Recent apps panel; the old "jump to the first app" is gone.
-- **Quiet mode** (apps fade after a chosen idle time, 10-60 s; off by default), **OLED shift** (slow pixel shift, on by default, with an off switch), **icon spacing**, **wallpaper opacity**, **name colour**, and **bundled nature photos** with a slideshow. Quiet mode and OLED shift follow ideas from iulyax27 (pull request #10).
+- **Quiet mode** (apps fade after a chosen idle time, 10-60 s; off by default), **OLED shift** (slow pixel shift, on by default, with an off switch), **icon spacing**, **wallpaper opacity**, **name colour**, and **bundled photos** with a slideshow. Quiet mode and OLED shift follow ideas from iulyax27 (pull request #10).
 - **Icon batches** and the Input Hook guide: thanks to iulyax27 (pull request #8).
 - **Speed:** the clock redraws Home once a minute (it was once a second) and unchanged tiles are not redrawn (worst key delay on the reference TV 200 ms to 66 ms).
 - **Credits:** Alejandro Morales (#1), chriskoperdraad-tech (#2, #3), ganondorft (#6), iulyax27 (#8, #10), community contribution (author not named); projects and ideas are listed in the README. Developed with Claude (Anthropic).
 - **Recent apps panel:** Back on the home screen opens a panel along the bottom with the TV's recent apps (rooted TVs). OK opens one, holding OK closes it, ↑ reaches *Close all*, Back closes the panel. Width and height are in Settings → Look. The idea comes from a community contribution (1.6.0 build, author not named); the code is Hearth's own.
 - **Icon shape** (Settings → Look): rounded or sharp square, squircle, circle, leaf, arch, teardrop. **Bottom fade** (Settings → Wallpaper): darkness and height. Both from the same contribution.
 - **Ten more clock fonts** (Outfit, Work Sans, Bricolage Grotesque, Big Shoulders, Jura, Tektur, JetBrains Mono, Lora, Poiret One, Pixelify Sans) and **six clock thickness steps** (Thin to Bold), from the same contribution. **Widget shadow** switch: a slight drop shadow behind the time, date and weather (Settings → Wallpaper).
-- **Experimental: webOS 3.x (Chromium 38)** from the same install file: a loader picks `app.js` or the ES5 `app.legacy.js`; custom properties are emulated there; the helper script watches the system log for the Home bar (`HOOK_VERSION` 9). Ideas and the watcher lines from pull requests #2 and #3 by chriskoperdraad-tech. Untested on a TV.
+- **webOS 3.x (Chromium 38)** from the same install file: a loader picks `app.js` or the ES5 `app.legacy.js`; custom properties are emulated there; the helper script watches the system log for the Home bar (`HOOK_VERSION` 9). Ideas and the watcher lines from pull requests #2 and #3 by chriskoperdraad-tech. Users with two webOS 3 TVs report that it works.
 - **Widget shadow strength** (Settings, Wallpaper) beside the shadow switch.
-- **Experimental: app list without root** (Settings, Options, "Load apps from the TV"): pairs with the TV's own remote-control service and reads the full app list; the order is Homebrew, then the TV, then the built-in list. Ideas from the public protocol; see README "Not rooted".
-- **Quiet mode** brings the apps back when you return from an app (it used to stay hidden until a key was pressed). **Load apps from the TV** is hidden on rooted TVs. Settings shows the TV's **IP** address at the bottom right; the wallpaper guide and README now point there instead of the Homebrew Channel.
+- **Experimental: app list without root** (Settings, Options, "Load app list from the TV without root (experimental)"): pairs with the TV's own remote-control service and reads the full app list; the order is Homebrew, then the TV, then the built-in list. Ideas from the public protocol; see README "Not rooted".
+- **Quiet mode** brings the apps back when you return from an app (it used to stay hidden until a key was pressed). **Load app list from the TV without root (experimental)** is hidden on rooted TVs. Settings shows the TV's **IP** address at the bottom right; the wallpaper guide and README now point there instead of the Homebrew Channel.
 - **Tests tab:** frame timer and key delay (idle, Settings, Home) and start-up times (tests 28-31), to measure speed on a real TV. "Run all tests" skips the tests that need you to act or run long (21, 26, 29-31), and every test is given up after two minutes.
-- **Nature photo slideshow** now cross-fades and no longer redraws the whole launcher on each change.
+- **Photo slideshow** now cross-fades and no longer redraws the whole launcher on each change.
 - **webOS 11:** the root options no longer stay greyed out on a rooted webOS 11 TV once a one-time permission step is done: `tools/webos11-permission.sh` (inside the app; run it once over SSH, see "webOS 11" in the README). The "TV refused the command" message now says so. Thanks to ganondorft (pull request #6) for finding the cause and the fix.
 - **Building on Windows:** the helper and start-up scripts are always written to the TV with plain line ends, and `.gitattributes` keeps `*.sh` files LF (also from pull request #6).
 
@@ -30,7 +98,7 @@
   drawn** (Home, Back out of an app, waking the TV). A root watcher opens Hearth the moment the TV reports the stand-in in front. The mount lives in memory
   only; a link in the startup folder redoes it about 25 s into each start, and until then the watcher works as the helper script does. A start-up that does not
   finish is not repeated, and the method switches itself off if Hearth cannot be opened. It cannot be on together with the helper script: each greys the
-  other out. Adapted from Glasshouse (see THIRD_PARTY_NOTICES.md); undo steps over SSH: `src/takeover/README.md`.
+  other out. Adapted from Glasshouse (see THIRD_PARTY_NOTICES.md); (this method was removed in 2.0.0).
 
 - *Make this launcher the default instead of LG Home* is now **Replace LG Home with a helper script**. The helper now always starts at boot, so the
   *Start the launcher helper at boot* row is gone (installing the new version adds the boot link to an existing helper). Its description warns that LG Home can

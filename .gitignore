@@ -7,3 +7,7 @@ build/
 # local, per-person settings
 tv.env
 src/config/catalog.local.ts
+Project Progress/
+dist-legacy
+site/
+public/languages/

@@ -1,0 +1,44 @@
+site_name: Hearth for WebOS
+site_description: A fast, calm home screen for LG webOS TVs
+site_url: https://rudra-avatar.github.io/Hearth/
+repo_url: https://github.com/rudra-avatar/Hearth
+repo_name: rudra-avatar/Hearth
+docs_dir: docs
+exclude_docs: |
+  theme/theme_name/
+  languages/release-en.json
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: black
+    accent: amber
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - content.code.copy
+    - search.highlight
+nav:
+  - Home: index.md
+  - Beginners guide:
+    - Overview: BEGINNERS-GUIDE.md
+    - 1. Developer Mode: guide/developer-mode.md
+    - 2. Root the TV: guide/rooting.md
+    - 3. Install Hearth: guide/install.md
+  - Everything Hearth can do:
+    - Overview: customizing.md
+    - Using Hearth: features/using.md
+    - Look: features/look.md
+    - Widget: features/widget.md
+    - Wallpaper: features/wallpaper.md
+    - Screen saver: features/screensaver.md
+    - System: features/system.md
+    - Without root: features/no-root.md
+  - Custom themes: theme/theme-guide.md
+  - Language files: language_packs.md
+  - Troubleshooting: troubleshooting.md
+  - Tested TVs and report: COMPATIBILITY.md
+markdown_extensions:
+  - admonition
+  - pymdownx.magiclink

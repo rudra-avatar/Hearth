@@ -38,7 +38,7 @@ const env = (globalThis as unknown as {process?: {env: Record<string, string | u
 const WEATHER = !(env && env.env.HEARTH_WEATHER === '0');
 
 export default defineConfig({
-	define: {__LEGACY__: JSON.stringify(LEGACY), __WEATHER__: JSON.stringify(WEATHER), __PROBE__: JSON.stringify(!!(env && env.env.HEARTH_PROBE === '1'))},
+	define: {__LEGACY__: JSON.stringify(LEGACY), __WEATHER__: JSON.stringify(WEATHER), __NOROOT__: JSON.stringify(!!(env && env.env.HEARTH_NOROOT === '1')), __PROBE__: JSON.stringify(!!(env && env.env.HEARTH_PROBE === '1'))},
 	base: './',            // the app is loaded from a local file path on the TV
 	plugins: [preact(), classicScriptTag()],
 	build: {

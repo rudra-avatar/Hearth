@@ -1,0 +1,21 @@
+// Tests for K1 (src/lib/homekeycore.ts): automatic Home button mapping pick.   Run: npm test
+import {build} from 'esbuild';
+const out = new URL('../node_modules/.cache-homekeyauto-test.mjs', import.meta.url).pathname;
+await build({entryPoints: [new URL('../src/lib/homekeycore.ts', import.meta.url).pathname], bundle: true, format: 'esm', outfile: out, platform: 'node', logLevel: 'error'});
+const c = await import(out);
+let fail = 0;
+const eq = (a, b, m) => { const ok = JSON.stringify(a) === JSON.stringify(b); if (!ok) { fail++; console.log('FAIL', m, JSON.stringify(a), '!=', JSON.stringify(b)); } else console.log('ok  ', m); };
+const seen = (...codes) => codes.map((code) => ({code, count: 2}));
+eq(c.autoPick(seen(773), {}), {code: 773}, 'detected 773 is picked');
+eq(c.autoPick(seen(774), {}), {code: 774}, 'detected 774 is picked');
+eq(c.autoPick(seen(125), {}), {code: 125}, 'detected 125 is picked');
+eq(c.autoPick(seen(125, 774), {}), {code: 774}, 'LG table order: 774 before 125');
+eq(c.autoPick(seen(398), {}), null, 'a colour key is not a Home code');
+eq(c.autoPick(seen(773), null), null, 'keybinds file unknown: nothing is written');
+eq(c.autoPick([], {}), null, 'nothing detected');
+const ours = {'773': {action: 'launch', id: 'tld.my.customlauncher'}};
+eq(c.autoPick(seen(774), ours), null, 'Hearth already has a button: no second one');
+const foreign = {'773': {action: 'launch', id: 'com.other.app'}};
+const p = c.autoPick(seen(773), foreign);
+eq(p && p.code === 773 && !!p.blockedBy, true, 'a code used by another app is reported blocked, not overwritten');
+process.exit(fail ? 1 : 0);

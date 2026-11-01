@@ -11,12 +11,13 @@ const h = await import(out);
 let fail = 0;
 const eq = (a, b, m) => { const ok = a === b; if (!ok) fail++; console.log(ok ? 'ok  ' : 'FAIL', m, ok ? '' : `(${a} != ${b})`); };
 
-// The shape of /etc/palm/bootd.json on a webOS 4.5 TV (shortened: the real file has more sections and keys).
+// The shape of /etc/palm/bootd.json on webOS 7.6 (shortened): the power table has remoteKey, localKey and upDownKey only
+// (user's TV, 2026-10-29: no micomPower, no network keys). `full` below is the webOS 4.5 table the PR was written on.
 const stock = JSON.stringify({
 	inputApps: {DTV: 'com.webos.app.livetv', HDMI_1: 'com.webos.app.hdmi1'},
 	common: {
 		firstApp: {firstAppInFirstUse: 'com.palm.app.firstuse', firstAppInNormal: '{LAST_INPUT_APP}'},
-		firstAppByPowerOnReason: {netflix: 'netflix', amazon: 'amazon', remoteKey: '{LAST_APP}', localKey: '{LAST_APP}'},
+		firstAppByPowerOnReason: {netflix: 'netflix', amazon: 'amazon', remoteKey: '{LAST_APP}', localKey: '{LAST_APP}', upDownKey: '{LAST_APP}'},
 		logger: {logType: ['file', 'pmlog'], logLevel: 'debug'}
 	},
 	standard: {description: 'variant'}
@@ -25,15 +26,21 @@ const stock = JSON.stringify({
 // ---- the start-up file ----
 const built = JSON.parse(h.buildOverride(stock, 'youtube.leanback.v4'));
 const table = built.common.firstAppByPowerOnReason;
-eq([table.remoteKey, table.localKey, table.micomPower].join(), 'youtube.leanback.v4,youtube.leanback.v4,youtube.leanback.v4', 'the power button, the TV\'s button and a cold start open the chosen app');
+eq([table.remoteKey, table.localKey, table.upDownKey].join(), 'youtube.leanback.v4,youtube.leanback.v4,{LAST_APP}', 'the power button and the TV\'s button open the chosen app; the channel keys are left alone');
+eq([table.micomPower, table.remoteKey].join(), 'youtube.leanback.v4,youtube.leanback.v4', 'the cold-start key is set too, even where LG\'s table on this TV lacks it (full PR, P57a)');
 eq([table.netflix, table.amazon].join(), 'netflix,amazon', 'the Netflix and Prime Video buttons keep LG\'s own apps');
 eq(table.wakeOnWiFi === undefined && table.hdmiCec === undefined, true, 'network wake-ups and HDMI-CEC are not given an app (they go where they ask)');
 eq(JSON.stringify({...built, common: {...built.common, firstAppByPowerOnReason: JSON.parse(stock).common.firstAppByPowerOnReason}}), JSON.stringify(JSON.parse(stock)), 'everything else is LG\'s file unchanged');
 eq(h.overrideApp(h.buildOverride(stock, 'tld.my.customlauncher')), 'tld.my.customlauncher', 'the app can be read back out of the file');
 const net = JSON.parse(h.buildOverride(stock, 'youtube.leanback.v4', true)).common.firstAppByPowerOnReason;
-eq([net.wakeOnWiFi, net.wakeOnLan, net.remoteKey].join(), 'youtube.leanback.v4,youtube.leanback.v4,youtube.leanback.v4', 'with network wake-ups on, Wake-on-LAN opens the app too');
+eq(net.wakeOnWiFi === 'youtube.leanback.v4' && net.wakeOnLan === 'youtube.leanback.v4', true, 'with the network choice both network keys are set, listed or not');
 eq(net.hdmiCec === undefined && net.netflix === 'netflix', true, 'HDMI-CEC and the partner buttons are still left alone');
-eq(h.overrideNetwork(h.buildOverride(stock, 'youtube.leanback.v4', true)), true, 'network wake-ups can be read back');
+eq(h.overrideNetwork(h.buildOverride(stock, 'youtube.leanback.v4', true)), true, 'the network choice reads back even where LG\'s table lacked the keys');
+const full = JSON.stringify({common: {firstAppByPowerOnReason: {netflix: 'netflix', remoteKey: '{LAST_APP}', localKey: '{LAST_APP}', micomPower: '{LAST_APP}', wakeOnWiFi: '{LAST_APP}', wakeOnLan: '{LAST_APP}'}}});
+const fb = JSON.parse(h.buildOverride(full, 'youtube.leanback.v4')).common.firstAppByPowerOnReason;
+eq([fb.remoteKey, fb.localKey, fb.micomPower].join(), 'youtube.leanback.v4,youtube.leanback.v4,youtube.leanback.v4', 'a table that has a cold-start key (webOS 4.5): it is set too');
+eq(fb.wakeOnWiFi, '{LAST_APP}', 'network keys stay with LG unless chosen');
+eq(h.overrideNetwork(h.buildOverride(full, 'youtube.leanback.v4', true)), true, 'a table with network keys: they can be chosen and read back');
 eq(h.overrideNetwork(h.buildOverride(stock, 'youtube.leanback.v4')), false, 'and are off unless chosen');
 eq(h.overrideApp(stock), '', 'LG\'s own file names no app ({LAST_APP} is not one)');
 eq(h.overrideApp('not json'), '', 'a file that is not JSON names no app');
@@ -47,8 +54,8 @@ eq(unknown, 4, 'a start-up file of another kind is never rewritten');
 // ---- the status ----
 const status = (fields, file = '') => h.parseStatus(Object.entries(fields).map(([k, v]) => `${k}=${v}`).join('\n') + '\n--- start-up file ---\n' + file);
 const mine = h.buildOverride(stock, 'youtube.leanback.v4');
-eq(JSON.stringify(status({support: 'yes', override: 'no', ours: 'no', loaded: ''})), JSON.stringify({supported: true, chosen: '', network: false, loaded: '', loadedNetwork: false, foreign: false}), 'nothing in place: the TV default, nothing loaded');
-eq(JSON.stringify(status({support: 'yes', override: 'yes', ours: 'yes', loaded: ''}, mine)), JSON.stringify({supported: true, chosen: 'youtube.leanback.v4', network: false, loaded: '', loadedNetwork: false, foreign: false}), 'just chosen: chosen, not loaded yet');
+eq(JSON.stringify(status({support: 'yes', override: 'no', ours: 'no', loaded: ''})), JSON.stringify({supported: true, chosen: '', network: false, loaded: '', loadedNetwork: false, foreign: false, networkKeys: false}), 'nothing in place: the TV default, nothing loaded');
+eq(JSON.stringify(status({support: 'yes', override: 'yes', ours: 'yes', loaded: ''}, mine)), JSON.stringify({supported: true, chosen: 'youtube.leanback.v4', network: false, loaded: '', loadedNetwork: false, foreign: false, networkKeys: false}), 'just chosen: chosen, not loaded yet');
 eq(h.needsRestart(status({support: 'yes', override: 'yes', ours: 'yes', loaded: ''}, mine)), true, 'so a restart is needed');
 eq(h.needsRestart(status({support: 'yes', override: 'yes', ours: 'yes', loaded: 'youtube.leanback.v4'}, mine)), false, 'after the restart it is not');
 eq(h.needsRestart(status({support: 'yes', override: 'no', ours: 'no', loaded: 'youtube.leanback.v4'})), true, 'switched off while loaded: a restart is needed to go back');
@@ -98,7 +105,7 @@ eq(readFileSync(root + '/dir/override.md5', 'utf8').trim().split('\n').length, 1
 eq(readFileSync(root + '/prefs/bootd.json', 'utf8'), mine, 'then moved into place');
 eq(readFileSync(root + '/dir/guard.sh', 'utf8'), guardSh, 'with the start-up check written as it is');
 eq(lstatSync(root + '/init.d/45-launcher-poweron').isSymbolicLink() && readlinkSync(root + '/init.d/45-launcher-poweron'), root + '/dir/guard.sh', 'and linked from the startup folder');
-eq(JSON.stringify(read()), JSON.stringify({supported: true, chosen: 'youtube.leanback.v4', network: false, loaded: '', loadedNetwork: false, foreign: false}), 'the status reads it back: chosen, not loaded until a restart');
+eq(JSON.stringify(read()), JSON.stringify({supported: true, chosen: 'youtube.leanback.v4', network: false, loaded: '', loadedNetwork: false, foreign: false, networkKeys: false}), 'the status reads it back: chosen, not loaded until a restart');
 writeFileSync(root + '/loaded', 'youtube.leanback.v4\n');
 eq(h.needsRestart(read()), false, 'once the start-up check has noted it loaded, no restart is needed');
 for (const step of h.writeSteps(guardSh, netFile, 'youtube.leanback.v4')) sh(step.command);

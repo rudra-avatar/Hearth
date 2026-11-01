@@ -5,7 +5,7 @@ import path from 'node:path';
 const dir = path.dirname(fileURLToPath(import.meta.url)) + '/';
 const src = path.resolve(dir, '../src') + '/';
 const out = path.resolve(dir, '../node_modules/.cache-p10k-test.mjs');
-await build({stdin: {contents: `export {THEMES, LIGHT_THEMES} from './theme/tokens'; export {optionsFor, applyPref, PREFS, ROOT_OPTIONS} from './lib/prefs'; export {DEFAULT_CONFIG, loadConfig} from './lib/storage';`, resolveDir: src, loader: 'ts'},
+await build({stdin: {contents: `export {THEMES} from './theme/tokens'; export {optionsFor, applyPref, PREFS, ROOT_OPTIONS} from './lib/prefs'; export {DEFAULT_CONFIG, loadConfig} from './lib/storage';`, resolveDir: src, loader: 'ts'},
 	bundle: true, format: 'esm', platform: 'node', outfile: out, logLevel: 'silent', define: {'import.meta.glob': '__glob'}, banner: {js: 'const __glob = () => ({});'}});
 const a = await import(out);
 let fail = 0;
@@ -13,9 +13,9 @@ const eq = (got, want, name) => { const ok = JSON.stringify(got) === JSON.string
 const ids = a.PREFS.map((p) => p.id);
 eq(['useHomebrew', 'closeHomeNow', 'useAsHome'].filter((i) => ids.indexOf(i) !== -1), [], 'live-list, close-now and alternative-method rows are gone');
 eq(ids.indexOf('closeHome'), -1, 'the "Close LG Home" row is gone');
-eq(a.ROOT_OPTIONS.slice().sort(), ['lgLogo', 'powerOnApp', 'replaceHome', 'takeover', 'tvInput'], 'root-only rows: the four (the SAM method replaced the boot row) and the power-on app');
+eq(a.ROOT_OPTIONS.slice().sort(), ['homeApp', 'homeKey', 'keepReady', 'keepRelaunch', 'lgLogo', 'powerOnApp', 'preload', 'remap', 'replaceHome', 'screensaver', 'screensaverCare', 'screensaverDim', 'screensaverFit', 'screensaverInterval', 'screensaverPictures', 'screensaverPowerOff', 'screensaverShow', 'screensaverShuffle', 'tvInput'], 'root-only rows (the SAM method row is gone)');
 eq(a.DEFAULT_CONFIG.showDebug, false, 'the Debug tab is off by default');
-const row = a.optionsFor('options', a.DEFAULT_CONFIG).pop();
+const row = a.optionsFor('system', a.DEFAULT_CONFIG).pop();
 eq([row.id, row.label], ['showDebug', 'Show the Debug tab'], 'its switch is the last Options row');
 eq(a.applyPref(a.DEFAULT_CONFIG, 'showDebug', 'ok').showDebug, true, 'OK turns it on');
 eq(a.applyPref(a.applyPref(a.DEFAULT_CONFIG, 'showDebug', 'ok'), 'showDebug', 'ok').showDebug, false, 'and off again');
@@ -25,7 +25,10 @@ localStorage.setItem('customlauncher-config-v1', JSON.stringify({showDebug: true
 const c = a.loadConfig();
 eq([c.showDebug, c.closeHome, 'useHomebrew' in c], [true, false, false], 'saved settings load: the switch and the safety state stay, the old live-list setting is ignored');
 eq(a.loadConfig !== undefined && (localStorage.setItem('customlauncher-config-v1', '{}'), a.loadConfig().closeHome), true, 'LG Home is closed by default');
-for (const n of a.LIGHT_THEMES) eq([a.THEMES[n].scrimTop, a.THEMES[n].scrimMid, a.THEMES[n].scrimBottom], ['0', '0', '0'], `${n}: no pale shade (glow) over the wallpaper`);
+localStorage.setItem('customlauncher-config-v1', JSON.stringify({defaultsV: 1, theme: 'cloud', clock: {color: 'charcoal'}}));
+eq([a.loadConfig().theme, a.loadConfig().clock.color], ['black', 'white'], 'P39b: a saved light theme loads as OLED black, its dark-grey widget colour as white (saved with the current defaults version, so the P41f reset does not run)');
+localStorage.setItem('customlauncher-config-v1', JSON.stringify({defaultsV: 1, theme: 'grey', clock: {color: 'charcoal'}}));
+eq(a.loadConfig().clock.color, 'charcoal', 'a dark-grey widget colour on a dark theme is kept');
 eq(a.THEMES.midnight.scrimBottom !== '0', true, 'dark themes keep their shade');
 console.log(fail ? `${fail} FAILED` : 'all ok');
 process.exit(fail ? 1 : 0);

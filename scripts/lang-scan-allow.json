@@ -1,0 +1,170 @@
+[
+ {
+  "file": "app.tsx",
+  "text": "empty list"
+ },
+ {
+  "file": "app.tsx",
+  "text": "read failed: {}"
+ },
+ {
+  "file": "app.tsx",
+  "text": "could not be fetched"
+ },
+ {
+  "file": "app.tsx",
+  "text": "just now"
+ },
+ {
+  "file": "app.tsx",
+  "text": "min ago"
+ },
+ {
+  "file": "lib/about.ts",
+  "text": "Hearth {}"
+ },
+ {
+  "file": "lib/homekeycore.ts",
+  "text": "TV_VIDEO (Input)"
+ },
+ {
+  "file": "lib/inputs.ts",
+  "text": "Streaming Box"
+ },
+ {
+  "file": "lib/inputs.ts",
+  "text": "Fire TV Stick"
+ },
+ {
+  "file": "lib/inputs.ts",
+  "text": "Sound Bar"
+ },
+ {
+  "file": "lib/inputs.ts",
+  "text": "Games Console"
+ },
+ {
+  "file": "lib/inputs.ts",
+  "text": "HDMI 4"
+ },
+ {
+  "file": "lib/lifemark.ts",
+  "text": "previous page: none"
+ },
+ {
+  "file": "lib/lifemark.ts",
+  "text": "previous page: last {} {}s ago"
+ },
+ {
+  "file": "lib/prefs.ts",
+  "text": "Theme"
+ },
+ {
+  "file": "lib/prefs.ts",
+  "text": "Icons"
+ },
+ {
+  "file": "lib/prefs.ts",
+  "text": "Home row"
+ },
+ {
+  "file": "lib/prefs.ts",
+  "text": "Labels"
+ },
+ {
+  "file": "lib/prefs.ts",
+  "text": "Quiet mode"
+ },
+ {
+  "file": "lib/prefs.ts",
+  "text": "Favourites"
+ },
+ {
+  "file": "lib/prefs.ts",
+  "text": "Recent apps"
+ },
+ {
+  "file": "lib/prefs.ts",
+  "text": "Time and date"
+ },
+ {
+  "file": "lib/prefs.ts",
+  "text": "Widget look"
+ },
+ {
+  "file": "lib/prefs.ts",
+  "text": "Weather"
+ },
+ {
+  "file": "lib/prefs.ts",
+  "text": "Remote control"
+ },
+ {
+  "file": "lib/prefs.ts",
+  "text": "TV start"
+ },
+ {
+  "file": "lib/prefs.ts",
+  "text": "Memory"
+ },
+ {
+  "file": "lib/sourceicons.ts",
+  "text": "PlayStation 5"
+ },
+ {
+  "file": "lib/sourceicons.ts",
+  "text": "PlayStation 4"
+ },
+ {
+  "file": "lib/sourceicons.ts",
+  "text": "Xbox"
+ },
+ {
+  "file": "lib/sourceicons.ts",
+  "text": "Nintendo Switch"
+ },
+ {
+  "file": "lib/sourceicons.ts",
+  "text": "Apple TV"
+ },
+ {
+  "file": "lib/sourceicons.ts",
+  "text": "Fire TV"
+ },
+ {
+  "file": "lib/sourceicons.ts",
+  "text": "Chromecast"
+ },
+ {
+  "file": "lib/sourceicons.ts",
+  "text": "Roku"
+ },
+ {
+  "file": "lib/sourceicons.ts",
+  "text": "Blu-ray"
+ },
+ {
+  "file": "lib/bundledcopy.ts",
+  "text": "file read refused"
+ },
+ {
+  "file": "lib/bundledcopy.ts",
+  "text": "encode failed"
+ },
+ {
+  "file": "lib/bundledcopy.ts",
+  "text": "not a jpeg"
+ },
+ {
+  "file": "lib/bundledcopy.ts",
+  "text": "too large"
+ },
+ {
+  "file": "lib/bundledcopy.ts",
+  "text": "storage full"
+ },
+ {
+  "file": "lib/languages.ts",
+  "text": "(machine translated)"
+ }
+]

@@ -29,15 +29,20 @@ f.noteExec();
 eq([f.rootState(), f.lastFailure(), f.whySuffix()], ['yes', null, ''], 'a good call clears it');
 
 // rows
-const rowsOf = (info) => p.optionsFor('options', f.DEFAULT_CONFIG, info);
-eq(rowsOf().filter((o) => o.disabled).length, 0, 'nothing is greyed out when nothing is known');
-eq(rowsOf({homeApp: null, homeHook: null, root: 'yes'}).filter((o) => o.disabled).length, 0, 'nothing is greyed out on a rooted TV');
+const rowsOf = (info) => p.optionsFor('system', f.DEFAULT_CONFIG, info);
+// (keepRelaunch is greyed while Keep Hearth ready is off, P105: it is left out here)
+const greyNow = (info) => rowsOf(info).filter((o) => o.disabled && o.id !== 'keepRelaunch').length;
+eq(greyNow(), 0, 'nothing is greyed out when nothing is known');
+eq(greyNow({homeApp: null, homeHook: null, root: 'yes'}), 0, 'nothing is greyed out on a rooted TV');
 f.noteExec(new Error('Service does not exist: org.webosbrew.hbchannel.service'));
 const grey = rowsOf({homeApp: null, homeHook: null, root: 'no', rootDetail: 'Service does not exist'});
-eq(grey.filter((o) => o.disabled).map((o) => o.id).sort(), p.ROOT_OPTIONS.sort(), 'every row that needs root is greyed out without it');
-eq(grey.filter((o) => !o.disabled).map((o) => o.id), ['tvApps', 'showDebug'], 'every Options row that runs commands needs root, so only the no-root app list and the Debug tab switch stay usable');
+const noRootInfo = {homeApp: null, homeHook: null, root: 'no', rootDetail: 'Service does not exist'};
+const reasons = p.ROOT_OPTIONS.map((id) => p.disabledReason(id, noRootInfo, f.DEFAULT_CONFIG));
+eq(reasons.every((r) => typeof r === 'string'), true, 'every row that needs root is greyed out without it');
+eq(grey.map((o) => o.id), ['language', 'tvApps', 'noRootGuide', 'showDebug'], 'P83/T0/P92: without root the System tab shows only the language, the no-root app list, the guide and the Debug switch (all usable)');
+eq(grey.every((o) => !o.disabled), true, 'and none of them is greyed out');
 eq(p.optionsFor('look', f.DEFAULT_CONFIG, {root: 'no'}).some((o) => o.id === 'resetLook' && !o.disabled), true, 'Reset look and clock (on the Look tab) stays usable without root');
-eq(grey[0].disabled.indexOf('Needs a rooted TV') === 0 && grey[0].disabled.indexOf('TV said: Service does not exist') > 0, true, 'the reason says what the TV said');
+eq(reasons[0].indexOf('Needs a rooted TV') === 0 && reasons[0].indexOf('TV said: Service does not exist') > 0, true, 'the reason says what the TV said');
 eq(p.disabledReason('theme', {root: 'no'}), null, 'a look setting is never greyed out');
 eq(p.optionsFor('look', f.DEFAULT_CONFIG, {root: 'no'}).filter((o) => o.disabled).length, 0, 'the Look tab has no greyed rows');
 
@@ -50,14 +55,19 @@ eq(sys.parseLogo('{"returnValue":false,"errorText":"x"}'), null, 'an error is no
 eq(sys.parseLogo(''), null, 'no output is not an answer');
 eq(sys.setLogoCommand(false).indexOf('"lgLogoDisplay":"off"') > 0 && sys.setLogoCommand(true).indexOf('"lgLogoDisplay":"on"') > 0, true, 'set command carries the wanted value');
 eq(sys.GET_LOGO_COMMAND.indexOf('"category":"other"') > 0, true, 'read command uses the other category');
-const logoRow = (info) => p.optionsFor('options', f.DEFAULT_CONFIG, info).find((o) => o.id === 'lgLogo');
+f.noteExec();   // rooted again (P83 hides the root rows while root failed)
+const logoRow = (info) => p.optionsFor('system', f.DEFAULT_CONFIG, info).find((o) => o.id === 'lgLogo');
 eq([logoRow({logo: 'off'}).valueText, logoRow({logo: 'on'}).valueText, logoRow({logo: null}).valueText], ['Off', 'On', 'Unknown'], 'the row shows the real state');
 eq(logoRow({logo: 'unsupported', root: 'yes'}).disabled.indexOf("doesn't have") > 0, true, 'greyed out with a reason when this TV has no such setting');
 eq(logoRow({logo: 'off', root: 'yes'}).disabled, undefined, 'usable on a rooted TV that has it');
 // P21: the no-root app list row is hidden once root is confirmed, unless it is already on (so it can be turned off)
 f.noteExec();       // a command worked: root is confirmed
-eq(p.optionsFor('options', f.DEFAULT_CONFIG).some((o) => o.id === 'tvApps'), false, 'P21: the no-root app list row is hidden when root is confirmed');
-eq(p.optionsFor('options', {...f.DEFAULT_CONFIG, tvApps: true}).some((o) => o.id === 'tvApps'), true, 'P21: but stays while it is on');
+eq(p.optionsFor('system', f.DEFAULT_CONFIG).some((o) => o.id === 'tvApps'), false, 'P21: the no-root app list row is hidden when root is confirmed');
+eq(p.optionsFor('system', {...f.DEFAULT_CONFIG, tvApps: true}).some((o) => o.id === 'tvApps'), true, 'P21: but stays while it is on');
 f.resetRootState();
-eq(p.optionsFor('options', f.DEFAULT_CONFIG).some((o) => o.id === 'tvApps'), true, 'P21: shown while root is unknown');
+eq(p.optionsFor('system', f.DEFAULT_CONFIG).some((o) => o.id === 'tvApps'), true, 'P21: shown while root is unknown');
+// P105: Reopen Hearth needs Keep Hearth ready; a row that is already on stays usable
+eq(typeof p.disabledReason('keepRelaunch', {root: 'yes'}, {...f.DEFAULT_CONFIG, keepReady: false}), 'string', 'P105: Reopen is greyed out while Keep Hearth ready is off');
+eq(p.disabledReason('keepRelaunch', {root: 'yes'}, {...f.DEFAULT_CONFIG, keepReady: true}), null, 'P105: Reopen is usable while Keep Hearth ready is on');
+eq(p.disabledReason('keepRelaunch', {root: 'yes'}, {...f.DEFAULT_CONFIG, keepReady: false, keepRelaunch: true}), null, 'P105: an Off-able Reopen row stays usable');
 process.exit(fail ? 1 : 0);

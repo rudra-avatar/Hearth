@@ -9,5 +9,5 @@ mkdir -p dist/licenses
 cp LICENSE dist/licenses/LICENSE.txt
 mkdir -p build
 rm -f build/*.ipk
-npx ares-package dist --no-minify -o build
+npx ares-package dist services/tld.my.customlauncher.ssap --no-minify -o build
 echo "Packaged: $(ls build/*.ipk)"

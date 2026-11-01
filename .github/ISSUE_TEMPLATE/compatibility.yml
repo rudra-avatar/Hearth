@@ -1,0 +1,134 @@
+name: Compatibility report
+description: Tell us which TV you tried Hearth on and whether it worked
+title: "[Compat] <TV model>, webOS <version>"
+labels: ["compatibility"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for testing Hearth. A maintainer reads every report; when it looks right it gets the label `verified` and appears in the Tested TVs table by itself. You find the TV facts in the TV's own Settings, Support, TV Information. Pick the closest answer in each list; if yours is not there, choose **Other** and type it in the box under the list.
+  - type: dropdown
+    id: model
+    attributes:
+      label: TV type
+      options:
+        - "OLED A series"
+        - "OLED B series"
+        - "OLED C series"
+        - "OLED G series"
+        - "OLED Z or M series"
+        - "QNED"
+        - "NanoCell"
+        - "UHD 4K LED (UN, UP, UQ, UR, UT)"
+        - "Full HD or HD LED"
+        - "Older LG Smart TV (2016-2019)"
+        - "Other (type it in the next box)"
+    validations:
+      required: true
+  - type: input
+    id: model_exact
+    attributes:
+      label: Exact TV model, or your own value if you chose Other
+      description: "The full model name from TV Information (optional, but very helpful)."
+      placeholder: "OLED55C2PUA"
+  - type: dropdown
+    id: webos
+    attributes:
+      label: webOS version
+      options:
+        - "webOS 3.x (2016-2017 models)"
+        - "webOS 4.x (2018-2019 models)"
+        - "webOS 5.x (2020 models)"
+        - "webOS 6.x (2021 models)"
+        - "webOS 7.x (2022 models)"
+        - "webOS 8.x (2023 models)"
+        - "webOS 9.x (2024 models)"
+        - "webOS 10.x (2025 models)"
+        - "webOS 11.x, also called webOS 26 (2026 models)"
+        - "Other (type it in the next box)"
+    validations:
+      required: true
+  - type: input
+    id: webos_exact
+    attributes:
+      label: Exact webOS version, or your own value if you chose Other
+      description: "For example 7.6.0 (optional)."
+      placeholder: "7.6.0"
+  - type: dropdown
+    id: firmware
+    attributes:
+      label: Firmware version
+      description: "The list holds firmware numbers from earlier reports. If yours is not there, choose Other."
+      options:
+        - "04.60.90"
+        - "05.40.97"
+        - "05.70.50"
+        - "43.21.44"
+        - "Other (type it in the next box)"
+    validations:
+      required: true
+  - type: input
+    id: firmware_exact
+    attributes:
+      label: Your firmware version, if you chose Other
+      placeholder: "04.60.90"
+  - type: dropdown
+    id: rooted
+    attributes:
+      label: Is the TV rooted (Homebrew Channel installed)?
+      options:
+        - "Yes, rooted"
+        - "No, Developer Mode only"
+    validations:
+      required: true
+  - type: dropdown
+    id: working
+    attributes:
+      label: Does Hearth work on your TV?
+      options:
+        - "Yes, it starts and shows my apps"
+        - "No, it does not work"
+    validations:
+      required: true
+  - type: textarea
+    id: debug
+    attributes:
+      label: "If it does not work, debug information (optional)"
+      description: "In Hearth, Settings, System, switch on *Show the Debug tab*, then paste the text here or drag a photo of the Debug tab into this box. A rooted TV also has the file /tmp/hearth-debug.txt."
+  - type: dropdown
+    id: version
+    attributes:
+      label: Hearth version (optional)
+      options:
+        - "2.0.0"
+        - "1.2.0"
+        - "Other (say which in the remarks)"
+  - type: dropdown
+    id: remote
+    attributes:
+      label: Remote control (optional)
+      options:
+        - "Plain remote (infrared)"
+        - "Magic Remote"
+        - "Other (say which in the remarks)"
+  - type: dropdown
+    id: homeway
+    attributes:
+      label: How do you open Hearth? (optional)
+      options:
+        - "The remote's Home button"
+        - "The helper that replaces LG Home"
+        - "Power-on app (when the TV starts)"
+        - "I open it from the app list myself"
+  - type: textarea
+    id: notes
+    attributes:
+      label: Remarks (optional)
+      description: "What worked, what did not, anything else you noticed."
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Showing your report
+      options:
+        - label: "A maintainer may show the TV facts and the result from this report in the public Tested TVs table (not my name)."
+          required: true

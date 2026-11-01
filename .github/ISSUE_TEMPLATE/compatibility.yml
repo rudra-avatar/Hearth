@@ -100,6 +100,7 @@ body:
     attributes:
       label: Hearth version (optional)
       options:
+        - "2.0.1"
         - "2.0.0"
         - "1.2.0"
         - "Other (say which in the remarks)"

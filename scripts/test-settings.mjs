@@ -102,7 +102,23 @@ eq(p.applyPref(c0, 'showLabels', 'ok').showLabels, false, 'Show app names switch
 eq([s.DEFAULT_CONFIG.minimal, p.applyPref(c0, 'minimal', 'ok').minimal, p.resetLook({...c0, minimal: true}).minimal], [false, true, false], 'Minimalist icons: off by default, switch on, cleared by reset');
 store[KEY] = JSON.stringify({minimal: true}); eq(s.loadConfig().minimal, true, 'the minimalist choice is read back');
 store[KEY] = JSON.stringify({appEdits: {'a.b': {label: 'X'}, 'c.d': {icon: 'nope'}}}); eq(s.loadConfig().appEdits, {'a.b': {label: 'X'}}, 'app edits are read back and cleaned');
-eq(p.optionsFor('options', c0).map((o) => o.id).join(','), 'tvInput,takeover,replaceHome,lgLogo,tvApps,showDebug', 'the Options tab: TV input, the SAM method, the helper script, the LG logo, the TV app list (hidden when rooted) and last the Debug tab switch');
+eq(p.optionsFor('options', c0).map((o) => o.id).join(','), 'tvInput,takeover,replaceHome,powerOnApp,lgLogo,tvApps,showDebug', 'the Options tab: TV input, the SAM method, the helper script, the power-on app, the LG logo, the TV app list (hidden when rooted) and last the Debug tab switch');
+// "When the TV turns on, open…"
+const po = (info, c = c0) => p.optionsFor('options', c, {homeHook: null, ...info}).find((o) => o.id === 'powerOnApp').valueText;
+const st = (chosen, loaded, extra = {}) => ({supported: true, chosen, network: false, loaded, loadedNetwork: false, foreign: false, ...extra});
+eq(po({}), 'Unknown', 'power-on row: Unknown until the TV has been asked');
+eq(po({}, {...c0, powerOnApp: 'youtube.leanback.v4'}), 'youtube.leanback.v4', 'and the saved choice until then');
+eq(po({powerOn: st('', '')}), 'TV default', 'nothing chosen: the TV default');
+eq(po({powerOn: st('youtube.leanback.v4', 'youtube.leanback.v4'), powerOnNames: {chosen: 'YouTube'}}), 'YouTube', 'an app chosen and loaded: its name');
+eq(po({powerOn: st('youtube.leanback.v4', ''), powerOnNames: {chosen: 'YouTube'}}), 'YouTube (after a restart)', 'chosen but not loaded yet: after a restart');
+eq(po({powerOn: st('', 'youtube.leanback.v4')}), 'TV default (after a restart)', 'switched off but still loaded: after a restart');
+eq(po({powerOn: st('youtube.leanback.v4', 'youtube.leanback.v4', {network: true, loadedNetwork: true}), powerOnNames: {chosen: 'YouTube'}}), 'YouTube + network', 'network wake-ups too: said so');
+eq(po({powerOn: st('', '', {supported: false})}), 'Not on this TV', 'a TV whose software lacks it: Not on this TV');
+eq(po({powerOn: st('', '', {foreign: true})}), 'Set by another tool', 'someone else\'s start-up file: said so');
+const poDis = (info) => p.optionsFor('options', c0, info).find((o) => o.id === 'powerOnApp').disabled;
+eq(!!poDis({homeHook: null, powerOn: st('', '', {supported: false})}), true, 'and greyed out where the TV lacks it');
+eq(!!poDis({homeHook: null, powerOn: st('', '')}), false, 'usable where it has it');
+eq(p.ROOT_OPTIONS.indexOf('powerOnApp') !== -1, true, 'the power-on row needs root');
 eq(p.optionsFor('options', c0, {homeApp: null, homeHook: null, tvInput: true}).find((o) => o.id === 'tvInput').valueText, 'Added', 'the TV-input row says Added when the launcher is in the input list');
 eq(p.optionsFor('options', c0, {homeApp: null, homeHook: null, tvInput: false}).find((o) => o.id === 'tvInput').valueText, 'Not added', 'and Not added when it is not');
 eq(p.optionsFor('options', c0).find((o) => o.id === 'tvInput').valueText, 'Unknown', 'and Unknown until the TV has been asked');

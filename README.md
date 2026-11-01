@@ -447,6 +447,8 @@ For a clean, minimal and easy way to use Hearth as your main launcher, switch on
 2. **Map home button:** the Home button opens Hearth at once, with no flash of LG Home.
 3. **When the TV turns on, open...:** choose Hearth, so the TV starts in Hearth.
 4. **Keep Hearth ready** (experimental): Hearth stays in memory, so it appears immediately.
+5. **Turn off preloaded app:** (Optional) LG keeps a lot of apps half-awake in the background which can severely cripple older, slower TVs. Turn them off to get a smoother experience.
+
 
 Together they make Hearth the screen you see when the TV starts, when you press Home and when you leave an app, so you never need to see LG Home again. The *LG Home* tile in Hearth still opens it if you ever want it.
 

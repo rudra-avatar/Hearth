@@ -3,7 +3,9 @@ import {PickerIcon} from '../components/Glyph';
 import {useKeys, clamp, type NavKey} from '../hooks/useKeys';
 import {PRESET_CITIES} from '../lib/cities';
 import {searchCities} from '../lib/weathernet';
+import {themeCities} from '../lib/theme';
 import type {City} from '../lib/weather';
+import {t as tt} from '../i18n';
 
 interface Props {
 	/** the search may go through the TV's shell when the web view cannot reach the service */
@@ -34,14 +36,16 @@ export function CityPicker ({allowShell, onChoose, onClose}: Props) {
 
 	const rows: CityRow[] = [];
 	if (results === null) {
-		rows.push({key: 'search', kind: 'search', label: 'Search for a city…', detail: 'Type its name with the on-screen keyboard'});
-		PRESET_CITIES.forEach((c) => rows.push({key: c.name + c.lat, kind: 'city', label: c.name, detail: c.detail, city: c}));
+		rows.push({key: 'search', kind: 'search', label: tt('citypicker.searchForACity'), detail: tt('citypicker.typeItsNameWith')});
+		const fromTheme = themeCities();          // P81: the loaded theme's cities are added to the list (first)
+		fromTheme.forEach((c) => rows.push({key: 't' + c.name + c.lat, kind: 'city', label: c.name, detail: c.detail, city: c}));
+		PRESET_CITIES.filter((p) => !fromTheme.some((t) => t.name === p.name && Math.abs(t.lat - p.lat) < 0.01)).forEach((c) => rows.push({key: c.name + c.lat, kind: 'city', label: c.name, detail: c.detail, city: c}));
 	} else {
-		rows.push({key: 'search', kind: 'search', label: 'Search again…'});
-		rows.push({key: 'back', kind: 'back', label: 'Back to the list'});
-		if (busy) rows.push({key: 'busy', kind: 'info', label: 'Searching…'});
-		else if (failed) rows.push({key: 'failed', kind: 'info', label: 'Could not search', detail: 'Check the TV\'s internet connection and try again'});
-		else if (results.length === 0) rows.push({key: 'none', kind: 'info', label: 'No matching place found', detail: 'Try another spelling, or just the city\'s name'});
+		rows.push({key: 'search', kind: 'search', label: tt('citypicker.searchAgain')});
+		rows.push({key: 'back', kind: 'back', label: tt('citypicker.backToTheList')});
+		if (busy) rows.push({key: 'busy', kind: 'info', label: tt('citypicker.searching')});
+		else if (failed) rows.push({key: 'failed', kind: 'info', label: tt('citypicker.couldNotSearch'), detail: tt('citypicker.checkTheTvS')});
+		else if (results.length === 0) rows.push({key: 'none', kind: 'info', label: tt('citypicker.noMatchingPlaceFound'), detail: tt('citypicker.tryAnotherSpellingOr')});
 		results.forEach((c, i) => rows.push({key: 'r' + i, kind: 'city', label: c.name, detail: c.detail, city: c}));
 	}
 
@@ -94,9 +98,9 @@ export function CityPicker ({allowShell, onChoose, onClose}: Props) {
 	return (
 		<div class="screen screen--picker">
 			<div class="settings">
-				<h1 class="settings__title">Choose a city</h1>
-				<p class="settings__hint">{typing ? 'Type a city, then press OK or Enter · Back cancels' : 'OK chooses a city · Back returns to settings'}</p>
-				<div class="picker__path">{results === null ? 'Popular cities' : 'Search results'}</div>
+				<h1 class="settings__title">{tt('citypicker.chooseACity')}</h1>
+				<p class="settings__hint">{typing ? 'Type a city, then press OK or Enter · Back cancels' : tt('citypicker.okChoosesACityBack')}</p>
+				<div class="picker__path">{results === null ? tt('citypicker.popularCities') : tt('citypicker.searchResults')}</div>
 				<div class="picker">
 					{visible.map((row, n) => {
 						const i = start + n;
@@ -111,7 +115,7 @@ export function CityPicker ({allowShell, onChoose, onClose}: Props) {
 								<PickerIcon kind={row.kind === 'search' ? 'search' : row.kind === 'info' ? 'info' : row.kind === 'back' ? 'folder' : 'pin'} />
 								<div class="picker__text">
 									{editing
-										? <input ref={input} class="picker__input" type="text" placeholder="City name" maxLength={60} onKeyDown={onFieldKey} />
+										? <input ref={input} class="picker__input" type="text" placeholder={tt('citypicker.cityName')} maxLength={60} onKeyDown={onFieldKey} />
 										: <div class="picker__label">{row.label}</div>}
 									{!editing && row.detail && <div class="picker__detail">{row.detail}</div>}
 								</div>

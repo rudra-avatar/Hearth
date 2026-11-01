@@ -2,7 +2,8 @@ import {useCallback, useEffect, useRef, useState} from 'preact/hooks';
 import {SourceGlyph} from '../components/Glyph';
 import {useKeys, clamp, type NavKey} from '../hooks/useKeys';
 import {APP_ICON_IDS, appIconLabel, appIconUrl, isAppIcon} from '../config/appicons';
-import {iconLabel, iconPath, MAX_SOURCE_NAME, SOURCE_ICON_IDS, SUGGESTED_NAMES, type SourceEdit} from '../lib/sourceicons';
+import {iconLabel, iconPath, MAX_SOURCE_NAME, SOURCE_ICON_IDS, suggestedNames, type SourceEdit} from '../lib/sourceicons';
+import {t as tt} from '../i18n';
 
 interface Props {
 	/** the name and icon the TV gives this source */
@@ -28,7 +29,7 @@ export function SourceEditor ({base, kind = 'source', edit, onChange, onBrowse, 
 	const input = useRef<HTMLInputElement>(null);
 	const name = edit.label || base.label;
 	const icon = edit.icon || base.icon;
-	const own = kind === 'app' ? "the app's" : "the TV's";
+	const own = kind === 'app' ? tt('sourceeditor.theAppS') : tt('sourceeditor.theTvS');
 
 	useEffect(() => { if (typing && input.current) input.current.focus(); }, [typing]);
 
@@ -37,7 +38,7 @@ export function SourceEditor ({base, kind = 'source', edit, onChange, onBrowse, 
 		return list[(at === -1 ? (dir > 0 ? 0 : list.length - 1) : (at + dir + list.length) % list.length)];
 	};
 	// suggestions are source names (PlayStation, Xbox...): only offered for sources; apps are typed
-	const stepName = (dir: number) => { if (kind === 'source') onChange({label: step(SUGGESTED_NAMES, name, dir)}); };
+	const stepName = (dir: number) => { if (kind === 'source') onChange({label: step(suggestedNames(), name, dir)}); };
 	// apps choose among the app icons shipped with Hearth ('' = the app's own); sources among the drawn icons
 	const iconList: readonly string[] = kind === 'app' ? [''].concat(APP_ICON_IDS) : SOURCE_ICON_IDS;
 	const stepIcon = (dir: number) => onChange({icon: step(iconList, icon, dir), iconData: ''});
@@ -68,22 +69,22 @@ export function SourceEditor ({base, kind = 'source', edit, onChange, onBrowse, 
 		else if (e.keyCode === 461 || e.keyCode === 27) { e.preventDefault(); setTyping(false); }
 	};
 
-	const iconDetail = edit.iconData ? 'Your picture' : edit.icon ? (isAppIcon(edit.icon) ? appIconLabel(edit.icon) : iconLabel(edit.icon)) : (kind === 'app' ? "The app's own icon" : iconLabel(icon) + `  (${own} icon)`);
+	const iconDetail = edit.iconData ? tt('sourceeditor.yourPicture') : edit.icon ? (isAppIcon(edit.icon) ? appIconLabel(edit.icon) : iconLabel(edit.icon)) : (kind === 'app' ? tt('sourceeditor.theAppSOwnIcon') : iconLabel(icon) + tt('sourceeditor.ownIcon', {own}));
 	const shownImage = edit.iconData || (isAppIcon(icon) ? appIconUrl(icon) : '') || (!icon && base.image) || '';
 	const rows = [
-		{label: 'Release OK, then press ↓ to edit', detail: `Editing: ${base.label}`, hint: ''},
-		{label: 'Name', detail: `${name}${edit.label ? '' : `  (${own} name)`}`, hint: kind === 'source' ? '← → step through suggestions · OK types a name' : 'OK types a name'},
-		{label: 'Icon', detail: iconDetail, hint: '← → or OK to change the icon'},
-		{label: 'Use a picture from a USB drive or the TV', detail: canBrowse ? 'A square picture works best' : 'Needs the Homebrew Channel (root); not available on this TV', hint: ''},
-		{label: `Use ${own} name and icon`, detail: '', hint: ''},
-		{label: 'Done', detail: '', hint: ''}
+		{label: tt('sourceeditor.releaseOkThenPress'), detail: tt('sourceeditor.editing', {label: base.label}), hint: ''},
+		{label: tt('sourceeditor.name'), detail: name + (edit.label ? '' : tt('sourceeditor.ownName', {own})), hint: kind === 'source' ? tt('sourceeditor.stepThroughSuggestionsOk') : tt('sourceeditor.okTypesAName')},
+		{label: tt('sourceeditor.icon'), detail: iconDetail, hint: tt('sourceeditor.orOkToChange')},
+		{label: tt('sourceeditor.useAPictureFrom'), detail: canBrowse ? tt('sourceeditor.aSquarePictureWorks') : tt('sourceeditor.needsTheHomebrewChannel'), hint: ''},
+		{label: tt('sourceeditor.useNameAndIcon', {own}), detail: '', hint: ''},
+		{label: tt('sourceeditor.done'), detail: '', hint: ''}
 	];
 
 	return (
 		<div class="screen screen--picker">
 			<div class="settings">
-				<h1 class="settings__title">Edit name &amp; icon</h1>
-				<p class="settings__hint">{typing ? 'Type a name, then press OK or Enter · Back cancels' : 'OK or Back when you are done · the home row shows the change at once'}</p>
+				<h1 class="settings__title">{tt('sourceeditor.editNameAmpIcon')}</h1>
+				<p class="settings__hint">{typing ? 'Type a name, then press OK or Enter · Back cancels' : tt('sourceeditor.okOrBackWhenYou')}</p>
 				<div class="picker">
 					{rows.map((row, i) => (
 						<div

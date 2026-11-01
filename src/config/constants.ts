@@ -49,7 +49,6 @@ export const WALLPAPER = {
 	fadeMs: 1400,                 // cross-fade between pictures (keep in sync with global.css)
 	maxPixels: 25000000,          // pictures larger than this are skipped (too heavy for the TV)
 	probeTimeoutMs: 15000,
-	maxFiles: 400,                // at most this many pictures are used from a folder
 	maxBytes: 8 * 1024 * 1024,    // pictures bigger than this file size are skipped
 	chunkBytes: 98304,            // read per shell call: ~128 KB of base64, safely under the service's output limit; a multiple of 3 so every chunk's base64 stands alone
 	parallelChunks: 3,

@@ -13,6 +13,11 @@ export interface OptionItem {
 	stepper?: boolean;
 	/** greyed out: why this can't be used on this TV */
 	disabled?: string;
+	/** a group header row (OK opens or closes the group; `open` says which) */
+	header?: boolean;
+	open?: boolean;
+	/** a row inside an open group: drawn slightly indented */
+	grouped?: boolean;
 }
 
 interface Props {
@@ -21,6 +26,8 @@ interface Props {
 	selected: number;
 	onSelect: (index: number) => void;
 	onActivate: (index: number) => void;
+	/** panel width in px (the tab bar's width); default 1116 */
+	width?: number;
 }
 
 /** Room kept free below the list, in px. */
@@ -32,7 +39,7 @@ const FALLBACK_HEIGHT = 800;
  *  really left on screen (measured, not assumed) and slides so the highlighted row is always in view.
  *  (An earlier version decided from fixed numbers which rows to draw, and on a TV whose web view
  *  measured differently it could show only the first one.) */
-export function OptionList ({options, focused, selected, onSelect, onActivate}: Props) {
+export function OptionList ({options, focused, selected, onSelect, onActivate, width}: Props) {
 	const viewRef = useRef<HTMLDivElement>(null);
 	const trackRef = useRef<HTMLDivElement>(null);
 	const [height, setHeight] = useState(FALLBACK_HEIGHT);
@@ -53,17 +60,26 @@ export function OptionList ({options, focused, selected, onSelect, onActivate}: 
 		return () => window.removeEventListener('resize', measure);
 	}, []);
 
-	// Slide the list just far enough to keep the highlighted row inside the window.
+	// Slide the list just far enough to keep the highlighted row inside the window, and the rows either side of it
+	// too when they fit, so the next row is never cut off at the bottom (or the previous one at the top). The
+	// highlighted row itself always stays in view. (PR #17, Obednal97)
 	useLayoutEffect(() => {
 		const track = trackRef.current;
 		if (!track) return;
-		const row = track.children[Math.max(0, Math.min(selected, options.length - 1))] as HTMLElement | undefined;
+		const index = Math.max(0, Math.min(selected, options.length - 1));
+		const row = track.children[index] as HTMLElement | undefined;
 		if (!row) return;
-		const top = row.offsetTop;
-		const bottom = top + row.offsetHeight + 8;      // 8: the focus border
+		const before = track.children[index - 1] as HTMLElement | undefined;
+		const after = track.children[index + 1] as HTMLElement | undefined;
+		const top = row.offsetTop - 8;                              // 8: the focus border
+		const bottom = row.offsetTop + row.offsetHeight + 8;
+		const wantTop = before ? Math.min(top, before.offsetTop - 8) : top;
+		const wantBottom = after ? Math.max(bottom, after.offsetTop + after.offsetHeight + 8) : bottom;
 		let next = shiftRef.current;
-		if (top - 8 < next) next = Math.max(0, top - 8);
-		else if (bottom > next + height) next = bottom - height;
+		if (wantTop < next) next = wantTop;
+		else if (wantBottom > next + height) next = wantBottom - height;
+		next = Math.min(next, top);                                  // never past the highlighted row's top
+		next = Math.max(next, bottom - height);                       // nor so far up that its bottom is cut off
 		if (next < 0) next = 0;
 		if (next !== shiftRef.current) { shiftRef.current = next; setShift(next); }
 	}, [selected, options, height]);
@@ -73,12 +89,22 @@ export function OptionList ({options, focused, selected, onSelect, onActivate}: 
 	useEffect(() => { shiftRef.current = 0; setShift(0); }, [first]);
 
 	return (
-		<div class="options" ref={viewRef} style={{height: `${height}px`}}>
+		<div class="options" ref={viewRef} style={width ? {height: `${height}px`, width: `${width}px`} : {height: `${height}px`}}>
 			<div class="options__track" ref={trackRef} style={{transform: `translateY(${-shift}px)`}}>
-				{options.map((o, i) => (
+				{options.map((o, i) => o.header ? (
 					<div
 						key={o.id}
-						class={`option${focused && i === selected ? ' option--focused' : ''}${o.disabled ? ' option--disabled' : ''}`}
+						class={`option option--group${o.open ? ' option--open' : ''}${focused && i === selected ? ' option--focused' : ''}`}
+						onMouseMove={() => { if (i !== selected) onSelect(i); }}
+						onClick={() => onActivate(i)}
+					>
+						<div class="option__label">{o.label}</div>
+						<div class="option__value"><svg class="option__chev" viewBox="0 0 24 24" aria-hidden="true"><polyline points={o.open ? '5,15 12,8 19,15' : '5,9 12,16 19,9'} /></svg></div>
+					</div>
+				) : (
+					<div
+						key={o.id}
+						class={`option${o.grouped ? ' option--in-group' : ''}${focused && i === selected ? ' option--focused' : ''}${o.disabled ? ' option--disabled' : ''}`}
 						onMouseMove={() => { if (i !== selected) onSelect(i); }}
 						onClick={() => onActivate(i)}
 					>

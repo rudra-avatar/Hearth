@@ -12,3 +12,8 @@ declare const __LEGACY__: boolean | undefined;
 
 /** True only in the bundle for Chromium 38 (webOS 3.x; scripts/legacy.mjs): custom properties are emulated (lib/cssvars.ts). */
 export const LEGACY: boolean = typeof __LEGACY__ === 'undefined' ? false : __LEGACY__;
+
+declare const __NOROOT__: boolean | undefined;
+
+/** TEST BUILD ONLY (HEARTH_NOROOT=1): every root (Homebrew Channel) call fails at once without being made, to mock a non-root TV. */
+export const NOROOT_MOCK: boolean = typeof __NOROOT__ === 'undefined' ? false : __NOROOT__;

@@ -1,12 +1,14 @@
 import {useEffect, useRef} from 'preact/hooks';
 import {varScope} from '../lib/cssvars';
+import {log} from '../lib/log';
 import {WALLPAPER} from '../config/constants';
-import {NATURE_IDS, natureUrl, nextNature} from '../lib/backgrounds';
+import {PHOTO_IDS, photoUrl, nextPhoto, takeEarlyPhoto} from '../lib/backgrounds';
 import type {WallpaperConfig} from '../lib/storage';
 import {
 	clearWallpaperCache, listImages, loadPicture, readWallpaperCache, releasePicture, createShuffleOrder,
-	wallpaperCacheId, writeWallpaperCache
+	wallpaperCacheId, writeWallpaperCache, takeEarlyStatic, endEarlyStatic
 } from '../lib/wallpaper';
+import {t as tt} from '../i18n';
 
 interface Props {
 	config: WallpaperConfig;
@@ -33,13 +35,27 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 	const wrap = useRef<HTMLDivElement>(null);
 	const report = useRef(onProblem);
 	report.current = onProblem;
+	// What the two layers hold lives here, not inside the effect: a change of wallpaper re-runs the effect, and the new run must
+	// cross-fade from the picture on screen (P63; before, the cleanup blanked both layers and the new picture faded in from nothing).
+	const shared = useRef({held: [null, null] as (string | null)[], front: -1});
+
+	useEffect(() => () => {                                  // only when the component goes away
+		const st = shared.current;
+		[layerA.current, layerB.current].forEach((layer, i) => {
+			if (layer) { layer.classList.remove('wallpaper__layer--on'); layer.style.backgroundImage = ''; }
+			const url = st.held[i];
+			st.held[i] = null;
+			if (url) releasePicture(url);
+		});
+		st.front = -1;
+	}, []);
 
 	useEffect(() => {
 		const layers = [layerA.current as HTMLDivElement, layerB.current as HTMLDivElement];
 		const root = wrap.current as HTMLDivElement;
-		const held: (string | null)[] = [null, null];     // the picture URL each layer holds
-		const cacheId = wallpaperCacheId(config.mode, config.path);
-		let front = -1;              // layer currently showing, -1 when none
+		const st = shared.current;
+		const held = st.held;                            // the picture URL each layer holds
+		const cacheId = wallpaperCacheId(config.mode, config.path + (config.recursive ? '|sub' : ''));
 		let disposed = false;
 		let failed = false;
 		let told = false;
@@ -77,7 +93,7 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 		const hideAll = () => {
 			hide(0);
 			hide(1);
-			front = -1;
+			st.front = -1;
 			root.classList.add('wallpaper--bare');       // no picture: the shade may be skipped (see the stylesheet)
 		};
 
@@ -93,8 +109,14 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 
 		/** `instant`: no fade (the picture is already known, e.g. when the launcher comes back to the front) */
 		const show = (url: string, instant?: boolean) => {
-			const back = front === 0 ? 1 : 0;
-			const old = front;
+			const back = st.front === 0 ? 1 : 0;
+			const old = st.front;
+			if (!instant && layers[back].classList.contains('wallpaper__layer--on')) {   // a fade of the layer still ending (short interval): take it off first, so the new picture fades in
+				layers[back].style.transition = 'none';
+				layers[back].classList.remove('wallpaper__layer--on');
+				void layers[back].offsetWidth;
+				layers[back].style.transition = '';
+			}
 			if (held[back]) release(back);
 			held[back] = url;
 			const layer = layers[back];
@@ -114,9 +136,9 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 			// both at once blended two full-screen layers and let the background show through half-way.
 			if (old >= 0) {
 				if (instant) hide(old);
-				else window.setTimeout(() => { if (!disposed && front !== old) drop(old); }, WALLPAPER.fadeMs + 150);
+				else window.setTimeout(() => { if (st.front !== old) drop(old); }, WALLPAPER.fadeMs + 150);   // not tied to this run: a re-run must not leave the old layer on
 			}
-			front = back;
+			st.front = back;
 			shownAt = Date.now();
 		};
 
@@ -130,16 +152,16 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 		const advance = () => {
 			if (disposed) return;
 			if (files.length) { next(0); return; }
-			listImages(config.path).then(
+			listImages(config.path, config.recursive).then(
 				(list) => {
 					if (disposed) return;
-					if (!list.length) { fail('No pictures found in that folder'); return; }
+					if (!list.length) { fail(tt('wallpaper.noPicturesFoundInThat')); return; }
 					files = list;
 					order = config.shuffle ? createShuffleOrder(files, cacheId) : null;
 					if (files.length === 1) return;          // a one-picture folder: nothing to rotate
 					next(0);
 				},
-				() => { if (!disposed) fail("Couldn't read the wallpaper folder. Is the USB drive still plugged in?"); }
+				() => { if (!disposed) fail(tt('wallpaper.couldnTReadTheWallpaper')); }
 			);
 		};
 
@@ -151,11 +173,11 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 
 		const next = (attempt: number) => {
 			if (disposed || busy) return;
-			if (attempt >= files.length) { fail(lastError || "Couldn't show any picture from that location"); return; }
+			if (attempt >= files.length) { fail(lastError || tt('wallpaper.couldnTShowAnyPicture')); return; }
 			busy = true;
 			position = (position + 1) % files.length;
 			const path = order ? order.take() : files[position];
-			if (!path) { fail('No pictures found in that folder'); return; }
+			if (!path) { fail(tt('wallpaper.noPicturesFoundInThat')); return; }
 			loadPicture(path).then(
 				(loaded) => {
 					busy = false;
@@ -171,7 +193,7 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 				(error: Error) => {
 					busy = false;
 					if (disposed) return;
-					lastError = error && error.message ? error.message : "Couldn't show that picture";
+					lastError = error && error.message ? error.message : tt('wallpaper.couldnTShowThatPicture');
 					if (files.length === 1) fail(lastError);
 					else next(attempt + 1);
 				}
@@ -187,9 +209,10 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 			order = null;
 			if (config.mode === 'gradient' || !config.path) { clearWallpaperCache(); hideAll(); return; }
 
-			const cached = readWallpaperCache(cacheId);
+			const cached = takeEarlyStatic(cacheId) || readWallpaperCache(cacheId);       // main.tsx may have read it already (P56)
 			if (cached) {                                          // instant: no shell work at all
-				show(cached, true);                                // already known: no fade-in
+				show(cached, true);                 // already known: no fade-in at start-up
+				window.requestAnimationFrame(() => window.requestAnimationFrame(endEarlyStatic));
 				snapshot = cached;
 				unsaved = false;
 				cacheKnown = true;
@@ -198,15 +221,15 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 				return;
 			}
 			if (config.mode === 'image') { files = [config.path]; next(0); return; }
-			listImages(config.path).then(
+			listImages(config.path, config.recursive).then(
 				(list) => {
 					if (disposed) return;
-					if (!list.length) { fail('No pictures found in that folder'); return; }
+					if (!list.length) { fail(tt('wallpaper.noPicturesFoundInThat')); return; }
 					files = list;
 					order = config.shuffle ? createShuffleOrder(files, cacheId) : null;
 					next(0);
 				},
-				() => { if (!disposed) fail("Couldn't read the wallpaper folder. Is the USB drive still plugged in?"); }
+				() => { if (!disposed) fail(tt('wallpaper.couldnTReadTheWallpaper')); }
 			);
 		};
 
@@ -228,12 +251,8 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 			stopTimer();
 			saveCache();
 			document.removeEventListener('visibilitychange', onVisibility);
-			layers.forEach((layer) => layer.classList.remove('wallpaper__layer--on'));
-			release(0);
-			release(1);
-			root.classList.add('wallpaper--bare');
 		};
-	}, [config.mode, config.path, config.intervalSec, config.shuffle]);
+	}, [config.mode, config.path, config.recursive, config.intervalSec, config.shuffle]);
 
 	const vars = varScope('wallpaper', {'--wallpaper-opacity': opacity < 100 ? String(opacity / 100) : undefined});
 
@@ -254,7 +273,8 @@ export function PhotoShow ({intervalSec, shuffle, paused}: {intervalSec: number;
 	const layerA = useRef<HTMLDivElement>(null);
 	const layerB = useRef<HTMLDivElement>(null);
 	const wrap = useRef<HTMLDivElement>(null);
-	const state = useRef({front: -1, index: Math.floor(Math.random() * NATURE_IDS.length), busy: false});
+	const firstPhoto = useRef(takeEarlyPhoto()).current;       // chosen and already loading since main.tsx, else random
+	const state = useRef({front: -1, index: firstPhoto >= 0 ? firstPhoto : Math.floor(Math.random() * PHOTO_IDS.length), busy: false});
 
 	useEffect(() => { clearWallpaperCache(); }, []);
 
@@ -273,7 +293,8 @@ export function PhotoShow ({intervalSec, shuffle, paused}: {intervalSec: number;
 			const layer = layers[back];
 			layer.style.transition = 'none';
 			layer.classList.remove('wallpaper__layer--on');
-			layer.style.opacity = old < 0 ? '' : '0.01';          // barely visible: the picture is decoded before it fades in
+			const firstNow = old < 0;
+			layer.style.opacity = firstNow ? '' : '0.01';          // barely visible: the picture is decoded before it fades in
 			layer.style.backgroundImage = `url("${url}")`;
 			layer.style.zIndex = '2';
 			if (old >= 0) layers[old].style.zIndex = '1';
@@ -294,13 +315,18 @@ export function PhotoShow ({intervalSec, shuffle, paused}: {intervalSec: number;
 					}, WALLPAPER.fadeMs + 150);
 				}
 			};
-			if (old < 0) { void layer.offsetWidth; fadeIn(); }
+			if (firstNow) {                                        // first photo of this start: drawn at once, no fade-in
+				layer.classList.add('wallpaper__layer--on');
+				void layer.offsetWidth;
+				layer.style.transition = '';
+				log(`wallpaper: first photo drawn at page +${Math.round(performance.now())} ms`);
+			}
 			else warm = window.setTimeout(() => { if (!disposed) fadeIn(); }, 200);
 		};
 
 		const load = (then: () => void) => {
 			st.busy = true;
-			const url = natureUrl(st.index);
+			const url = photoUrl(st.index);
 			img = new Image();
 			img.onload = () => { st.busy = false; if (!disposed) { show(url); then(); } };
 			img.onerror = () => { st.busy = false; if (!disposed) then(); };
@@ -309,11 +335,24 @@ export function PhotoShow ({intervalSec, shuffle, paused}: {intervalSec: number;
 
 		const tick = () => {
 			if (disposed) return;
-			st.index = nextNature(st.index, shuffle);
+			st.index = nextPhoto(st.index, shuffle);
 			load(schedule);
 		};
 		const schedule = () => { window.clearTimeout(timer); if (!paused) timer = window.setTimeout(tick, intervalSec * 1000); };
 
+		// P63: a re-run (the launcher went to the background, a setting changed) may have cancelled the end of a fade: finish it,
+		// so the new picture is fully on and the old layer is empty (a stuck old layer showed through at a lowered picture opacity)
+		if (st.front >= 0) {
+			const f = layers[st.front];
+			const o = layers[st.front === 0 ? 1 : 0];
+			f.style.transition = 'none'; o.style.transition = 'none';
+			f.style.opacity = '';
+			f.classList.add('wallpaper__layer--on');
+			o.classList.remove('wallpaper__layer--on');
+			o.style.backgroundImage = '';
+			void f.offsetWidth;
+			f.style.transition = ''; o.style.transition = '';
+		}
 		if (st.front < 0) load(schedule); else schedule();
 		return () => {
 			disposed = true;

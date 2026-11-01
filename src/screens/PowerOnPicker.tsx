@@ -1,6 +1,7 @@
 import {useCallback, useRef, useState} from 'preact/hooks';
 import {PickerIcon} from '../components/Glyph';
 import {useKeys, clamp, type NavKey} from '../hooks/useKeys';
+import {t as tt} from '../i18n';
 
 /** Something the TV can open when it is switched on. '' = the TV's own default. */
 export interface PowerOnChoice {
@@ -15,6 +16,8 @@ interface Props {
 	chosen: string;
 	/** network wake-ups open it too */
 	network: boolean;
+	/** LG's table on this TV has the network keys (else the choice is not shown) */
+	networkKeys: boolean;
 	/** the TV still needs a restart before it does what was chosen */
 	restartNeeded: boolean;
 	/** what the TV does until then, in words */
@@ -40,7 +43,7 @@ const VISIBLE_ROWS = 8;
 
 /** Settings → Options → "When the TV turns on, open…": the TV's default, Hearth, then every app. OK chooses. While a
  *  restart is still needed, the first row offers it. */
-export function PowerOnPicker ({choices, chosen, network, restartNeeded, untilRestart, busy, onChoose, onNetwork, onRestart, onClose}: Props) {
+export function PowerOnPicker ({choices, chosen, network, networkKeys, restartNeeded, untilRestart, busy, onChoose, onNetwork, onRestart, onClose}: Props) {
 	// focus is kept by row, not by position: the restart row comes and goes at the top, and the focus must stay on the
 	// same app when it does. It starts on the current choice.
 	const [focusKey, setFocusKey] = useState('c:' + chosen);
@@ -49,12 +52,12 @@ export function PowerOnPicker ({choices, chosen, network, restartNeeded, untilRe
 	const rows: Row[] = [];
 	if (restartNeeded) {
 		rows.push(confirm
-			? {key: 'restart', kind: 'restart', label: 'Press OK again to restart the TV', detail: 'The screen goes dark for about half a minute. Back cancels'}
-			: {key: 'restart', kind: 'restart', label: 'Restart the TV now to start using it', detail: `The TV reads this when it starts up. Until it restarts, it opens ${untilRestart}`});
+			? {key: 'restart', kind: 'restart', label: tt('poweronpicker.pressOkAgainTo'), detail: tt('poweronpicker.theScreenGoesDark')}
+			: {key: 'restart', kind: 'restart', label: tt('poweronpicker.restartTheTvNow'), detail: tt('poweronpicker.theTvReadsThis', {untilRestart})});
 	}
-	if (chosen) {
-		rows.push({key: 'network', kind: 'network', label: `Also when woken over the network: ${network ? 'On' : 'Off'}`,
-			detail: 'How phone apps and Home Assistant switch it on. Casting to it while off then opens this app first'});
+	if (chosen && networkKeys) {
+		rows.push({key: 'network', kind: 'network', label: tt('poweronpicker.network', {state: network ? tt('common.on') : tt('common.off')}),
+			detail: tt('poweronpicker.howPhoneAppsAnd')});
 	}
 	choices.forEach((c) => rows.push({key: 'c:' + c.id, kind: 'choice', label: c.label, detail: c.detail, choice: c, current: c.id === chosen}));
 	// a focused row that goes away (the restart row after a refresh): stay at about the same place
@@ -89,7 +92,7 @@ export function PowerOnPicker ({choices, chosen, network, restartNeeded, untilRe
 			default: break;
 		}
 		return true;
-	}, [rows.length, index, focusKey, confirm, busy, chosen, network, choices, restartNeeded]);   // eslint-disable-line react-hooks/exhaustive-deps
+	}, [rows.length, index, focusKey, confirm, busy, chosen, network, networkKeys, choices, restartNeeded]);   // eslint-disable-line react-hooks/exhaustive-deps
 
 	useKeys(handleKey, true);
 
@@ -99,11 +102,11 @@ export function PowerOnPicker ({choices, chosen, network, restartNeeded, untilRe
 	return (
 		<div class="screen screen--picker">
 			<div class="settings">
-				<h1 class="settings__title">When the TV turns on, open…</h1>
-				<p class="settings__hint">OK chooses · ← → jump a page · Back returns to settings</p>
-				<div class="picker__path">{chosen && network
-					? 'When you switch it on, also from a phone or Home Assistant. HDMI-CEC still goes where it asks'
-					: 'Only when you switch it on yourself: casting, HDMI-CEC and network wake-ups still go where they ask'}</div>
+				<h1 class="settings__title">{tt('poweronpicker.whenTheTvTurns')}</h1>
+				<p class="settings__hint">{tt('poweronpicker.okChoosesJumpA')}</p>
+				<div class="picker__path">{chosen && network && networkKeys
+					? tt('poweronpicker.whenYouSwitchItOn')
+					: tt('poweronpicker.onlyWhenYouSwitchIt')}</div>
 				<div class="picker">
 					{visible.map((row, n) => {
 						const i = start + n;

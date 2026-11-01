@@ -1,6 +1,6 @@
 import {fullDate, timeParts, type TimeFormat} from '../lib/clock';
 import type {ClockConfig} from '../lib/storage';
-import {colorInfo} from '../lib/clockcolor';
+import {colorInfo, inkIsDark, validInk} from '../lib/clockcolor';
 import {fontFamily} from '../lib/clockfont';
 import type {WeatherView} from '../lib/weather';
 import {WeatherGlyph} from './Glyph';
@@ -12,9 +12,11 @@ export function Clock ({now, format, config, weather}: {now: Date; format: TimeF
 	const {time, period} = timeParts(now, format);
 	const size = config.size;
 	const info = colorInfo(config.color);
-	const vars: Record<string, string | undefined> = {'--clock-accent': info.accent};
+	const ink = validInk(config.ink);          // P100: a theme's own ink wins over the colour choice
+	const vars: Record<string, string | undefined> = {};
 	const style: Record<string, string> = {top: `${config.top}%`, left: `${config.left}%`, fontFamily: fontFamily(config.font)};
-	if (info.gradient) vars['--clock-gradient'] = info.gradient; else style.color = info.color as string;
+	if (ink) style.color = ink;
+	else if (info.color) style.color = info.color;          // 'Follow theme': no colour set, the text keeps the theme's own
 	if (config.shadow) {
 		// strength 50% = the standard slight shadow (40% black, 8 px blur); the blur grows a little with the strength
 		const a = (config.shadowStrength * 0.008).toFixed(2);
@@ -25,7 +27,7 @@ export function Clock ({now, format, config, weather}: {now: Date; format: TimeF
 	const scope = varScope('clock', vars);
 	for (const k in scope.obj) style[k] = scope.obj[k];
 	if (config.opacity < 100) style.opacity = String(config.opacity / 100);
-	const classes = [scope.cls, 'clock', info.gradient && 'clock--gradient', info.dark && 'clock--dark', !config.shadow && 'clock--noshadow'].filter(Boolean).join(' ');
+	const classes = [scope.cls, 'clock', (ink ? inkIsDark(ink) : info.dark) && 'clock--dark', !config.shadow && 'clock--noshadow', config.align === 'left' && 'clock--left', config.align === 'right' && 'clock--right'].filter(Boolean).join(' ');
 	return (
 		<div class={classes} style={style}>
 			<div class="clock__time" style={{fontSize: `${size}px`, fontWeight: config.weight, letterSpacing: `${(size * 0.045).toFixed(1)}px`}}>

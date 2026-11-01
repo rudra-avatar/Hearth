@@ -2,6 +2,8 @@ import {useRef} from 'preact/hooks';
 import {LAYOUT} from '../theme/tokens';
 import {clamp} from '../hooks/useKeys';
 import {Tile, type TileModel} from './Tile';
+import {hoverMayselect} from '../lib/pointer';
+import {t as tt} from '../i18n';
 
 interface Props {
 	label?: string;
@@ -15,11 +17,13 @@ interface Props {
 	tileSize?: number;
 	tileGap?: number;
 	viewportWidth?: number;
+	/** left and right margin of this row, px (the favourites row has its own); undefined: the container's */
+	sideMargin?: number;
 }
 
 /** Horizontal strip of tiles. Centred when it fits; otherwise a carousel that keeps
  *  the selected tile in the middle (clamped at the ends). */
-export function Row ({label, items, focused, selected, emptyText, onSelect, onActivate, tileSize = LAYOUT.tileSize, tileGap = LAYOUT.tileGap, viewportWidth = LAYOUT.screenWidth - 2 * LAYOUT.edgePadding}: Props) {
+export function Row ({label, items, focused, selected, emptyText, onSelect, onActivate, tileSize = LAYOUT.tileSize, tileGap = LAYOUT.tileGap, viewportWidth = LAYOUT.screenWidth - 2 * LAYOUT.edgePadding, sideMargin}: Props) {
 	const step = tileSize + tileGap;
 	const total = items.length * step - tileGap;
 	const fits = total <= viewportWidth;
@@ -34,18 +38,18 @@ export function Row ({label, items, focused, selected, emptyText, onSelect, onAc
 	}
 
 	return (
-		<section class={`row${focused ? ' row--focused' : ''}`}>
+		<section class={`row${focused ? ' row--focused' : ''}`} style={sideMargin === undefined ? undefined : {marginLeft: `${sideMargin}px`, marginRight: `${sideMargin}px`}}>
 			{label && <h2 class="row__label">{label}</h2>}
 			<div class="row__viewport">
 				{items.length === 0
-					? <div class="row__empty">{emptyText || 'Nothing here yet'}</div>
+					? <div class="row__empty">{emptyText || tt('row.nothingHereYet')}</div>
 					: <div class={`row__track${fits ? ' row__track--centered' : ''}${last.current.fast ? ' row__track--fast' : ''}`} style={{transform: `translate3d(${-offset}px, 0, 0)`}}>
 						{items.map((item, i) => (
 							<Tile
 								key={item.key}
 								model={item}
 								focused={focused && i === selected}
-								onHover={() => onSelect(i)}
+								onHover={() => { if (hoverMayselect()) onSelect(i); }}
 								onActivate={() => onActivate(i)}
 							/>
 						))}

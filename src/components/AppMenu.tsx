@@ -2,17 +2,23 @@ import {useCallback, useState} from 'preact/hooks';
 import {useKeys, clamp, type NavKey} from '../hooks/useKeys';
 import {useOkPress} from '../hooks/useOkPress';
 import type {MoveAction} from '../lib/tileorder';
+import {t as tt} from '../i18n';
 
 interface Props {
 	title: string;
 	/** which moves are possible from the tile's place on the row */
 	moves: {start: boolean; left: boolean; right: boolean; end: boolean};
+	/** set while the row follows the last opened apps: every Move is greyed out with this reason */
+	moveBlocked?: string;
 	/** where to get a hidden tile back (differs for apps and inputs) */
 	hideDetail: string;
 	/** apps have an Uninstall entry; inputs don't */
 	showUninstall: boolean;
 	/** why Uninstall can't be used, or null when it can */
 	blockedReason: string | null;
+	/** P102b: whether the tile is a favourite (the entry then reads Remove) */
+	isFavourite: boolean;
+	onFavourite: () => void;
 	onMove: (action: MoveAction) => void;
 	onHide: () => void;
 	onUninstall: () => void;
@@ -31,24 +37,25 @@ interface MenuRow {
 
 /** What opens when OK is held on an app or input: move it along the row, hide it, or (apps) uninstall it.
  *  Uninstall asks for confirmation, and the confirmation starts on Cancel. */
-export function AppMenu ({title, moves, hideDetail, showUninstall, blockedReason, onMove, onHide, onUninstall, onClose}: Props) {
+export function AppMenu ({title, moves, moveBlocked, hideDetail, showUninstall, blockedReason, isFavourite, onFavourite, onMove, onHide, onUninstall, onClose}: Props) {
 	const [step, setStep] = useState<Step>('menu');
 
 	const menuRows = (): MenuRow[] => {
 		const rows: MenuRow[] = [
-			{key: 'start', label: 'Move to start', detail: moves.start ? undefined : 'Already first', disabled: !moves.start, run: () => onMove('start')},
-			{key: 'left', label: 'Move left', detail: moves.left ? undefined : 'Already first', disabled: !moves.left, run: () => onMove('left')},
-			{key: 'right', label: 'Move right', detail: moves.right ? undefined : 'Already last', disabled: !moves.right, run: () => onMove('right')},
-			{key: 'end', label: 'Move to end', detail: moves.end ? undefined : 'Already last', disabled: !moves.end, run: () => onMove('end')},
-			{key: 'hide', label: 'Hide from the home screen', detail: hideDetail, run: onHide}
+			{key: 'start', label: tt('appmenu.moveToStart'), detail: moveBlocked || (moves.start ? undefined : tt('appmenu.alreadyFirst')), disabled: !!moveBlocked || !moves.start, run: () => onMove('start')},
+			{key: 'left', label: tt('appmenu.moveLeft'), detail: moveBlocked || (moves.left ? undefined : tt('appmenu.alreadyFirst2')), disabled: !!moveBlocked || !moves.left, run: () => onMove('left')},
+			{key: 'right', label: tt('appmenu.moveRight'), detail: moveBlocked || (moves.right ? undefined : tt('appmenu.alreadyLast')), disabled: !!moveBlocked || !moves.right, run: () => onMove('right')},
+			{key: 'end', label: tt('appmenu.moveToEnd'), detail: moveBlocked || (moves.end ? undefined : tt('appmenu.alreadyLast2')), disabled: !!moveBlocked || !moves.end, run: () => onMove('end')},
+			{key: 'favourite', label: isFavourite ? tt('appmenu.removeFromFavourites') : tt('appmenu.addToFavourites'), detail: isFavourite ? undefined : tt('appmenu.shownAloneOnThe'), run: onFavourite},
+			{key: 'hide', label: tt('appmenu.hideFromTheHome'), detail: hideDetail, run: onHide}
 		];
 		if (showUninstall) {
 			rows.push({
-				key: 'uninstall', label: 'Uninstall', detail: blockedReason || 'Removes the app from the TV', disabled: !!blockedReason,
+				key: 'uninstall', label: tt('appmenu.uninstall'), detail: blockedReason || tt('appmenu.removesTheAppFrom'), disabled: !!blockedReason,
 				run: () => { setStep('confirm'); setIndex(0); }
 			});
 		}
-		rows.push({key: 'cancel', label: 'Cancel', run: onClose});
+		rows.push({key: 'cancel', label: tt('appmenu.cancel'), run: onClose});
 		return rows;
 	};
 	const firstEnabled = (rows: MenuRow[]): number => {
@@ -58,8 +65,8 @@ export function AppMenu ({title, moves, hideDetail, showUninstall, blockedReason
 
 	const [index, setIndex] = useState(() => firstEnabled(menuRows()));
 	const rows: MenuRow[] = step === 'menu' ? menuRows() : step === 'confirm' ? [
-		{key: 'cancel', label: 'Cancel', run: onClose},
-		{key: 'yes', label: `Uninstall ${title}`, detail: 'This cannot be undone', run: () => { setStep('working'); onUninstall(); }}
+		{key: 'cancel', label: tt('appmenu.cancel2'), run: onClose},
+		{key: 'yes', label: tt('appmenu.uninstall2', {title}), detail: tt('appmenu.thisCannotBeUndone'), run: () => { setStep('working'); onUninstall(); }}
 	] : [];
 
 	const handleKey = useCallback((key: NavKey): boolean => {
@@ -84,9 +91,9 @@ export function AppMenu ({title, moves, hideDetail, showUninstall, blockedReason
 	return (
 		<div class="screen screen--dialog">
 			<div class="dialog">
-				<h1 class="dialog__title">{step === 'confirm' ? `Uninstall ${title}?` : step === 'working' ? `Uninstalling ${title}…` : title}</h1>
-				{step === 'confirm' && <p class="dialog__text">This removes the app from the TV.</p>}
-				{step === 'working' && <p class="dialog__text">Please wait, this can take a few seconds.</p>}
+				<h1 class="dialog__title">{step === 'confirm' ? tt('appmenu.uninstallTitle', {title}) : step === 'working' ? tt('appmenu.uninstallingTitle', {title}) : title}</h1>
+				{step === 'confirm' && <p class="dialog__text">{tt('appmenu.thisRemovesTheApp')}</p>}
+				{step === 'working' && <p class="dialog__text">{tt('appmenu.pleaseWaitThisCan')}</p>}
 				{rows.map((row, i) => (
 					<div
 						key={row.key}

@@ -1349,18 +1349,23 @@ export function App () {
 		const next = {...setButton(config.remap, name, action), on: true};       // giving a button a job turns the feature on
 		applyRemap(next, action ? `${buttonLabel(name)}: ${target ? (action.t === 'app' ? 'opens ' + target.label : target.label.toLowerCase()) : 'changed'}` : tt('app.v1BackToTheTv', {v1: buttonLabel(name)}));
 	}, [config, remapTargets, applyRemap]);
-	const onRemapCapture = useCallback((waiting: boolean) => {
+	/** Resolves true once the filter is listening (the screen stops waiting on false). */
+	const onRemapCapture = useCallback((waiting: boolean): Promise<boolean> => {
 		captureOn.current = waiting;
-		if (!waiting) { setCapture(false); return; }
+		if (!waiting) { setCapture(false); return Promise.resolve(true); }
 		// the filter must be on the TV to hear the press (it is added, with no button changed, if it isn't)
-		const ready = config.remap.on ? Promise.resolve(true) : installRemap({...config.remap, on: true}).then(({result}) => {
+		const ready = config.remap.on ? Promise.resolve(true) : installRemap({...config.remap, on: true}).then(({result, detail}) => {
 			if (result === 'applied') { updateConfig({...config, remap: {...config.remap, on: true}}); return true; }
-			showToast(remapMessage(result), 'error');
+			// issue #36: say why (the detail was dropped here), and don't let "Couldn't listen" below replace it
+			captureOn.current = false;
+			log(`remap: the filter could not be added for "Press a button": ${result}${detail ? ' (' + detail + ')' : ''}`);
+			showToast(remapMessage(result, detail), 'error');
 			return false;
 		});
-		ready.then((ok) => ok && setCapture(true)).then((ok) => {
+		return ready.then((ok) => ok && setCapture(true)).then((ok) => {
 			log(`remap: waiting for a button, filter told: ${ok ? 'yes' : 'no'}`);
 			if (!ok && captureOn.current) showToast(tt('app.couldnTListenFor'), 'error');
+			return ok;
 		});
 	}, [config, showToast]);
 

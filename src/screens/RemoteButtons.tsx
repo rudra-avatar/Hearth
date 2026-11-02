@@ -26,8 +26,8 @@ interface Props {
 	onSwitch: () => void;
 	onKeep: () => void;
 	onAssign: (name: string, action: RemapAction | null) => void;
-	/** start or stop waiting for a button press */
-	onCapture: (waiting: boolean) => void;
+	/** start or stop waiting for a button press; resolves false when the TV can't listen (the screen stops waiting) */
+	onCapture: (waiting: boolean) => Promise<boolean>;
 	onClose: () => void;
 }
 
@@ -62,6 +62,8 @@ export function RemoteButtons ({remap, kept, targets, captured, busy, onSwitch, 
 	const [index, setIndex] = useState(0);
 	const [listIndex, setListIndex] = useState(0);
 	const [chosen, setChosen] = useState<string | null>(null);
+	/** the TV's filter is in place and listening (until then a press can't be given a job, issue #36) */
+	const [armed, setArmed] = useState(false);
 
 	const choose = (name: string) => {
 		setChosen(name);
@@ -89,7 +91,7 @@ export function RemoteButtons ({remap, kept, targets, captured, busy, onSwitch, 
 	// P61b: while waiting, the page itself also listens: the four colour keys reach the page on most remotes (403-406), so they
 	// are named here even if the TV's key filter says nothing; any key the page sees is noted in the debug report
 	useEffect(() => {
-		if (mode !== 'waiting') return undefined;
+		if (mode !== 'waiting' || !armed) return undefined;
 		const COLOURS: Record<number, string> = {403: tt('remotebuttons.keyWebosRed'), 404: tt('remotebuttons.keyWebosGreen'), 405: tt('remotebuttons.keyWebosYellow'), 406: tt('remotebuttons.keyWebosBlue')};
 		const onKey = (e: KeyboardEvent) => {
 			log(`remap: page saw key ${e.keyCode}`);
@@ -98,7 +100,7 @@ export function RemoteButtons ({remap, kept, targets, captured, busy, onSwitch, 
 		};
 		window.addEventListener('keydown', onKey);
 		return () => window.removeEventListener('keydown', onKey);
-	}, [mode]);                                      // eslint-disable-line react-hooks/exhaustive-deps
+	}, [mode, armed]);                                      // eslint-disable-line react-hooks/exhaustive-deps
 
 	const rows: Row[] = [];
 	if (mode === 'list') {
@@ -119,7 +121,11 @@ export function RemoteButtons ({remap, kept, targets, captured, busy, onSwitch, 
 		if (!row || busy) return;
 		if (row.kind === 'switch') onSwitch();
 		else if (row.kind === 'keep') onKeep();
-		else if (row.kind === 'capture') { setListIndex(i); setMode('waiting'); setIndex(0); onCapture(true); }
+		else if (row.kind === 'capture') {
+			setListIndex(i); setMode('waiting'); setIndex(0); setArmed(false);
+			// the TV could not start listening (its message is already shown): back to the list
+			onCapture(true).then((ok) => { if (ok) setArmed(true); else { setMode((m) => (m === 'waiting' ? 'list' : m)); setIndex(i); } });
+		}
 		else if (row.kind === 'button' && row.name) choose(row.name);
 		else if (row.kind === 'target' && row.target && chosen) {
 			onAssign(chosen, row.target.action);

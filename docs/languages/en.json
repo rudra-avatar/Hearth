@@ -401,6 +401,7 @@
     "remap.hearthMustBeInstalled": "Hearth must be installed to do this",
     "remap.theHelperFilesAre": "The helper files are missing, nothing was changed",
     "remap.couldnTSetThat": "Couldn't set that up{detail}. Nothing was changed",
+    "remap.thisTvHasNoKeyFilterList": "This TV's software has no key filter list for this method to use (older webOS). Use Map additional keys instead. Nothing was changed",
     "screensavercmd.onTheTvS": "On: the TV's screen saver now plays your wallpapers. It starts after the idle time set in the TV's own screen saver settings",
     "screensavercmd.hearthMustBeInstalled": "Hearth must be installed to do this",
     "screensavercmd.theFilesAreMissing": "The files are missing, nothing was changed",

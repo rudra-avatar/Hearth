@@ -49,6 +49,8 @@ way to pick any other button.
 - Prime Video's **hold for Alexa** goes with the button: reassigned, it only does the new job.
 - Tested on webOS 4.5 (LG 2019). The chain lives in the same place on other webOS versions that use
   surface-manager's key filters, but that has not been checked on a TV.
+- A TV whose config service has no `com.webos.surfacemanager.keyFilters` list (suspected on webOS 3.4, issue #36) can't use
+  this method: `apply.sh` says `unsupported`, changes nothing, and Hearth points to *Map additional keys* (the key hook) instead.
 
 ## Reversing it
 

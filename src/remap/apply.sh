@@ -91,8 +91,8 @@ current="$(config getConfigs "{\"configNames\":[\"$FILTERS\"]}")"
 list="$(printf '%s' "$current" | tr -d '\n' | sed -n "s/.*\"$FILTERS\" *: *\(\[[^]]*\]\).*/\1/p")"
 if [ -z "$list" ]; then
     # configd answered but has no such setting (or names it as missing): this TV's window manager does not take its key filters
-    # from configd
-    # (suspected on webOS 3.4, issue #36; not yet confirmed on a TV), so there is no chain to add to.
+    # from configd. Checked in LG's webOS 3.4.3 firmware (05.70.45, 2016 m16lite, issue #36): the chain is fixed inside
+    # surface-manager-starfish (StarfishKeyFilter.qml pushes keypolicies.js handlers in code), so there is no chain to add to.
     # (a list that is there but can't be read is a failure, not "none")
     none=0
     case "$current" in

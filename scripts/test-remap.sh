@@ -77,7 +77,7 @@ check "an empty chain gets just the filter" "$(run on; cat "$T/list")" "applied
 echo 'garbage' > "$T/list"
 check "an unreadable chain is not touched" "$(run on)" "failed"
 
-# issue #36: a TV whose configd has no key filter list at all (suspected on webOS 3.4)
+# issue #36: a TV whose configd has no key filter list at all (webOS 3.4: the chain is built into surface-manager)
 cat > "$T/luna-none.sh" <<LUNA
 #!/bin/sh
 case "\$3" in

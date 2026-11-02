@@ -118,10 +118,10 @@ store[KEY] = JSON.stringify({defaultsV: 1, iconLight: true}); eq(s.loadConfig().
 store[KEY] = JSON.stringify({defaultsV: 1, iconStyle: 'nope'}); eq([s.loadConfig().iconStyle, s.DEFAULT_CONFIG.iconStyle], ['original', 'original'], 'an unknown icon style falls back to original');
 store[KEY] = JSON.stringify({defaultsV: 1, minimal: true}); eq(s.loadConfig().minimal, true, 'the minimalist choice is read back');
 store[KEY] = JSON.stringify({defaultsV: 1, appEdits: {'a.b': {label: 'X'}, 'c.d': {icon: 'nope'}}}); eq(s.loadConfig().appEdits, {'a.b': {label: 'X'}}, 'app edits are read back and cleaned');
-eq(p.optionsFor('system', c0).map((o) => o.id).join(','), 'language,homeKey,remap,tvApps,noRootGuide,replaceHome,powerOnApp,lgLogo,homeApp,preload,keepReady,keepRelaunch,showDebug', 'the System tab (P61b2: the Home button row moved to the Remote group): the TV app list first (shown only when not rooted), the helper script, the Home button, the power-on app, the LG logo, the experimental Home app row (P58c) and last the Debug tab switch (the TV-input row shows only while Hearth is listed)');
-eq(p.optionsFor('system', c0, {homeApp: null, homeHook: null, tvInput: true}).find((o) => o.id === 'tvInput').valueText, 'Listed', 'the TV-input row (remove only, P57) shows while the launcher is in the input list');
-eq(p.optionsFor('system', c0, {homeApp: null, homeHook: null, tvInput: false}).some((o) => o.id === 'tvInput'), false, 'and is hidden when it is not');
-eq(p.optionsFor('system', c0).some((o) => o.id === 'tvInput'), false, 'and while the TV has not been asked');
+eq(p.optionsFor('system', c0).map((o) => o.id).join(','), 'language,homeKey,remap,tvApps,noRootGuide,tvInput,replaceHome,powerOnApp,lgLogo,homeApp,preload,keepReady,keepRelaunch,showDebug', 'the System tab (P61b2: the Home button row moved to the Remote group): the TV app list first (shown only when not rooted), the helper script, the Home button, the power-on app, the LG logo, the experimental Home app row (P58c) and last the Debug tab switch (the TV-input row, 2.0.2, is one On/Off toggle)');
+eq(p.optionsFor('system', c0, {homeApp: null, homeHook: null, tvInput: true}).find((o) => o.id === 'tvInput').valueText, 'On', 'the TV-input row reads On when the TV lists Hearth (2.0.2)');
+eq(p.optionsFor('system', c0, {homeApp: null, homeHook: null, tvInput: false}).find((o) => o.id === 'tvInput').valueText, 'Off', 'and Off when it is not listed');
+eq(p.optionsFor('system', c0).some((o) => o.id === 'tvInput'), true, 'and is shown while the TV has not been asked')
 eq(c0.tileOrder, null, 'a new config has no saved tile order');
 eq(p.optionsFor('system', c0).find((o) => o.id === 'replaceHome').label, 'Replace LG Home (helper)', 'P35f: the helper row is one switch (the Home button row moved to Remote, P61b2)');
 const row = (id) => p.optionsFor('system', c0).find((o) => o.id === id);
@@ -184,9 +184,17 @@ const mess2 = p.resetLook({...c0, iconOpacity: 40, weather: {...c0.weather, on: 
 eq([mess2.weather.on, mess2.weather.city.name, mess2.weather.showRange, mess2.iconOpacity], [false, 'Delhi', false, 100], 'reset also restores the weather (off since P41c) and the icon opacity');
 // widget colour, opacity, ranges, reset row
 const wall = p.optionsFor('wallpaper', c0).map((o) => o.id).join(',');
-eq(wall, 'wallpaper,wallpaperOpacity,fadeStrength', 'without a slideshow the Wallpaper tab has no shuffle or timer, and no separate built-in row');
+eq(wall, 'wallpaper,wallpaperFit,wallpaperOpacity,fadeStrength', 'without a slideshow the Wallpaper tab has no shuffle or timer, and no separate built-in row');
 const folderCfg = {...c0, wallpaper: {...c0.wallpaper, mode: 'folder', path: '/media/x/Pics'}};
-eq(p.optionsFor('wallpaper', folderCfg).map((o) => o.id).join(','), 'wallpaper,interval,shuffle,wallpaperOpacity,fadeStrength', 'a folder slideshow shows the timer and shuffle');
+eq(p.optionsFor('wallpaper', folderCfg).map((o) => o.id).join(','), 'wallpaper,wallpaperFit,interval,shuffle,wallpaperOpacity,fadeStrength', 'a folder slideshow shows the timer and shuffle');
+// 2.0.2: picture size Fit/Fill for wallpapers
+eq(p.optionsFor('wallpaper', {...c0, background: 'theme'}).map((o) => o.id).includes('wallpaperFit'), false, 'plain background: no picture size row');
+const fitRow = (c) => p.optionsFor('wallpaper', c).find((o) => o.id === 'wallpaperFit');
+eq([fitRow(c0).valueText, p.applyPref(c0, 'wallpaperFit', 'ok').wallpaper.fit, p.applyPref({...c0, wallpaper: {...c0.wallpaper, fit: 'fit'}}, 'wallpaperFit', 'ok').wallpaper.fit], ['Fill the screen (cropped)', 'fit', 'fill'], 'picture size toggles Fill <-> Fit, Fill is the default');
+store[KEY] = JSON.stringify({defaultsV: 1, wallpaper: {mode: 'gradient', path: '', fit: 'fit'}});
+eq(s.loadConfig().wallpaper.fit, 'fit', 'a saved Fit is kept');
+store[KEY] = JSON.stringify({defaultsV: 1, wallpaper: {mode: 'gradient', path: ''}});
+eq(s.loadConfig().wallpaper.fit, 'fill', 'a saved wallpaper from 2.0.1 (no fit) reads as Fill');
 eq(p.optionsFor('wallpaper', {...c0, wallpaper: {...c0.wallpaper, mode: 'image', path: '/media/x/a.jpg'}}).map((o) => o.id).includes('shuffle'), false, 'a single picture has no shuffle');
 const w0 = p.optionsFor('wallpaper', c0)[0];
 eq([w0.valueText, w0.stepper], ['Built-in: Photo: 1', true], 'the first row shows the built-in background (photo 17 = Photo: 1, P113) and has arrows');
@@ -288,7 +296,8 @@ eq(p.optionsFor('look', c0).find((o) => o.id === 'recentsSize').valueText, 'Medi
 eq([p.applyPref(c0, 'recentsSize', 'ok').recentsW, p.applyPref(c0, 'recentsSize', 'ok').recentsH], [80, 45], 'Panel size Medium -> Large');
 const sv = {...c0, screensaver: true};
 eq(p.optionsFor('saver', sv).find((o) => o.id === 'screensaverDim').valueText, 'Bright (as is)', 'screen saver: Bright by default');
-eq([p.applyPref(sv, 'screensaverDim', 'ok').screensaverDim, p.applyPref(sv, 'screensaverDim', 'ok').screensaverDimLevel], [true, 20], 'Bright -> Dim 20%');
+eq([p.applyPref(sv, 'screensaverDim', 'ok').screensaverDim, p.applyPref(sv, 'screensaverDim', 'ok').screensaverDimLevel], [true, 10], 'Bright -> Dim 10% (2.0.2: steps of 10)');
+eq(p.optionsFor('saver', {...sv, screensaverDim: true, screensaverDimLevel: 60}).find((o) => o.id === 'screensaverDim').valueText, 'Dim 60%', 'a saved dim of 60% (2.0.1 step) still reads Dim 60%');
 eq(p.optionsFor('saver', {...sv, screensaverDim: true, screensaverDimLevel: 40}).find((o) => o.id === 'screensaverDim').valueText, 'Dim 40%', 'a saved dim of 40% reads as Dim 40%');
 
 // ---- widget alignment and favourites margins (P35e) ----

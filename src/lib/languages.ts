@@ -20,4 +20,6 @@ export function languageOf (id: string): Language {
 
 /** User 2026-11-01: every bundled language except English is shown on the language row with this suffix (the packs are machine-made; own files are not marked). */
 export const MACHINE_SUFFIX = ' (machine translated)';
-export const languageLabel = (id: string): string => { const l = languageOf(id); return l.id === 'en' ? l.name : l.name + MACHINE_SUFFIX; };
+/** 2.0.2 (user 2026-11-02): packs written or reviewed by a native speaker (fr #33, pl #35) carry no suffix. */
+export const HUMAN_LANGUAGES: readonly string[] = ['fr', 'pl'];
+export const languageLabel = (id: string): string => { const l = languageOf(id); return l.id === 'en' || HUMAN_LANGUAGES.indexOf(l.id) >= 0 ? l.name : l.name + MACHINE_SUFFIX; };

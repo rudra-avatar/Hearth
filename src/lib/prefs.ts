@@ -262,8 +262,8 @@ const panelText = (v: Panel): string => td(`panel.${v}`);
 const PANEL_VALUES: Record<Panel, {recentsW: number; recentsH: number}> = {small: {recentsW: 45, recentsH: 30}, medium: {recentsW: 60, recentsH: 30}, large: {recentsW: 80, recentsH: 45}};
 const panelSize = (c: UserConfig): Panel => (c.recentsW <= 50 ? 'small' : c.recentsW <= 70 ? 'medium' : 'large');
 
-const SAVER_BRIGHTNESS: readonly number[] = [0, 20, 40, 60, 80];       // 0 = Bright, else the dim strength in %
-const saverBrightness = (c: UserConfig): number => (!c.screensaverDim ? 0 : Math.min(80, Math.max(20, Math.round(c.screensaverDimLevel / 20) * 20)));
+const SAVER_BRIGHTNESS: readonly number[] = [0, 10, 20, 30, 40, 50, 60, 70, 80];       // 0 = Bright, else the dim strength in %
+const saverBrightness = (c: UserConfig): number => (!c.screensaverDim ? 0 : Math.min(80, Math.max(10, Math.round(c.screensaverDimLevel / 10) * 10)));
 
 /** The power-on row: the app chosen, and whether the TV still needs a restart to use it (P55b, PR #25 by Obednal97). */
 function powerOnText (c: UserConfig, info?: SystemInfo): string {
@@ -403,10 +403,12 @@ const BASE_PREFS: PrefDef[] = [
 			: c.wallpaper.mode === 'folder' ? td('pref.slideshow', {name: baseName(c.wallpaper.path)}) + (c.wallpaper.recursive ? td('pref.withSubfolders') : '') : td('pref.builtIn', {name: backgroundLabel(c.background)}),
 		change: (c, press) => {
 			if (press === 'ok') return c;
-			if (c.wallpaper.mode !== 'gradient') return {...c, wallpaper: {...DEFAULT_WALLPAPER, intervalSec: c.wallpaper.intervalSec, shuffle: c.wallpaper.shuffle}};
+			if (c.wallpaper.mode !== 'gradient') return {...c, wallpaper: {...DEFAULT_WALLPAPER, intervalSec: c.wallpaper.intervalSec, shuffle: c.wallpaper.shuffle, fit: c.wallpaper.fit}};
 			return {...c, background: stepValue(BACKGROUND_IDS, c.background, delta(press), false)};
 		}
 	},
+	{...choice('wallpaperFit', 'wallpaper',
+		SAVER_FIT_VALUES, (c) => (c.wallpaper.fit === 'fit' ? 'fit' : 'fill'), (c, v) => ({...c, wallpaper: {...c.wallpaper, fit: v}}), fitText), visible: (c) => c.wallpaper.mode !== 'gradient' || c.background.indexOf('photo-') === 0},
 	{...choice('interval', 'wallpaper',
 		INTERVAL_VALUES, (c) => c.wallpaper.intervalSec, (c, v) => ({...c, wallpaper: {...c.wallpaper, intervalSec: v}}), intervalText), visible: isSlideshow},
 	{...toggle('shuffle', 'wallpaper',
@@ -465,10 +467,9 @@ const BASE_PREFS: PrefDef[] = [
 		}
 	},
 	{
-		// P57: starting the TV on Hearth is now "When the TV turns on, open..."; this row only removes an input added earlier
+		// 2.0.2 (D1): one toggle row: OK adds Hearth to the TV's inputs, or takes it out when it is listed
 		id: 'tvInput', tab: 'system', kind: 'action',
-		text: (_c, info) => (info && info.tvInput ? td('pref.listed') : ''),
-		shownWith: (_c, info) => !!info && info.tvInput === true
+		text: (_c, info) => (info && info.tvInput ? td('common.on') : td('common.off'))
 	},
 	{
 		id: 'powerOnApp', tab: 'system', kind: 'action',
@@ -544,7 +545,7 @@ const LAYOUT: [PrefTab, string, string[]][] = [
 	['clock', 'Time and date', ['clockFormat', 'showPeriod', 'showDate']],
 	['clock', 'Widget look', ['clockSize', 'clockFont', 'clockWeight', 'clockTop', 'clockLeft', 'clockAlign', 'clockColor', 'clockShadow', 'clockOpacity']],
 	['clock', 'Weather', ['weatherOn', 'weatherUnit', 'weatherCity', 'weatherCityName', 'weatherRange']],
-	['wallpaper', '', ['wallpaper', 'interval', 'shuffle', 'wallpaperOpacity', 'fadeStrength']],   // P66b: few rows, no groups (was Background and Picture)
+	['wallpaper', '', ['wallpaper', 'wallpaperFit', 'interval', 'shuffle', 'wallpaperOpacity', 'fadeStrength']],   // P66b: few rows, no groups (was Background and Picture)
 	['saver', '', ['screensaver', 'screensaverPictures', 'screensaverInterval', 'screensaverShuffle', 'screensaverFit', 'screensaverCare', 'screensaverDim', 'screensaverPowerOff', 'screensaverShow']],
 	['system', '', ['language', 'languageRemove']],
 	['system', 'Remote control', ['homeKey', 'remap']],

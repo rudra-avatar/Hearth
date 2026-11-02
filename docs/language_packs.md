@@ -57,7 +57,7 @@ Rules, checked when the file is loaded:
 3. Maintainers add the file to the folder [`docs/languages/packs`](https://github.com/rudra-avatar/Hearth/tree/main/docs/languages/packs) (the file name must be `<code>.json` and the `"code"` inside must match) and to the list below, with your name if you want it. Your wording is not changed.
 4. The next Hearth release carries it inside the app (the build copies every file of that folder; a wrong file stops the build). From then on everybody, rooted or not, picks it with the arrows.
 
-Languages that come with Hearth: Bahasa Indonesia (`id`), Español (`es`), Deutsch (`de`), العربية (`ar`). These four were translated from the English base file by Claude (Anthropic), not by a native speaker; wording corrections are welcome through the *Translation* form or a pull request. Arabic is shown with the bundled Noto Sans Arabic font; the screens stay laid out left to right (no mirrored layout).
+Languages that come with Hearth: Bahasa Indonesia (`id`), Español (`es`), Deutsch (`de`), العربية (`ar`), Français (`fr`), Polski (`pl`). Français was written and checked by Foxinou35 (issue #33) and Polski by sir_RAFIK (issue #35), both native speakers. The first four of the list were translated from the English base file by Claude (Anthropic), not by a native speaker; wording corrections are welcome through the *Translation* form or a pull request. Arabic is shown with the bundled Noto Sans Arabic font; the screens stay laid out left to right (no mirrored layout).
 
 ## Keep a language file up to date
 

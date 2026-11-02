@@ -1,6 +1,7 @@
-// Take the launcher out of the TV's inputs again (older Hearth versions added it, like HDMI 1, through the TV's External
-// Input Manager). Since P57 Hearth no longer adds it: starting the TV on Hearth is the power-on app (poweron.ts). The
-// command runs in the Homebrew Channel's root shell. The removing call (deleteDevice) is not documented anywhere.
+// Add the launcher to the TV's inputs (like HDMI 1) or take it out again, through the TV's External Input Manager.
+// 2.0.2 (D1, user): the add call is back as one toggle row; it only runs when the user presses it. Starting the TV on
+// Hearth by another way is the power-on app (poweron.ts). The command runs in the Homebrew Channel's root shell.
+// The removing call (deleteDevice) is not documented anywhere.
 
 import {APP_ID} from '../config/constants';
 import {exec} from './apps';
@@ -9,7 +10,7 @@ import {t as tt} from '../i18n';
 export const TV_INPUT_LOG = '/tmp/launcher-input.log';
 const EIM = 'luna://com.webos.service.eim';
 
-function eimCommand (method: 'deleteDevice'): string {
+function eimCommand (method: 'addDevice' | 'deleteDevice'): string {
 	// pigImage must be present (the TV's input manager crashes without it) and mvpdIcon is needed on older webOS;
 	// label and description are what the TV shows for the input. The app's appinfo.json must have "supportGIP": true.
 	const params = tt('tvinput.appidAppIdPigimageMvpdicon', {APP_ID});
@@ -24,6 +25,7 @@ function eimCommand (method: 'deleteDevice'): string {
 	].join('; ');
 }
 
+export const addInputCommand = (): string => eimCommand('addDevice');
 export const removeInputCommand = (): string => eimCommand('deleteDevice');
 
 /** Did the TV's answer say it worked? (The real proof is the input showing up in the TV's input list.) */
@@ -31,15 +33,10 @@ export function replyOk (output: string): boolean {
 	return /"returnValue"\s*:\s*true/.test(output);
 }
 
-export function removeTvInput (): Promise<boolean> {
-	return exec(removeInputCommand(), 15000).then(replyOk);
+export function addTvInput (): Promise<boolean> {
+	return exec(addInputCommand(), 15000).then(replyOk);
 }
 
-const CLEANED_KEY = 'hearth-input-cleaned';
-/** The one-time removal of an input an older Hearth added has been done (a fresh read showed Hearth gone). */
-export function inputCleaned (): boolean {
-	try { return localStorage.getItem(CLEANED_KEY) === '1'; } catch { return false; }
-}
-export function markInputCleaned (): void {
-	try { localStorage.setItem(CLEANED_KEY, '1'); } catch { /* quota: it is simply tried again at the next start */ }
+export function removeTvInput (): Promise<boolean> {
+	return exec(removeInputCommand(), 15000).then(replyOk);
 }

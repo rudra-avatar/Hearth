@@ -23,6 +23,7 @@ Open **Settings, Apps & Sources**. You see every app and every input (HDMI 1, HD
 - **Re-order:** move things into the order you like. (Or hold OK on an app on the home row and choose *Move to start, left, right or end*.)
 - **Refresh list:** looks for apps you installed a minute ago.
 - **Favourites:** see below.
+- **Uninstall apps:** (Apps tab, rooted TV only.) Press it, then press **OK** on an app and confirm. The app is removed from the TV for good. Apps that belong to the TV, and Hearth itself, cannot be removed; Hearth tells you why. Press **Done** (or Back) when you finish.
 - **Order by last opened:** a switch. The apps you used last jump to the front. While it is on, moving things by hand is greyed out. Switch it off and your own order is back.
 
 ## Favourites: a short shelf

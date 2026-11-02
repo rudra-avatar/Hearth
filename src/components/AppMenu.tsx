@@ -22,6 +22,8 @@ interface Props {
 	onMove: (action: MoveAction) => void;
 	onHide: () => void;
 	onUninstall: () => void;
+	/** 2.0.2: open straight at the uninstall confirmation (Settings -> Apps -> Uninstall apps); Back then closes */
+	startAtConfirm?: boolean;
 	onClose: () => void;
 }
 
@@ -37,8 +39,8 @@ interface MenuRow {
 
 /** What opens when OK is held on an app or input: move it along the row, hide it, or (apps) uninstall it.
  *  Uninstall asks for confirmation, and the confirmation starts on Cancel. */
-export function AppMenu ({title, moves, moveBlocked, hideDetail, showUninstall, blockedReason, isFavourite, onFavourite, onMove, onHide, onUninstall, onClose}: Props) {
-	const [step, setStep] = useState<Step>('menu');
+export function AppMenu ({title, moves, moveBlocked, hideDetail, showUninstall, blockedReason, isFavourite, onFavourite, onMove, onHide, onUninstall, onClose, startAtConfirm}: Props) {
+	const [step, setStep] = useState<Step>(startAtConfirm ? 'confirm' : 'menu');
 
 	const menuRows = (): MenuRow[] => {
 		const rows: MenuRow[] = [
@@ -63,7 +65,7 @@ export function AppMenu ({title, moves, moveBlocked, hideDetail, showUninstall, 
 		return i === -1 ? 0 : i;
 	};
 
-	const [index, setIndex] = useState(() => firstEnabled(menuRows()));
+	const [index, setIndex] = useState(() => (startAtConfirm ? 0 : firstEnabled(menuRows())));
 	const rows: MenuRow[] = step === 'menu' ? menuRows() : step === 'confirm' ? [
 		{key: 'cancel', label: tt('appmenu.cancel2'), run: onClose},
 		{key: 'yes', label: tt('appmenu.uninstall2', {title}), detail: tt('appmenu.thisCannotBeUndone'), run: () => { setStep('working'); onUninstall(); }}
@@ -75,7 +77,7 @@ export function AppMenu ({title, moves, moveBlocked, hideDetail, showUninstall, 
 			case 'up': setIndex((i) => clamp(i - 1, 0, rows.length - 1)); break;
 			case 'down': setIndex((i) => clamp(i + 1, 0, rows.length - 1)); break;
 			case 'back':
-				if (step === 'confirm') { setStep('menu'); setIndex(firstEnabled(menuRows())); } else onClose();
+				if (step === 'confirm' && !startAtConfirm) { setStep('menu'); setIndex(firstEnabled(menuRows())); } else onClose();
 				break;
 			default: break;
 		}

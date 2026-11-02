@@ -111,6 +111,9 @@ html, body {
 	transition: opacity 1400ms ease-in-out;     /* keep in sync with WALLPAPER.fadeMs */
 }
 .wallpaper__layer--on { opacity: var(--wallpaper-opacity, 1); }
+/* 2.0.2 Picture size = Fit: the whole picture is shown, the background shows where the shapes differ. */
+.wallpaper--fit { background-size: 100% 100%, contain, 100% 100%; }
+.wallpaper--fit .wallpaper__layer { background-size: contain; }
 /* A soft shade at the top and bottom keeps the clock and the app row readable on any picture. */
 .wallpaper__scrim {
 	z-index: 3;

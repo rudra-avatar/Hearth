@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.0.2
+
+### Languages
+
+- New languages that come with Hearth: **Français** (fr) and **Polski** (pl), written and checked by native speakers. Credits: Polish by sir_RAFIK (issue #35); French by Foxinou35 (issue #33). They carry no *(machine translated)* mark.
+
+### Changes
+
+- *Add Hearth as a TV input* is back in System, TV start, as one On/Off row (rooted TVs). Hearth no longer takes itself out of the TV inputs after an update.
+- *Uninstall apps* button in Settings, Apps & Sources, Apps (rooted TVs): press it, then OK on an app to uninstall it, after a confirmation.
+- Wallpaper *Picture size*: *Fill the screen* (as before) or *Fit* (the whole picture). Your wallpaper stays as it was until you change it.
+- The wallpaper slideshow can change picture every 20 seconds.
+- Screen saver *Brightness*: *Dim* now goes from 10% to 80% in steps of 10% (your saved choice is kept).
+- Screen saver tab: the *Screen saver:* start of each row name is gone (the tab already says it).
+
 ## 2.0.1
 
 ### Fixes

@@ -34,7 +34,9 @@ eq(calls.includes('"label":"Hearth"'), true, 'with the label the input was added
 eq(calls.includes('"pigImage":""'), true, 'and the pigImage field the TV needs');
 eq(calls.includes('getAllInputStatus'), true, 'it also reads the TV\'s input list, for the log');
 eq(JSON.parse(readFileSync(new URL('../public/appinfo.json', import.meta.url).pathname, 'utf8')).supportGIP, true, 'appinfo.json keeps supportGIP (harmless; left alone, user P57)');
-eq(typeof t.addInputCommand, 'undefined', 'there is no add command any more (P57)');
+fake('luna-send-pub', '{"returnValue":true}');
+run(t.addInputCommand());
+eq(readFileSync(join(dir, 'calls'), 'utf8').split('\n').filter((l) => l.includes('/addDevice') && l.includes('"label":"Hearth"') && l.includes('"pigImage":""')).length, 1, '2.0.2: the add command calls addDevice with the label and pigImage');
 eq(existsSync('/tmp/launcher-input.log') && readFileSync('/tmp/launcher-input.log', 'utf8').includes('deleteDevice'), true, 'and notes the result in the log');
 run(t.removeInputCommand());
 eq(readFileSync(join(dir, 'calls'), 'utf8').includes('deleteDevice'), true, 'the remove command calls deleteDevice');

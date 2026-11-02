@@ -80,7 +80,7 @@ import {RemoteButtons, type RemapTarget} from './screens/RemoteButtons';
 import {capturedButton, checkRemap, installRemap, keepRemap, remapMessage, remapState, removeRemap, saveRemap, setCapture, unkeepRemap} from './lib/remap';
 import {buttonLabel, setButton, type RemapAction, type RemapConfig} from './lib/remapcmd';
 import {noteRecent, orderByRecent, readRecent, writeRecent} from './lib/recency';
-import {removeTvInput, inputCleaned, markInputCleaned, TV_INPUT_LOG} from './lib/tvinput';
+import {addTvInput, removeTvInput, TV_INPUT_LOG} from './lib/tvinput';
 import {uninstallApp, uninstallVerdict, UNINSTALL_LOG} from './lib/uninstall';
 import {appTile, inputTile, pickInOrder} from './lib/tiles';
 import {moveGroup, moveKey, movesFor, orderTiles, orderUpdate, reslot, type MoveAction} from './lib/tileorder';
@@ -127,7 +127,7 @@ export function App () {
 	const prevSel = useRef(config.themeSel);
 	const [themeRev, setThemeRev] = useState(0);          // P81: bumped when the theme's pictures change, so the tiles are drawn again
 	const [notice, setNotice] = useState<{title: string; text: string; buttons: NoticeButton[]; onBack?: () => void} | null>(null);       // a pop-up (warning or question)
-	const [menu, setMenu] = useState<{key: string; title: string; app: AppEntry | null} | null>(null);   // the tile whose Move / Hide / Uninstall menu is open
+	const [menu, setMenu] = useState<{key: string; title: string; app: AppEntry | null; direct?: boolean} | null>(null);   // the tile whose Move / Hide / Uninstall menu is open
 	const [focus, setFocus] = useState<{key: string; seq: number} | undefined>(undefined);               // asks Home to follow a moved tile
 	const bootFirst = useRef(false);                                   // H1: this page started with the TV: the highlight starts on the first app
 	const keyedSinceStart = useRef(false);
@@ -601,23 +601,6 @@ export function App () {
 		return () => { cancelled = true; window.clearTimeout(timer); };
 	}, [config.takeoverHome, showToast]);
 
-	// One-time clean-up of the removed "Add as TV input" feature (P57): when the TV's input list names Hearth, take it out once.
-	// The done-flag is written only after a fresh read shows Hearth gone, so a refused call is tried again at a later start.
-	// Hearth no longer adds itself (starting the TV on Hearth is the power-on app).
-	useEffect(() => {
-		if (tvInput !== true || !isWebOS() || inputCleaned()) return undefined;
-		let cancelled = false;
-		const timer = window.setTimeout(() => {
-			log(`startup: input clean-up at page +${Math.round(performance.now())} ms`);
-			removeTvInput().then((accepted) => listInputs().then((list) => {
-				const gone = !list.some((i) => i.appId === APP_ID);
-				log(`input clean-up: remove ${accepted ? 'accepted' : 'refused'}, ${gone ? 'Hearth is gone from the list' : 'still listed'}`);
-				if (gone) { markInputCleaned(); if (!cancelled) { setInputs(list); showToast(tt('app.hearthWasRemovedFrom')); } }
-			})).catch((e) => log(`input clean-up failed: ${e && e.message ? e.message : e}`));
-		}, startDelay(TIER3_MS, 7000));
-		return () => { cancelled = true; window.clearTimeout(timer); };
-	}, [tvInput, showToast]);
-
 	// Screen saver (when on): a few seconds after start, and whenever what it plays or how it plays changes, make sure the files
 	// on the TV are current and mounted. A change is sent after a short pause so stepping through values sends only the last one.
 	const saverKey = config.screensaver ? JSON.stringify(saverSettings(config)) : '';
@@ -935,7 +918,7 @@ export function App () {
 
 	const tabs: SettingsTab[] = useMemo(() => [
 		{id: TAB.appsSources, label: tt('app.appsSources'), noun: '', items: [], shown: [], subs: [
-			lazyTab({id: TAB.apps, label: tt('app.apps'), noun: tt('app.apps2'), refresh: true, fav: true, recent: {on: config.orderByRecent}, items: [], shown: [], edit: true}, {
+			lazyTab({id: TAB.apps, label: tt('app.apps'), noun: tt('app.apps2'), refresh: true, fav: true, remove: rootState() !== 'no', recent: {on: config.orderByRecent}, items: [], shown: [], edit: true}, {
 				items: () => orderTiles(apps.map((a) => appTile(a, appEditsShown)), (t) => t.key, config.appIds),
 				shown: () => shownApps.map((a) => appTile(a, appEditsShown))
 			}),
@@ -1164,12 +1147,13 @@ export function App () {
 				}
 			}
 			else if (optionId === 'tvInput') {
-				showToast(tt('app.removingHearthFromThe'));
-				removeTvInput()
+				const adding = tvInput !== true;          // 2.0.2 (D1): one toggle: add when not listed, remove when listed
+				showToast(tt(adding ? 'app.addingHearthToThe' : 'app.removingHearthFromThe'));
+				(adding ? addTvInput() : removeTvInput())
 					.then((accepted) => (isWebOS() ? listInputs() : Promise.resolve(MOCK_INPUTS)).then((list) => {
 						setInputs(list);
 						const listed = list.some((i) => i.appId === APP_ID);
-						if (!listed) showToast(tt('app.removedFromTheTv'));
+						if (listed === adding) showToast(tt(adding ? 'app.addedToTheTv' : 'app.removedFromTheTv'));
 						else showToast(accepted ? tt('app.theTvAcceptedThat') : tt('app.theTvDidnT2', {TV_INPUT_LOG}), 'error');
 					}))
 					.catch((error) => showToast(failureText(error, tt('app.changeTheTvInput')), 'error'));
@@ -1199,7 +1183,7 @@ export function App () {
 	const onAdjust = useCallback((optionId: string, direction: -1 | 1) => changeOption(optionId, direction < 0 ? 'left' : 'right'), [changeOption]);
 
 	const onChooseWallpaper = useCallback((choice: WallpaperChoice) => {
-		const keep = {intervalSec: config.wallpaper.intervalSec, shuffle: config.wallpaper.shuffle};
+		const keep = {intervalSec: config.wallpaper.intervalSec, shuffle: config.wallpaper.shuffle, fit: config.wallpaper.fit};
 		const wallpaper = choice.mode === 'gradient' || choice.mode === 'photos'
 			? {...DEFAULT_WALLPAPER, ...keep}
 			: {mode: choice.mode, path: choice.path, ...keep, recursive: choice.mode === 'folder' && !!choice.recursive};
@@ -1267,6 +1251,15 @@ export function App () {
 			}
 		}));
 	}, [config, showToast]);
+
+	// Settings -> Apps -> Uninstall apps: OK on a tile goes straight to the confirmation (or says why the app cannot be removed).
+	const onUninstallPick = useCallback((key: string) => {
+		const app = apps.find((a) => a.id === key);
+		if (!app) return;
+		const verdict = uninstallVerdict(app);
+		if (!verdict.ok) { showToast(verdict.reason, 'error'); return; }
+		setMenu({key, title: app.title, app, direct: true});
+	}, [apps, showToast]);
 
 	const menuVerdict = menu && menu.app ? uninstallVerdict(menu.app) : null;
 	// ----- Reassign remote buttons (P61; PR #19 by Obednal97, adapted) -----
@@ -1407,15 +1400,15 @@ export function App () {
 
 	return (
 		<>
-			{wallpaperOn && photoShow && <PhotoShow intervalSec={config.wallpaper.intervalSec} shuffle={config.wallpaper.shuffle} paused={asleep} />}
+			{wallpaperOn && photoShow && <PhotoShow fit={config.wallpaper.fit === 'fit'} intervalSec={config.wallpaper.intervalSec} shuffle={config.wallpaper.shuffle} paused={asleep} />}
 			{wallpaperOn && !photoShow && <Wallpaper config={config.wallpaper} opacity={config.wallpaperOpacity} onProblem={(text) => showToast(text, 'error')} />}
 			{/* Home stays mounted under the other screens so it keeps its focus position. */}
 			<Home items={homeItems} favourites={config.favourites} timeFormat={timeFormat} appearance={appearance} active={screen === 'home' && !menu && !recents && !notice} paused={asleep} onActivate={onActivate} onLongPress={onLongPress} onBack={openRecents} wake={wakes} homeKey={config.homeFocus === 'last' && !homeFirst.current && !bootFirst.current ? lastOpened.current : null} focus={focus} weather={weatherLine} />
 			{recents && screen === 'home' && <Recents icons={recentIcons} edits={config.appEdits} inputs={allInputs} sourceEdits={config.sourceEdits} width={config.recentsW} height={config.recentsH} onClose={closeRecents} onOpen={noteOpened} onToast={showToast} />}
-			{menu && <AppMenu title={menu.title} moves={menuMoves} moveBlocked={config.orderByRecent ? tt('app.theRowFollowsTheLast') : undefined} hideDetail={menu.app ? tt('app.youCanAddItBack') : tt('app.youCanAddItBack2')} showUninstall={!!menu.app} blockedReason={menuBlocked} isFavourite={config.favourites.indexOf(menu.key) !== -1} onFavourite={() => { onFavourite('', menu.key); setMenu(null); }} onMove={(action) => moveTile(menu.key, action)} onHide={() => hideTile(menu)} onUninstall={() => { if (menu.app) removeApp(menu.app); }} onClose={() => setMenu(null)} />}
+			{menu && <AppMenu title={menu.title} moves={menuMoves} moveBlocked={config.orderByRecent ? tt('app.theRowFollowsTheLast') : undefined} hideDetail={menu.app ? tt('app.youCanAddItBack') : tt('app.youCanAddItBack2')} showUninstall={!!menu.app} blockedReason={menuBlocked} isFavourite={config.favourites.indexOf(menu.key) !== -1} onFavourite={() => { onFavourite('', menu.key); setMenu(null); }} onMove={(action) => moveTile(menu.key, action)} onHide={() => hideTile(menu)} onUninstall={() => { if (menu.app) removeApp(menu.app); }} startAtConfirm={!!menu.direct} onClose={() => setMenu(null)} />}
 			{/* Settings stays mounted under the picker so it keeps its tab. */}
 			{screen === 'settings' && settingsTab === TAB.clock && appearance.clock.show && !config.showDebug && <WidgetPreview now={previewNow} format={timeFormat} config={appearance.clock} weather={weatherLine} />}
-			{(screen !== 'home') && <Settings tabs={tabs} active={screen === 'settings' && !notice} onToggle={onToggle} onReorder={onReorder} onRecent={onRecent} onOption={onOption} onRefresh={onRefresh} favourites={config.favourites} onFavourite={onFavourite} onEdit={(key) => { setEditKey(key); setScreen('source'); }} onAdjust={onAdjust} onTab={onTab} onCollapse={onCollapse} onClose={() => { onCollapse(); setScreen('home'); }} about={aboutText(versions, rootState(), lastFailure())} />}
+			{(screen !== 'home') && <Settings tabs={tabs} active={screen === 'settings' && !notice && !menu} onToggle={onToggle} onReorder={onReorder} onRecent={onRecent} onOption={onOption} onRefresh={onRefresh} favourites={config.favourites} onFavourite={onFavourite} onUninstallPick={onUninstallPick} onEdit={(key) => { setEditKey(key); setScreen('source'); }} onAdjust={onAdjust} onTab={onTab} onCollapse={onCollapse} onClose={() => { onCollapse(); setScreen('home'); }} about={aboutText(versions, rootState(), lastFailure())} />}
 			{screen === 'source' && (editedSource || editedApp) && (
 				<SourceEditor
 					base={editedSource ? {label: editedSource.label, icon: autoIcon(editedSource.icon)} : {label: editedApp!.title, icon: '', image: editedApp!.iconUrl}}

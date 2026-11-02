@@ -7,11 +7,11 @@ A screen saver shows pictures when nobody has pressed a button for a while. Hear
 Open **Settings, Screen saver**:
 
 - **Custom Screen Saver:** the main switch.
-- **Screen saver: pictures:** what it plays: a photo, a GIF, a video (mp4, mkv or webm, plays quietly to its end), a folder, the bundled photos, or the same as the wallpaper.
+- **Pictures:** what it plays: a photo, a GIF, a video (mp4, mkv or webm, plays quietly to its end), a folder, the bundled photos, or the same as the wallpaper.
 - **Change picture every** and **Shuffle**, for slideshows.
 - **Picture size:** *Fit* shows the whole picture; *Fill* crops it to the screen.
 - **OLED care:** a thin moving frame so one still picture cannot burn into the screen.
-- **Brightness:** *Bright*, or *Dim* by an amount you choose (a dark layer; the backlight is not touched).
+- **Brightness:** *Bright*, or *Dim* by an amount you choose, from 10% to 80% in steps of 10 (a dark layer; the backlight is not touched).
 - **Switch the TV off after:** the TV goes to sleep after the saver has run this long (5 minutes at first).
 - **Show it now:** starts it at once, so you can try it.
 

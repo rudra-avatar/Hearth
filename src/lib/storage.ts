@@ -110,6 +110,8 @@ export interface WallpaperConfig {
 	shuffle: boolean;
 	/** a folder slideshow also uses the folders inside the folder (all levels, no limit) */
 	recursive: boolean;
+	/** 2.0.2: 'fill' crops the picture to the screen (the look before 2.0.2), 'fit' shows the whole picture (the background shows at the sides); a missing value reads as 'fill' */
+	fit: 'fit' | 'fill';
 }
 
 /** Icon styles stored in `iconStyle`: 'original'; 'tinted' (P48: the artwork on a themed dark tile, no mask); all others draw the icon
@@ -284,7 +286,8 @@ export const DEFAULT_WALLPAPER: WallpaperConfig = {
 	path: '',
 	intervalSec: 60,
 	shuffle: true,
-	recursive: false
+	recursive: false,
+	fit: 'fill'
 };
 
 export const DEFAULT_WEATHER: WeatherConfig = {
@@ -579,7 +582,8 @@ export function loadConfig (): UserConfig {
 				path,
 				intervalSec: interval,
 				shuffle: w.shuffle !== false,
-				recursive: mode === 'folder' && w.recursive === true
+				recursive: mode === 'folder' && w.recursive === true,
+				fit: w.fit === 'fit' ? 'fit' : 'fill'
 			}
 		};
 		if (parsed.defaultsV !== DEFAULTS_VERSION) {          // P41f: once per version, every saved look setting (own wallpaper included) goes back to the defaults

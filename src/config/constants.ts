@@ -52,6 +52,6 @@ export const WALLPAPER = {
 	maxBytes: 8 * 1024 * 1024,    // pictures bigger than this file size are skipped
 	chunkBytes: 98304,            // read per shell call: ~128 KB of base64, safely under the service's output limit; a multiple of 3 so every chunk's base64 stands alone
 	parallelChunks: 3,
-	intervals: [10, 30, 60, 300, 900, 1800, 3600]   // seconds, the choices in Settings
+	intervals: [10, 20, 30, 60, 300, 900, 1800, 3600]   // seconds, the choices in Settings
 } as const;
 

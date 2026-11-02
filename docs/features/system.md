@@ -32,6 +32,7 @@ Give the other buttons on your remote, such as the **colour keys** and other ded
 ## TV start
 
 - **When the TV turns on, open...:** choose Hearth (or any app) to open when you switch the TV on, instead of Live TV. It starts working after **one full restart** of the TV. Choose *TV default* to undo it. It can also react to a network wake-up where the TV supports it.
+- **Add Hearth as a TV input:** one switch (On / Off). Press OK to list Hearth next to HDMI 1 in the TV's input list; press it again to take Hearth out. For the TV to start on Hearth, also set the TV to start on its last input. If the TV refuses, Hearth says so and writes the details to `/tmp/launcher-input.log`. Rooted TVs only.
 - **Replace LG Home (helper):** one click installs a small helper that watches the TV. When LG Home would show, Hearth opens instead. LG Home can **flash for a moment** first; the Home button mapping above avoids the flash for the Home key. Turn this off before you uninstall Hearth (if you forget, the next TV start cleans up).
 - **Show the LG logo when the TV starts:** LG's own switch, normally hidden in a secret menu. Turn it off for a cleaner start.
 - **Set Hearth as the TV's Home app (experimental):** writes Hearth into the TV's own Home setting. It worked on webOS 4.5 and does **not** work on webOS 7.6. It cannot be used together with *Replace LG Home*.

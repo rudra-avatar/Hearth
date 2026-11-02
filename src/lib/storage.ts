@@ -213,7 +213,7 @@ export interface UserConfig {
 	/** P77: colour of the shapes of the mono icon styles: 'theme' (the theme's own ink) or a plain colour id */
 	iconColor: string;
 	/** P61c: which remote is drawn on the Remote control pages */
-	remoteModel: 'ir' | 'magic-2019' | 'magic-2021' | 'magic-2025';
+	remoteModel: 'ir' | 'magic-2016' | 'magic-2019' | 'magic-2021' | 'magic-2025';
 	/** size of the Recent apps panel, % of the screen */
 	recentsW: number;
 	recentsH: number;
@@ -523,7 +523,7 @@ export function loadConfig (): UserConfig {
 			iconLight: parsed.iconLight === true,
 			themeSel: typeof parsed.themeSel === 'string' && /^[a-z0-9-]{1,40}$/.test(parsed.themeSel) ? parsed.themeSel : '',
 			iconColor: PLAIN_COLOR_IDS.indexOf(parsed.iconColor as string) !== -1 ? (parsed.iconColor as string) : 'theme',
-			remoteModel: parsed.remoteModel === 'magic-2019' || parsed.remoteModel === 'magic-2021' || parsed.remoteModel === 'magic-2025' ? parsed.remoteModel : 'ir',
+			remoteModel: parsed.remoteModel === 'magic-2016' || parsed.remoteModel === 'magic-2019' || parsed.remoteModel === 'magic-2021' || parsed.remoteModel === 'magic-2025' ? parsed.remoteModel : 'ir',
 			tileShape: TILE_SHAPE_IDS.indexOf(parsed.tileShape as string) !== -1 ? (parsed.tileShape as string) : 'rounded',
 			recentsW: ranged(parsed.recentsW, 'recentsW'),
 			recentsH: ranged(parsed.recentsH, 'recentsH'),

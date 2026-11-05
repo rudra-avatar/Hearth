@@ -16,7 +16,7 @@ Then close and reopen Hearth. After updating Hearth, restart the TV or run the l
 
 ## The Home button
 
-- **It shows LG Home for a moment.** The helper can only react after LG Home is already in front. Use **Map home button** (System, Remote control).
+- **It shows LG Home for a moment.** The helper can only react after LG Home is already in front. Use **Map home button** (System, Remote control), or try **Replace LG Home with SAM** (System, TV start, experimental), which does not flash.
 - **It does not open Hearth.** Remotes send different key numbers. Run the guide in **Map home button**. If the separate *Input Hook* app has its own settings, Hearth's rows are grey with a reason.
 - **It is dead after uninstalling Hearth.** Restart the TV (unplug it for 30 seconds). The clean-up finishes and Home works again.
 

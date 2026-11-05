@@ -213,7 +213,7 @@ Installing over an older version keeps your apps, their order and names, and fav
 
 **Updating from 1.x to 2.0.0 resets the look, widget, wallpaper, home-row and quiet-mode values to the new defaults once.** *Settings, Look, Restore my settings from before the update* brings your old values back once.
 
-To remove Hearth, turn off *Replace LG Home (helper)*, the screen saver and *Map home button* first, then uninstall "Hearth" from the Homebrew Channel or Dev Manager. If you forget, the next TV start removes their start-up links and folders by itself.
+To remove Hearth, turn off *Replace LG Home with SAM* or *Replace LG Home (helper)*, the screen saver and *Map home button* first, then uninstall "Hearth" from the Homebrew Channel or Dev Manager. If you forget, the next TV start removes their start-up links and folders by itself.
 
 ## Using it
 
@@ -445,9 +445,9 @@ To add a language, see [Language files](https://rudra-avatar.github.io/Hearth/la
 
 ### Recommended settings
 
-For a clean, minimal and easy way to use Hearth as your main launcher, switch on these four settings together:
+For a clean, minimal and easy way to use Hearth as your main launcher, switch on these five settings together:
 
-1. **Replace LG Home (helper):** a small helper opens Hearth whenever the TV shows LG Home.
+1. **Replace LG Home with SAM** (experimental): Hearth takes LG Home's place in the TV itself, so LG Home never flashes. Tested on webOS 7; if it does not work on your TV, use **Replace LG Home (helper)** instead.
 2. **Map home button:** the Home button opens Hearth at once, with no flash of LG Home.
 3. **When the TV turns on, open...:** choose Hearth, so the TV starts in Hearth.
 4. **Keep Hearth ready** (experimental): Hearth stays in memory, so it appears immediately.
@@ -456,12 +456,12 @@ For a clean, minimal and easy way to use Hearth as your main launcher, switch on
 
 Together they make Hearth the screen you see when the TV starts, when you press Home and when you leave an app, so you never need to see LG Home again. The *LG Home* tile in Hearth still opens it if you ever want it.
 
-The helper can only react once LG Home is already in front, so after leaving an app with Back, LG Home may still show for a moment. The Home button itself does not flash.
+SAM puts Hearth where LG Home would be, so LG Home does not show at all. The helper can only react once LG Home is already in front, so with the helper LG Home may still flash for a moment after leaving an app with Back (the Home button itself does not flash).
 
 **Set it up (once):**
 
 1. Install Hearth from the Homebrew Channel (see Install).
-2. Open **Settings, System, TV start** and switch on **Replace LG Home (helper)**.
+2. Open **Settings, System, TV start** and switch on **Replace LG Home with SAM (experimental)**. Read its warning first. On a TV where it does not work, switch it off and use **Replace LG Home (helper)** instead.
 3. Open **Settings, System, Remote control, Map home button** and press Home when asked.
 4. In **Settings, System, TV start**, open **When the TV turns on, open...**, choose Hearth, then restart the TV once.
 5. Open **Settings, System, Memory** and switch on **Keep Hearth ready**. Read its warning first.
@@ -482,6 +482,16 @@ Press the Home button when asked:
 ![Map home button](docs/screenshots/remote-home-button.jpg)
 
 If the separate *Input Hook* app is installed with its own bindings, Hearth greys the rows out and says why. Hearth never changes that app's settings.
+
+### Replace LG Home with SAM (experimental) (Settings, System, TV start)
+
+The TV has a part called SAM that keeps the list of apps and decides what opens when you press Home. This setting puts a plain black page in LG Home's place and asks SAM to read it, so the TV opens Hearth wherever it would open LG Home, with **no flash of LG Home**.
+
+- It starts about 25 seconds after the TV starts. SAM may be restarted once while it is switched on, and the screen can blink for a few seconds.
+- It was tested on webOS 7 only.
+- It cannot be on at the same time as *Replace LG Home (helper)*: each one is greyed out while the other is on.
+- Switch it off to give LG Home its place back. On a TV that had to restart SAM, restart the TV once more afterwards.
+- The method comes from [Glasshouse](https://github.com/rorygallagher2024/glasshouse) by Rory Gallagher (credited below).
 
 ### Replace LG Home (helper) (Settings, System, TV start)
 
@@ -588,7 +598,7 @@ More in the [Troubleshooting guide](https://rudra-avatar.github.io/Hearth/troubl
 **Projects and ideas:**
 
 - **[partridgeworks/webos-launcher](https://github.com/partridgeworks/webos-launcher)** (MIT): the project this one began as a fork of: app skeleton, Luna service bridge, app list and icon loading, remote handling.
-- **[Glasshouse](https://github.com/rorygallagher2024/glasshouse)** by Rory Gallagher (MIT): the ideas behind the screen saver (including the method for webOS 10 and newer), the *LG preloaded apps* feature (the TV's preload list plus the preload manager's live call) and the former *script and SAM* method (removed). Adapted parts are credited in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- **[Glasshouse](https://github.com/rorygallagher2024/glasshouse)** by Rory Gallagher (MIT): the ideas behind the screen saver (including the method for webOS 10 and newer), the *LG preloaded apps* feature (the TV's preload list plus the preload manager's live call) and the *Replace LG Home with SAM* option. Adapted parts are credited in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - **[webOS Brew / Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel)**: the root access, `exec` service and startup folder everything rooted runs on; **throwaway96's** Homebrew Channel 0.8.0-rc1 for the elevation fixes.
 - **[custom-screensaver](https://github.com/webosbrew/custom-screensaver)** (webosbrew, MIT) and **[custom-screensaver-aerial](https://github.com/aabytt/custom-screensaver-aerial)** by aabytt (MIT): the idea of replacing the TV's screen saver QML, and how video is shown on the TV (the transparent video area, the multimedia imports). Hearth's screen saver code is its own.
 - **[LG Input Hook](https://github.com/Simon34545/lginputhook)** by Simon34545 (BSD-3-Clause): the flash-free Home button. Hearth's *Map home button* carries Input Hook's key hook (its injector and library, unchanged, in the `homehook` folder of the install), so it works without the Input Hook app.

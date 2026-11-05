@@ -1,6 +1,6 @@
 {
   "name": "custom-launcher",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "private": true,
   "description": "Custom home screen for LG webOS TVs: clock, apps row, wallpaper and USB slideshow",
   "type": "module",

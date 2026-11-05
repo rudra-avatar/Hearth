@@ -7,7 +7,9 @@ Does Hearth work on your TV? This page lists reports from real people. **Referen
 Every report sent with the [compatibility form](https://github.com/rudra-avatar/Hearth/issues/new?template=compatibility.yml) is read by a maintainer. When it looks right, the maintainer adds the label `verified` and this table is rebuilt by itself. One row is one person's report; "?" means not told.
 
 <!-- verified-table:start -->
-_No verified reports yet._
+| TV model | webOS | Firmware | Setup | Result | Hearth | Remote | How it opens | Report |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| OLED77CXPUA | 5.6.2 | 04.64.00 | Rooted | Works | None | Magic Remote | None | [#45](https://github.com/rudra-avatar/Hearth/issues/45) |
 <!-- verified-table:end -->
 
 ## Earlier reports (before the form)

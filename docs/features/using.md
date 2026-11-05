@@ -61,6 +61,7 @@ Press **Back** on the home row to see the apps you used lately. **OK** opens one
 
 - **Quiet mode** hides the apps after a pause, so only the clock stays. Any key brings them back. Choose the pause (Off, or 10 to 60 seconds) in **Settings, Look, Quiet mode**. At first it is 20 seconds.
 - **Dim the screen after** makes the whole picture darker some seconds later. **Dim strength** says how much (10 to 80 percent). This is a dark layer, the TV's backlight is not touched.
+- **Standby fade**, after a longer pause (Off, or 1, 2, 5 or 10 minutes), slowly fades out the apps, the date, the weather and the widget backdrop and dims the clock, so only the wallpaper and a faint clock stay. The first key or pointer movement only brings them back: it does not move the highlight, open anything or go Back. It waits while a menu, Settings or another app is open. At first it is Off.
 - **OLED shift** moves the clock and the apps a tiny bit every minute, so a still picture does not burn into an OLED screen. It is on at first.
 
 ![Quiet mode: only the clock stays](../screenshots/quiet-mode.jpg)

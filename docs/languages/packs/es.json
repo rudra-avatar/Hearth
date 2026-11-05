@@ -27,6 +27,8 @@
     "pref.quietDimSec.desc": "Atenúa toda la pantalla este tiempo después de ocultar las apps.",
     "pref.quietDimLevel.label": "Modo tranquilo: intensidad de atenuación",
     "pref.quietDimLevel.desc": "Cuán oscura es la atenuación del modo tranquilo.",
+    "pref.standbyMin.label": "Atenuación en reposo",
+    "pref.standbyMin.desc": "Tras este tiempo sin pulsar ninguna tecla, las apps, la fecha y el tiempo se desvanecen y el reloj se atenúa. Cualquier tecla los devuelve.",
     "pref.iconScale.label": "Tamaño de iconos",
     "pref.iconScale.desc": "Qué tan grandes son los iconos de las apps.",
     "pref.iconGap.label": "Espacio entre iconos",

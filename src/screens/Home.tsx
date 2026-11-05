@@ -17,6 +17,7 @@ import {FONT, LAYOUT} from '../theme/tokens';
 import {varScope} from '../lib/cssvars';
 import {moveGroup, movesFor} from '../lib/tileorder';
 import {t as tt} from '../i18n';
+import {createStandby, STANDBY_EVENTS, type StandbyState} from '../lib/standby';
 
 export interface Appearance {
 	/** icon size, % of the standard size */
@@ -40,6 +41,8 @@ export interface Appearance {
 	quietDimSec: number;
 	/** quiet mode dim strength, % darkness (10-80) */
 	quietDimLevel: number;
+	/** standby fade: minutes without input before the apps and widgets fade and the clock dims (0 = off) */
+	standbyMin: number;
 	/** OLED shift on */
 	oledShift: boolean;
 	/** px at 1080p */
@@ -101,6 +104,34 @@ function useShift (on: boolean): {x: number; y: number} | null {
 	return on ? SHIFT_STEPS[i] : null;
 }
 
+/** Standby fade (lib/standby.ts): the state to draw. Counts only while `on` (the home screen is in front with nothing over it and
+ *  the home row is not being re-ordered); a change of `wake` (Home pressed) starts the wait again. The input that wakes it is
+ *  used up here, in the window's capture phase, before any of Hearth's own key or pointer handlers see it. */
+function useStandby (minutes: number, on: boolean, wake?: number): StandbyState {
+	const [state, setState] = useState<StandbyState>('awake');
+	const ctl = useRef<ReturnType<typeof createStandby> | null>(null);
+	if (!ctl.current) ctl.current = createStandby({onState: setState});
+	useEffect(() => {
+		const standby = ctl.current!;
+		const onEvent = (e: Event) => {
+			const k = e as KeyboardEvent;
+			const m = e as MouseEvent;
+			if (!standby.input({type: e.type, keyCode: k.keyCode, repeat: k.repeat, x: m.screenX, y: m.screenY})) return;
+			e.preventDefault();
+			e.stopPropagation();          // window is first in the capture path: nothing after it (document, the page, bubbling) gets the event
+		};
+		STANDBY_EVENTS.forEach((type) => window.addEventListener(type, onEvent, true));
+		return () => {
+			STANDBY_EVENTS.forEach((type) => window.removeEventListener(type, onEvent, true));
+			standby.dispose();
+		};
+	}, []);
+	useEffect(() => { ctl.current!.setMinutes(minutes); }, [minutes]);
+	useEffect(() => { ctl.current!.setPaused(!on); }, [on]);
+	useEffect(() => { if (wake) ctl.current!.reset(); }, [wake]);
+	return state;
+}
+
 /** The home screen: a clock and the tiles along the bottom, in one row or two.
  *  Left/Right move along a row, Up/Down change row (two rows), OK opens, holding OK opens the app's menu.
  *  Back opens the Recent apps panel. */
@@ -144,6 +175,14 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 	const movable = (key: string | undefined): boolean => !!key && !!tileKeys && tileKeys.indexOf(key) !== -1;
 	const tileKeysRef = useRef(tileKeys);
 	tileKeysRef.current = tileKeys;
+	const standby = useStandby(appearance.standbyMin, active && !paused && !moveMode, wake);
+
+	// Standby fade also takes the wallpaper's bottom fade away with the apps (CSS: `.hearth-standby .wallpaper__fade`).
+	useEffect(() => {
+		document.body.classList.toggle('hearth-standby', standby === 'faded');
+		document.body.classList.toggle('hearth-standby-waking', standby === 'waking');
+		return () => { document.body.classList.remove('hearth-standby'); document.body.classList.remove('hearth-standby-waking'); };
+	}, [standby]);
 
 	// Quiet mode: hide the apps after quietSec without a key; the first key (or pointer move) brings them back and is used up.
 	useEffect(() => {
@@ -333,7 +372,7 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 	const classes = [rowVars.cls, 'rows', !appearance.showLabels && 'rows--no-labels', sizes.length > 1 && 'rows--multi', favN > 0 && 'rows--fav', favN > 0 && open && 'rows--fav-open', favN > 0 && !open && everOpen.current && 'rows--fav-shut', appearance.iconOpacity < 100 && 'rows--dim', quiet && 'rows--quiet', labelColorValue(appearance.labelColor) && 'rows--label-color', appearance.labelFont !== 'default' && 'rows--label-font', appearance.labelWeight !== 400 && 'rows--label-weight', appearance.tileShape !== 'rounded' && `rows--shape-${appearance.tileShape}`].filter(Boolean).join(' ');
 
 	return (
-		<div class={`screen${active ? '' : ' screen--away'}${shift ? ' screen--shift' : ''}${shiftVars.cls ? ' ' + shiftVars.cls : ''}`} style={shiftVars.css || undefined}>
+		<div class={`screen${active ? '' : ' screen--away'}${shift ? ' screen--shift' : ''}${standby === 'faded' ? ' screen--standby' : standby === 'waking' ? ' screen--standby-waking' : ''}${shiftVars.cls ? ' ' + shiftVars.cls : ''}`} style={shiftVars.css || undefined}>
 			{moveMode && <div class="movehint"><div class="movehint__main">{tt('move.hint')}</div><div class="movehint__sub">{tt('move.hintBack')}</div></div>}
 			{appearance.clock.show && !moveMode && <Clock now={now} format={timeFormat} config={appearance.clock} weather={weather} />}
 			<div class={classes} style={rowStyle}>

@@ -27,6 +27,8 @@
     "pref.quietDimSec.desc": "Assombrit tout l'écran après ce délai, une fois les apps masquées.",
     "pref.quietDimLevel.label": "Mode calme : intensité de l'assombrissement",
     "pref.quietDimLevel.desc": "Le degré d'obscurité de l'assombrissement du mode calme.",
+    "pref.standbyMin.label": "Fondu de veille",
+    "pref.standbyMin.desc": "Après ce délai sans appui sur une touche, les apps, la date et la météo s'effacent et l'horloge s'assombrit. N'importe quelle touche les fait revenir.",
     "pref.iconScale.label": "Taille des icônes",
     "pref.iconScale.desc": "La taille des icônes d'apps.",
     "pref.iconGap.label": "Espacement des icônes",

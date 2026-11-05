@@ -27,6 +27,8 @@
     "pref.quietDimSec.desc": "Czas od ukrycia aplikacji do przyciemnienia całego ekranu.",
     "pref.quietDimLevel.label": "Tryb spoczynku: przyciemnienie",
     "pref.quietDimLevel.desc": "Stopień przyciemnienia ekranu w trybie spoczynku.",
+    "pref.standbyMin.label": "Wygaszanie w spoczynku",
+    "pref.standbyMin.desc": "Po tym czasie bez naciśnięcia przycisku aplikacje, data i pogoda znikają, a zegar przygasa. Dowolny przycisk je przywraca.",
     "pref.iconScale.label": "Rozmiar ikon",
     "pref.iconScale.desc": "Wielkość ikon aplikacji.",
     "pref.iconGap.label": "Odstęp między ikonami",

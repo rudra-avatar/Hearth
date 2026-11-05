@@ -27,6 +27,8 @@
     "pref.quietDimSec.desc": "Dimmt den ganzen Bildschirm so lange, nachdem die Apps ausgeblendet wurden.",
     "pref.quietDimLevel.label": "Ruhemodus: Dimm-Stärke",
     "pref.quietDimLevel.desc": "Wie dunkel das Dimmen im Ruhemodus ist.",
+    "pref.standbyMin.label": "Standby-Ausblenden",
+    "pref.standbyMin.desc": "Nach dieser Zeit ohne Tastendruck werden die Apps, das Datum und das Wetter ausgeblendet und die Uhr wird gedimmt. Jede Taste holt sie zurück.",
     "pref.iconScale.label": "Symbolgröße",
     "pref.iconScale.desc": "Wie groß die App-Symbole sind.",
     "pref.iconGap.label": "Symbolabstand",

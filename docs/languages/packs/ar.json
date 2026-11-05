@@ -27,6 +27,8 @@
     "pref.quietDimSec.desc": "يعتّم الشاشة كلها بعد هذه المدة من إخفاء التطبيقات.",
     "pref.quietDimLevel.label": "الوضع الهادئ: قوة التعتيم",
     "pref.quietDimLevel.desc": "مدى قتامة تعتيم الوضع الهادئ.",
+    "pref.standbyMin.label": "الخفوت عند الخمول",
+    "pref.standbyMin.desc": "بعد هذه المدة دون الضغط على أي زر، تتلاشى التطبيقات والتاريخ والطقس وتخفت الساعة. أي زر يعيدها.",
     "pref.iconScale.label": "حجم الأيقونات",
     "pref.iconScale.desc": "مدى كبر أيقونات التطبيقات.",
     "pref.iconGap.label": "تباعد الأيقونات",

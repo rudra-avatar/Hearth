@@ -27,6 +27,8 @@
     "pref.quietDimSec.desc": "Escurece a tela toda esse tempo após os apps se ocultarem.",
     "pref.quietDimLevel.label": "Modo silencioso: intensidade do escurecimento",
     "pref.quietDimLevel.desc": "Quão escuro é o escurecimento do modo silencioso.",
+    "pref.standbyMin.label": "Esmaecer em repouso",
+    "pref.standbyMin.desc": "Após esse tempo sem nenhuma tecla pressionada, os apps, a data e a previsão do tempo somem e o relógio escurece. Qualquer tecla os traz de volta.",
     "pref.iconScale.label": "Tamanho dos ícones",
     "pref.iconScale.desc": "Quão grandes são os ícones dos apps.",
     "pref.iconGap.label": "Espaçamento dos ícones",

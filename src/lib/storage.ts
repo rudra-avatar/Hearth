@@ -22,6 +22,7 @@ import type {HomeFocus} from './homefocus';
 import {DEFAULT_CITY} from './cities';
 import {validCoords, type City, type TempUnit} from './weather';
 import {DEFAULT_LANGUAGE, languageId} from './languages';
+import {STANDBY_DEFAULT, standbyMinutes} from './standby';
 
 export type WallpaperMode = 'gradient' | 'image' | 'folder';
 export type ClockFormat = 'tv' | '12h' | '24h';
@@ -230,6 +231,8 @@ export interface UserConfig {
 	quietDimSec: number;
 	/** quiet mode dim strength: % darkness */
 	quietDimLevel: number;
+	/** standby fade: minutes without input on the home screen before the apps and widgets fade and the clock dims (0 = off; see lib/standby.ts) */
+	standbyMin: number;
 	/** OLED shift: the clock and the apps move a few pixels now and then so nothing burns in */
 	oledShift: boolean;
 	/** colour of the names under the icons: 'theme' or a plain colour id (see LABEL_COLOR_IDS) */
@@ -374,6 +377,7 @@ export const DEFAULT_CONFIG: UserConfig = {
 	quietSec: RANGES.quietSec.def,
 	quietDimSec: RANGES.quietDimSec.def,
 	quietDimLevel: RANGES.quietDimLevel.def,
+	standbyMin: STANDBY_DEFAULT,
 	oledShift: true,
 	labelColor: 'theme',
 	labelFont: 'default',
@@ -546,6 +550,7 @@ export function loadConfig (): UserConfig {
 			quietSec: ranged(parsed.quietSec, 'quietSec'),
 			quietDimSec: ranged(parsed.quietDimSec, 'quietDimSec'),
 			quietDimLevel: ranged(parsed.quietDimLevel, 'quietDimLevel'),
+			standbyMin: standbyMinutes(parsed.standbyMin),
 			screensaverDimLevel: typeof parsed.screensaverDimLevel === 'number' && parsed.screensaverDimLevel >= 10 && parsed.screensaverDimLevel <= 80 ? Math.round(parsed.screensaverDimLevel / 10) * 10 : 40,
 			oledShift: parsed.oledShift !== false,
 			labelColor: LABEL_COLOR_IDS.indexOf(parsed.labelColor as string) !== -1 ? (parsed.labelColor as string) : 'theme',

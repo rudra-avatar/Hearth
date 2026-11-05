@@ -27,6 +27,8 @@
     "pref.quietDimSec.desc": "Meredupkan seluruh layar selama waktu ini setelah aplikasi disembunyikan.",
     "pref.quietDimLevel.label": "Mode tenang: kekuatan redup",
     "pref.quietDimLevel.desc": "Seberapa gelap redup mode tenang.",
+    "pref.standbyMin.label": "Pudar saat diam",
+    "pref.standbyMin.desc": "Setelah selama ini tanpa tombol ditekan, aplikasi, tanggal, dan cuaca memudar dan jam meredup. Tombol apa pun memunculkannya lagi.",
     "pref.iconScale.label": "Ukuran ikon",
     "pref.iconScale.desc": "Seberapa besar ikon aplikasi.",
     "pref.iconGap.label": "Jarak ikon",

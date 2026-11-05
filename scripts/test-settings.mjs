@@ -95,7 +95,7 @@ for (const tab of ['look', 'clock', 'wallpaper', 'system']) {
   eq(list.length >= 1 && list.length <= 30, true, `${tab} tab has ${list.length} options (a long list scrolls)`);
 }
 const look = p.optionsFor('look', c0);
-eq(look.map((o) => o.id).join(','), 'theme,iconScale,tileShape,iconStyle,iconGap,iconOpacity,rows,scrollSpeed,homeFocus,sideMargin,bottomMargin,inputStatus,showLgHome,showSystem,hideSettings,showLabels,labelColor,labelFont,labelSize,labelWeight,quietSec,quietDimSec,quietDimLevel,oledShift,recentsSize,resetLook', 'P35b: the Look tab lists its rows in group order');
+eq(look.map((o) => o.id).join(','), 'theme,iconScale,tileShape,iconStyle,iconGap,iconOpacity,rows,scrollSpeed,homeFocus,sideMargin,bottomMargin,inputStatus,showLgHome,showSystem,hideSettings,showLabels,labelColor,labelFont,labelSize,labelWeight,quietSec,quietDimSec,quietDimLevel,standbyMin,oledShift,recentsSize,resetLook', 'P35b: the Look tab lists its rows in group order');
 eq(p.applyPref(c0, 'rows', 'ok').rows, 2, 'Rows of apps: 1 -> 2');
 eq(p.applyPref(p.applyPref(c0, 'rows', 'ok'), 'rows', 'ok').rows, 1, 'and 2 -> 1');
 eq(p.applyPref(c0, 'showLabels', 'ok').showLabels, false, 'Show app names switches off');

@@ -38,7 +38,7 @@ Switch the names under the icons on or off, and choose their colour, font, size 
 
 ## Quiet mode, Favourites, Recent apps
 
-Quiet mode and OLED shift are explained in [Using Hearth](using.md#quiet-mode-and-oled-care). *Favourites* has its own side and bottom margin. *Recent apps* has the panel size (Small, Medium, Large).
+Quiet mode, standby fade and OLED shift are explained in [Using Hearth](using.md#quiet-mode-and-oled-care). *Favourites* has its own side and bottom margin. *Recent apps* has the panel size (Small, Medium, Large).
 
 ## Reset
 

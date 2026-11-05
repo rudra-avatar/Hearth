@@ -241,6 +241,22 @@ html, body {
 @keyframes hearth-rows-a { from { opacity: 0; } to { opacity: 1; } }
 @-webkit-keyframes hearth-rows-b { from { opacity: 0; } to { opacity: 1; } }
 @keyframes hearth-rows-b { from { opacity: 0; } to { opacity: 1; } }
+/* Standby fade (lib/standby.ts): after a while with no input the app rows (all of .rows) and every widget fade out over
+   4 s and the clock dims to 35 %; the wallpaper is left alone. Waking brings them back in 0.25 s (`--standby-waking` is on
+   for that short moment only). Opacity only: no blur, no filter, nothing moves. The rows keep their OLED-shift transform
+   transition. */
+.screen--standby .rows { opacity: 0; transition: opacity 4s ease-in-out, transform 4s linear; }
+.screen--standby .clock__time { opacity: 0.35; transition: opacity 4s ease-in-out; }
+.screen--standby .clock__date,
+.screen--standby .clock__weather,
+.screen--standby .clock__scrim { opacity: 0; transition: opacity 4s ease-in-out; }
+.screen--standby-waking .rows { transition: opacity 250ms ease-out, transform 4s linear; }
+.screen--standby-waking .clock__time,
+.screen--standby-waking .clock__date,
+.screen--standby-waking .clock__weather,
+.screen--standby-waking .clock__scrim { transition: opacity 250ms ease-out; }
+.hearth-standby .wallpaper__fade { opacity: 0; transition: opacity 4s ease-in-out; }
+.hearth-standby-waking .wallpaper__fade { transition: opacity 250ms ease-out; }
 /* OLED shift: the clock and the apps move by a few pixels (set on .screen as --shift-x / --shift-y). */
 .screen--shift .rows { transform: translate3d(var(--shift-x), var(--shift-y), 0); }
 .screen--shift .clock { transform: translateX(-50%) translate3d(var(--shift-x), var(--shift-y), 0); }

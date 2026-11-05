@@ -53,7 +53,7 @@ It is a normal webOS app (app ID `tld.my.customlauncher`). On a rooted TV it can
   - One or two rows, margins, app-name font and size
 - **Custom themes** (rooted). Load a zip with colours, fonts, icons, app order and names, cities and a wallpaper, or export your apps as a starting point. See *Custom themes* below.
 - **Wallpaper.** Plain black, one picture, a slideshow of a whole folder (USB drive or the TV's storage, subfolders too) or the bundled photos, with shuffle and an interval from 10 seconds to 1 hour.
-- **Quiet mode and OLED care.** After a pause the apps hide and the screen dims; OLED shift moves the picture a few pixels each minute.
+- **Quiet mode and OLED care.** After a pause the apps hide and the screen dims; after a longer one, standby fade can leave only the wallpaper and a faint clock. OLED shift moves the picture a few pixels each minute.
 - **Screen saver** (rooted, experimental). Your pictures, GIFs, videos or a slideshow, or a built-in fireplace video, in place of the TV's saver; it can switch the TV off after a chosen time.
 - **Start the TV straight into Hearth** (rooted). *System, TV start, When the TV turns on, open...* opens Hearth at power-on.
 - **The Home button opens Hearth** (rooted). Hearth bundles the Input Hook key hook and starts it itself, so you need no other app; a helper script covers leaving apps with Back.
@@ -240,7 +240,7 @@ To remove Hearth, turn off *Replace LG Home with SAM* or *Replace LG Home (helpe
   - *Icons*: size, shape, style, tile, colour, spacing, opacity
   - *Home row*: rows, scroll speed, when Home is pressed, margins, input status, LG Home and System tiles
   - *Labels*: the app names
-  - *Quiet mode*: hide after, dim after, dim strength, OLED shift
+  - *Quiet mode*: hide after, dim after, dim strength, standby fade, OLED shift
   - *Favourites* margins and the *Recent apps* panel size
   - **Reset Hearth visual settings to default**
 - **Widget:**

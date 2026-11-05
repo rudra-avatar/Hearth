@@ -27,6 +27,8 @@
     "pref.quietDimSec.desc": "Dims the whole screen this long after the apps hide.",
     "pref.quietDimLevel.label": "Quiet mode: dim strength",
     "pref.quietDimLevel.desc": "How dark the quiet-mode dim is.",
+    "pref.standbyMin.label": "Standby fade",
+    "pref.standbyMin.desc": "After this long with no button pressed, the apps and widgets fade away and the clock dims. Any button brings them back.",
     "pref.iconScale.label": "Icon size",
     "pref.iconScale.desc": "How big the app icons are.",
     "pref.iconGap.label": "Icon spacing",

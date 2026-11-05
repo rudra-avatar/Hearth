@@ -30,6 +30,7 @@ import {LANGUAGES, PACK_ID, languageLabel, languageOf} from './languages';
 import {hasPack, packName} from '../i18n/pack';
 import {td} from '../i18n';
 import {HEARTH_VERSION} from '../config/version';
+import {STANDBY_DEFAULT, STANDBY_MINUTES} from './standby';
 
 export type PrefTab = 'look' | 'clock' | 'wallpaper' | 'saver' | 'system';
 
@@ -218,6 +219,7 @@ export function resetLook (c: UserConfig): UserConfig {
 		quietSec: RANGES.quietSec.def,        // P109: quiet mode, Home focus, tiles and input status are reset too
 		quietDimSec: RANGES.quietDimSec.def,
 		quietDimLevel: RANGES.quietDimLevel.def,
+		standbyMin: STANDBY_DEFAULT,
 		homeFocus: DEFAULT_CONFIG.homeFocus,
 		showLgHome: DEFAULT_CONFIG.showLgHome,
 		showSystem: DEFAULT_CONFIG.showSystem,
@@ -338,6 +340,8 @@ const BASE_PREFS: PrefDef[] = [
 		rangeValues('quietDimSec'), (c) => c.quietDimSec, (c, v) => ({...c, quietDimSec: v}), (v) => (v === 0 ? td('level.off') : td('time.seconds', {n: v}))), visible: (c) => c.quietSec > 0},
 	{...choice('quietDimLevel', 'look',
 		rangeValues('quietDimLevel'), (c) => c.quietDimLevel, (c, v) => ({...c, quietDimLevel: v}), (v) => td('pref.darker', {n: v})), visible: (c) => c.quietSec > 0 && c.quietDimSec > 0},
+	choice('standbyMin', 'look',
+		STANDBY_MINUTES, (c) => c.standbyMin, (c, v) => ({...c, standbyMin: v}), (v) => (v === 0 ? td('common.off') : intervalText(v * 60))),
 	range('iconScale', 'look',
 		'iconScale', (c) => c.iconScale, (c, v) => ({...c, iconScale: v}), (v) => `${v}%`),
 	range('iconGap', 'look',
@@ -581,7 +585,7 @@ const LAYOUT: [PrefTab, string, string[]][] = [
 	['look', 'Icons', ['iconScale', 'tileShape', 'iconStyle', 'iconLight', 'iconColor', 'iconGap', 'iconOpacity']],
 	['look', 'Home row', ['rows', 'scrollSpeed', 'homeFocus', 'sideMargin', 'bottomMargin', 'inputStatus', 'showLgHome', 'showSystem', 'hideSettings']],
 	['look', 'Labels', ['showLabels', 'labelColor', 'labelFont', 'labelSize', 'labelWeight']],
-	['look', 'Quiet mode', ['quietSec', 'quietDimSec', 'quietDimLevel', 'oledShift']],
+	['look', 'Quiet mode', ['quietSec', 'quietDimSec', 'quietDimLevel', 'standbyMin', 'oledShift']],
 	['look', 'Favourites', ['favSideMargin', 'favBottomMargin']],
 	['look', 'Recent apps', ['recentsSize']],
 	['look', '', ['resetLook']],

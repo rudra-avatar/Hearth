@@ -66,7 +66,7 @@ export interface SystemInfo {
 
 /** The options that run shell commands, so they can't work without root. */
 /** System rows that stay while root has failed (P83). */
-export const NO_ROOT_ROWS = ['language', 'languageRemove', 'tvApps', 'noRootGuide', 'showDebug'];
+export const NO_ROOT_ROWS = ['updates', 'language', 'languageRemove', 'tvApps', 'noRootGuide', 'showDebug'];
 export const ROOT_OPTIONS = ['remap', 'replaceHome', 'samHome', 'homeApp', 'homeKey', 'preload', 'keepReady', 'keepRelaunch', 'tvInput', 'powerOnApp', 'lgLogo', 'screensaver', 'screensaverPictures', 'screensaverInterval', 'screensaverShuffle', 'screensaverCare', 'screensaverFit', 'screensaverDim', 'screensaverPowerOff', 'screensaverShow'];
 
 

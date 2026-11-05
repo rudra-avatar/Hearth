@@ -2,6 +2,16 @@
   "format": 1,
   "versions": [
     {
+      "version": "2.1.1",
+      "date": "2026-11-05",
+      "summary": [
+        "Fix: Check for updates now also shows on TVs without root."
+      ],
+      "ipkUrl": "https://github.com/rudra-avatar/Hearth/releases/download/v2.1.1/tld.my.customlauncher_2.1.1_all.ipk",
+      "sha256": "4607c48575d6704a621a8c5fff2c5fc361adad22dcb389a6f9629e9fe1bd62d6",
+      "size": 19313454
+    },
+    {
       "version": "2.1.0",
       "date": "2026-11-05",
       "summary": [
@@ -9,10 +19,7 @@
         "Reorder the home row right on the Home screen; new Glyph icon style.",
         "New languages: Russian and Brazilian Portuguese.",
         "Many fixes for webOS 3 TVs and the Home button."
-      ],
-      "ipkUrl": "https://github.com/rudra-avatar/Hearth/releases/download/v2.1.0/tld.my.customlauncher_2.1.0_all.ipk",
-      "sha256": "d62ee9d31e756683dec235d08db58dce57f2db40a74dbe824c012541016226da",
-      "size": 19313484
+      ]
     },
     {
       "version": "2.0.2",

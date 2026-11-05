@@ -15,7 +15,7 @@ eq(c.compareVersions('2.0.3-beta', '2.0.2'), 0, 'a suffix is not a version');
 
 const good = readFileSync(new URL('../repo/updates.json', import.meta.url), 'utf8');
 const list = c.parseUpdates(good);
-eq(list && list.map((e) => e.version), ['2.0.2', '2.0.1', '2.0.0'], 'repo/updates.json reads: three versions');
+eq(list && list.map((e) => e.version), ['2.1.1', '2.1.0', '2.0.2', '2.0.1', '2.0.0'], 'repo/updates.json reads: five versions');
 eq(list && [list[0].ipkUrl !== '', list[0].sha256.length, list[0].size > 0, list[1].ipkUrl, list[1].size], [true, 64, true, '', 0], 'only the newest entry has install facts');
 eq(list && list.every((e) => e.summary.length > 0 && e.summary.every((l) => l.length <= 160)), true, 'every entry has a short summary');
 
@@ -44,7 +44,7 @@ eq([mixed[4].summary.length, mixed[4].summary[0].length, mixed[4].summary[1]], [
 const shuffled = [{version: '2.0.1'}, {version: '2.0.3'}, {version: '2.0.2'}].map((e) => ({...e, date: '', summary: [], ipkUrl: '', sha256: '', size: 0}));
 eq(c.newerThan('2.0.1', shuffled).map((e) => e.version), ['2.0.3', '2.0.2'], 'newer versions only, newest first');
 eq(c.newerThan('2.0.3', shuffled), [], 'nothing newer: empty list');
-eq(c.newerThan('2.0.0', list).map((e) => e.version), ['2.0.2', '2.0.1'], 'from 2.0.0 the list shows 2.0.2 and 2.0.1');
+eq(c.newerThan('2.0.0', list).map((e) => e.version), ['2.1.1', '2.1.0', '2.0.2', '2.0.1'], 'from 2.0.0 the list shows 2.1.1, 2.1.0, 2.0.2 and 2.0.1');
 
 // the address passes the shell-fetch safety pattern of weathernet.ts (used on rooted TVs)
 const SAFE_URL = /^https:\/\/[A-Za-z0-9._\/?=&,%-]+$/;

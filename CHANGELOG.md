@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.1
+
+A small fix.
+
+### Fixes
+
+- **Check for updates** now also shows in Settings, System on TVs without root (it was missing there in 2.1.0). Without root it points you to the Homebrew Channel for the update.
+
 ## 2.1.0
 
 A larger update: Hearth can now check for newer versions and install them itself, the home row can be re-ordered right on the Home screen, there is a new icon style, two more languages, and many fixes for webOS 3 TVs.

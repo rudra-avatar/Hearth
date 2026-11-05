@@ -39,7 +39,7 @@ const grey = rowsOf({homeApp: null, homeHook: null, root: 'no', rootDetail: 'Ser
 const noRootInfo = {homeApp: null, homeHook: null, root: 'no', rootDetail: 'Service does not exist'};
 const reasons = p.ROOT_OPTIONS.map((id) => p.disabledReason(id, noRootInfo, f.DEFAULT_CONFIG));
 eq(reasons.every((r) => typeof r === 'string'), true, 'every row that needs root is greyed out without it');
-eq(grey.map((o) => o.id), ['language', 'tvApps', 'noRootGuide', 'showDebug'], 'P83/T0/P92: without root the System tab shows only the language, the no-root app list, the guide and the Debug switch (all usable)');
+eq(grey.map((o) => o.id), ['updates', 'language', 'tvApps', 'noRootGuide', 'showDebug'], 'P83/T0/P92: without root the System tab shows only the update check, the language, the no-root app list, the guide and the Debug switch (all usable)');
 eq(grey.every((o) => !o.disabled), true, 'and none of them is greyed out');
 eq(p.optionsFor('look', f.DEFAULT_CONFIG, {root: 'no'}).some((o) => o.id === 'resetLook' && !o.disabled), true, 'Reset look and clock (on the Look tab) stays usable without root');
 eq(reasons[0].indexOf('Needs a rooted TV') === 0 && reasons[0].indexOf('TV said: Service does not exist') > 0, true, 'the reason says what the TV said');

@@ -9,6 +9,7 @@ Every report sent with the [compatibility form](https://github.com/rudra-avatar/
 <!-- verified-table:start -->
 | TV model | webOS | Firmware | Setup | Result | Hearth | Remote | How it opens | Report |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 55UT8000AUA.BUSCLKR | 10.3.0 | 33.31.23 | Rooted | Works | None | Magic Remote | None | [#44](https://github.com/rudra-avatar/Hearth/issues/44) |
 | OLED77CXPUA | 5.6.2 | 04.64.00 | Rooted | Works | None | Magic Remote | None | [#45](https://github.com/rudra-avatar/Hearth/issues/45) |
 <!-- verified-table:end -->
 

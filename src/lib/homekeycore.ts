@@ -181,14 +181,16 @@ export interface DetectedKey {
 }
 
 /** The button numbers named in Input Hook's log text, each with how often, the one seen last at the end. The log writes
- *  "id => 773" for some remotes and "keyid=773, state=1 ..." for others. */
+ *  "id => 773" for some remotes and "keyid=773, state=1 ..." for others. The lginput hook (webOS 3) writes
+ *  "keyid=3, state=1 uinput_code=773": there keyid is only the slot in LG's key table, and the hook matches the keybinds
+ *  file on uinput_code, so a line that has uinput_code is read by that alone. */
 export function detectKeys (text: string): DetectedKey[] {
 	const order: number[] = [];
 	const counts: Record<number, number> = {};
-	const pattern = /(?:\bid\s*=>\s*|keyid=)(\d+)/g;
+	const pattern = /uinput_code=(\d+)|\bid\s*=>\s*(\d+)|keyid=(\d+)(?![^\n]*uinput_code=)/g;
 	let match: RegExpExecArray | null;
 	while ((match = pattern.exec(text)) !== null) {
-		const code = Number(match[1]);
+		const code = Number(match[1] || match[2] || match[3]);
 		if (!validCode(code)) continue;
 		counts[code] = (counts[code] || 0) + 1;
 		const at = order.indexOf(code);

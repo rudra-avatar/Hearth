@@ -19,6 +19,8 @@ export interface Colors {
 	/** dim layer behind Settings, so a wallpaper doesn't fight the text */
 	overlay: string;
 	pickerBg: string;
+	/** W3: sub-menu rows and their edge: the tile colours with 65 % less colour (the home tiles keep theirs) */
+	pickerTile: string; pickerTileFocus: string; pickerEdge: string;
 	/** Dark mono icon style (P39): the colour of the icon shapes, and the tile background behind them */
 	iconInk: string; iconTile: string;
 	/** Soft mono (P39c): a muted shape on a slightly lifted tile; Accent mono: the shape in an accent colour; Gradient mono: the shape fades from iconInk down to gradInk */
@@ -54,8 +56,9 @@ const BLACK: Colors = {
 	switchKnob: '#A8A8A8',
 	switchKnobOn: '#000000',
 	danger: '#EF7A73',
-	overlay: 'rgba(0, 0, 0, 0.78)',
+	overlay: 'rgba(0, 0, 0, 0.58)',
 	pickerBg: '#000000',
+	pickerTile: '#101010', pickerTileFocus: '#1D1D1D', pickerEdge: '#2A2A2A',
 	iconInk: '#B9B9B9', iconTile: '#000000',
 	softInk: '#7A7A7A', softTile: '#0A0A0A', accentInk: '#E6E6E6', gradInk: '#6E6E6E',
 	scrim: '0, 0, 0', scrimTop: '0.22', scrimMid: '0.08', scrimBottom: '0.5'
@@ -86,8 +89,9 @@ const GREY: Colors = {
 	switchKnob: '#B9C6D3',
 	switchKnobOn: '#101a24',
 	danger: '#EF7A73',
-	overlay: 'rgba(10, 17, 24, 0.72)',
-	pickerBg: '#0a1118',
+	overlay: 'rgba(10, 17, 24, 0.52)',
+	pickerBg: calm('#0a1118'),
+	pickerTile: calm('#1a2733'), pickerTileFocus: calm('#243546'), pickerEdge: calm('#34485c'),
 	iconInk: '#B9B9B9', iconTile: '#0f1923',
 	softInk: '#6F8294', softTile: '#121e29', accentInk: '#6FB3D9', gradInk: '#617688',
 	scrim: '0, 0, 0', scrimTop: '0.22', scrimMid: '0.08', scrimBottom: '0.5'
@@ -103,6 +107,13 @@ function outlineVars (c: Colors): Record<string, string> {
 	return {'--color-outline': rgba(c.textPrimary, 0.22), '--color-outline-strong': rgba(c.textPrimary, 0.7)};
 }
 
+/** W3: a colour with `calm` (0-1) of its colour taken out, brightness kept (sub-menu panels; "#rrggbb" in, "#rrggbb" out). */
+function calm (hex: string, amount: number = 0.4): string {
+	const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+	const l = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+	return '#' + c.map((v) => ('0' + Math.round(v + (l - v) * amount).toString(16)).slice(-2)).join('');
+}
+
 /** A dark theme from its background, tiles and accent. */
 function dark (bg: string, w: [string, string, string], tile: string, focus: string, edge: string, ink: [string, string, string], mono: [string, string, string, string, string, string], widgetInk: string): Colors {
 	return {
@@ -112,7 +123,7 @@ function dark (bg: string, w: [string, string, string], tile: string, focus: str
 		badge: ink[0], badgeText: bg, liftShadow: 'rgba(0, 0, 0, 0.6)',
 		buttonBorder: edge, buttonActiveBg: ink[0], buttonActiveText: bg,
 		switchTrack: edge, switchTrackOn: ink[0], switchKnob: ink[1], switchKnobOn: bg,
-		danger: '#EF7A73', overlay: rgba(bg, 0.72), pickerBg: bg, iconInk: mono[0], iconTile: mono[1], softInk: mono[2], softTile: mono[3], accentInk: mono[4], gradInk: mono[5], scrim: '0, 0, 0', scrimTop: '0.22', scrimMid: '0.08', scrimBottom: '0.5'
+		danger: '#EF7A73', overlay: rgba(bg, 0.52), pickerBg: calm(bg), pickerTile: calm(tile), pickerTileFocus: calm(focus), pickerEdge: calm(edge), iconInk: mono[0], iconTile: mono[1], softInk: mono[2], softTile: mono[3], accentInk: mono[4], gradInk: mono[5], scrim: '0, 0, 0', scrimTop: '0.22', scrimMid: '0.08', scrimBottom: '0.5'
 	};
 }
 
@@ -158,7 +169,7 @@ export const MOTION = {
 	focusMs: 160,
 	scrollMs: 260,
 	focusScale: 1.12,
-	liftScale: 1.2,         // a tile picked up in re-order mode
+	liftScale: 1.2,         // the tile picked up in the home row's move mode
 	unfocusedRowOpacity: 0.55
 } as const;
 

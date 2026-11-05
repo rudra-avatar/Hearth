@@ -15,7 +15,7 @@ import {failureText} from './failure';
 import {setEngineAtBoot} from './homeengine';
 import {writeFileCommands} from './homehookcmd';
 import {
-	LOG_FILE_PATTERN, OPEN_MARK, OPEN_SCRIPT, OPEN_SCRIPT_TEXT, bindLaunch, describeBind, hearthCodes, isHearthBind, isProtected, keyLabel, parseKeybinds, readRecord,
+	LOG_FILE_PATTERN, OPEN_MARK, OPEN_SCRIPT, OPEN_SCRIPT_TEXT, GUARD_HITS, GUARD_MARK, addGuard, bindLaunch, describeBind, guardScriptPath, guardScriptText, hearthCodes, isGuardBind, isHearthBind, stripGuard, isProtected, keyLabel, parseKeybinds, readRecord,
 	sameBind, serialize, unbind, validCode, writeBaseline, writeRecord,
 	type DetectBaseline, type Keybind, type Keybinds
 } from './homekeycore';
@@ -122,6 +122,52 @@ export function readNewLines (baseline: DetectBaseline): Promise<string> {
 	return exec(newLinesCommand(baseline), 8000);
 }
 
+// ----- Z5: the Home guard (the key mapper listens without LG Home opening) -----
+
+const GUARD_ID = '/tmp/hearth-hkguard.id';
+const GUARD_BAK = '/tmp/hearth-hkguard.bak';
+const GUARD_NONE = '/tmp/hearth-hkguard.none';
+const GUARD_CLEAN = `rm -f ${GUARD_HITS} /tmp/${GUARD_MARK}-*.sh ${GUARD_ID} ${GUARD_BAK} ${GUARD_NONE}`;
+/** Seconds the guard may stay if the page is gone before it can remove it (the file is put back from the copy by a timer). */
+const GUARD_SECONDS = 50;
+
+/** Binds the Home codes that have no entry to a recorder. Only when the file holds nothing but Hearth's own entries (someone else's settings are left alone, P61i). */
+export function startHomeGuard (): Promise<void> {
+	return readBinds().then((read) => {
+		if (!read.ok) return undefined;
+		const clean = stripGuard(read.binds);
+		if (Object.keys(clean).some((k) => !isHearthBind(clean[k]))) return undefined;
+		const added = addGuard(clean);
+		if (!added.codes.length) return undefined;
+		const timerPath = `/tmp/${GUARD_MARK}-timer.sh`;
+		const timer = `#!/bin/sh\nsleep ${GUARD_SECONDS}\n[ "$(cat ${GUARD_ID} 2>/dev/null)" = "$1" ] || exit 0\n`
+			+ `if [ -f ${GUARD_BAK} ]; then cat ${GUARD_BAK} > ${HOOK_CONFIG}; elif [ -f ${GUARD_NONE} ]; then echo '{}' > ${HOOK_CONFIG}; fi\n${GUARD_CLEAN}\n`;
+		const steps = [GUARD_CLEAN, `: > ${GUARD_HITS}`]
+			.concat(...added.codes.map((c) => writeFileCommands(guardScriptPath(c), guardScriptText(c))))
+			.concat(writeFileCommands(timerPath, timer))
+			.concat(writeFileCommands(GUARD_BAK, serialize(clean)));      // the copy is the file without any recorder entry
+		return exec(steps.join('; '), 8000).then(() => writeBinds(added.binds)).then((written) => {
+			if (!written.ok) return undefined;
+			log(`keys: Home guard on ${added.codes.join(' ')}`);
+			// a backup: if the page is gone before it removes the guard, this timer puts the file back (only while the id file still names it)
+			return exec(`id=$$-$(date +%s); echo "$id" > ${GUARD_ID}; (nohup sh ${timerPath} "$id" > /dev/null 2>&1 < /dev/null &); true`, 8000).then(() => undefined);
+		});
+	}).catch(() => undefined);
+}
+
+/** Takes the recorder entries out again (everything else in the file stays as it is now) and removes the helper files. Safe to call any time. */
+export function stopHomeGuard (): Promise<void> {
+	return readBinds().then((read) => {
+		const had = read.ok && Object.keys(read.binds).some((k) => isGuardBind(read.binds[k]));
+		const clean = () => exec(GUARD_CLEAN, 5000).then(() => undefined);
+		if (!read.ok || !had) return clean();
+		return writeBinds(stripGuard(read.binds)).then((written) => {
+			if (written.ok) log('keys: Home guard off');
+			return written.ok ? clean() : undefined;     // not removed: the timer's copy still puts the file back
+		});
+	}).catch(() => undefined);
+}
+
 // ----- setting and removing the mapping -----
 
 /** `binds` with Hearth's entry on `code` taken out, and what that button did before put back. */
@@ -171,7 +217,7 @@ export function syncKeepBind (keep: boolean): Promise<string> {
 export function setHomeKey (code: number): Promise<Outcome> {
 	if (!validCode(code)) return Promise.resolve(fail(tt('homekey.thatIsNotAButton')));
 	if (isProtected(code)) return Promise.resolve(fail(tt('homekey.buttonV1IsNeededTo', {v1: keyLabel(code)})));
-	return readBinds().then((read) => {
+	return stopHomeGuard().then(() => readBinds()).then((read) => {
 		if (!read.ok) return fail(read.why);
 		const record = readRecord();
 		let binds = read.binds;
@@ -198,7 +244,7 @@ export function setHomeKey (code: number): Promise<Outcome> {
 
 /** Takes Hearth's button mapping out again, giving back what the button did before. */
 export function clearHomeKey (): Promise<Outcome> {
-	return readBinds().then((read) => {
+	return stopHomeGuard().then(() => readBinds()).then((read) => {
 		if (!read.ok) return fail(read.why);
 		const record = readRecord();
 		const codes = hearthCodes(read.binds);

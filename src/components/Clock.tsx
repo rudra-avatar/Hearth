@@ -24,12 +24,18 @@ export function Clock ({now, format, config, weather}: {now: Date; format: TimeF
 		vars['--clock-shadow'] = `0 2px ${blur}px rgba(0, 0, 0, ${a})`;
 		vars['--clock-drop'] = `drop-shadow(0 2px ${blur}px rgba(0, 0, 0, ${a}))`;
 	}
+	const dark = ink ? inkIsDark(ink) : info.dark;
+	// R1: a soft gradient behind the widget (black behind light text, white behind dark text); static, no blur
+	const scrimTone = dark ? '255, 255, 255' : '0, 0, 0';
+	const scrimA = config.scrim / 200;          // F1: 100 % = 0.5 opacity (the earlier maximum was 60 % opacity at the old 60; now 100 = old 50)
+	const scrimBg = config.scrim > 0 ? `radial-gradient(ellipse at center, rgba(${scrimTone}, ${scrimA.toFixed(3)}) 0%, rgba(${scrimTone}, ${(scrimA * 0.6).toFixed(3)}) 35%, rgba(${scrimTone}, 0) 70%)` : '';
 	const scope = varScope('clock', vars);
 	for (const k in scope.obj) style[k] = scope.obj[k];
 	if (config.opacity < 100) style.opacity = String(config.opacity / 100);
-	const classes = [scope.cls, 'clock', (ink ? inkIsDark(ink) : info.dark) && 'clock--dark', !config.shadow && 'clock--noshadow', config.align === 'left' && 'clock--left', config.align === 'right' && 'clock--right'].filter(Boolean).join(' ');
+	const classes = [scope.cls, 'clock', dark && 'clock--dark', !config.shadow && 'clock--noshadow', config.align === 'left' && 'clock--left', config.align === 'right' && 'clock--right'].filter(Boolean).join(' ');
 	return (
 		<div class={classes} style={style}>
+			{scrimBg && <div class="clock__scrim" style={{background: scrimBg}} />}
 			<div class="clock__time" style={{fontSize: `${size}px`, fontWeight: config.weight, letterSpacing: `${(size * 0.045).toFixed(1)}px`}}>
 				{time}
 				{period && config.showPeriod && (

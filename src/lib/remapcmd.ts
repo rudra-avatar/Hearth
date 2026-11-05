@@ -11,7 +11,7 @@
 import {writeFileCommands, withStatus} from './homehookcmd';
 
 /** Bump when keyfilter.js or apply.sh change: Hearth then rewrites the copy on the TV. */
-export const REMAP_VERSION = '5';
+export const REMAP_VERSION = '6';
 export const REMAP_DIR = '/media/developer/launcher-remap';
 export const REMAP_LINK = '/var/lib/webosbrew/init.d/47-launcher-remap';
 export const REMAP_LOG = '/tmp/launcher-remap.log';
@@ -203,8 +203,10 @@ export const VERSION_COMMAND = `cat '${REMAP_DIR}/version' 2>/dev/null; true`;
 /** Takes the filter out, and deletes the files and the boot link. */
 export const REMOVE_COMMAND = withStatus(`rm -f '${REMAP_LINK}'; if [ -f '${REMAP_DIR}/apply.sh' ]; then sh '${REMAP_DIR}/apply.sh' off; else echo removed; fi; rm -rf '${REMAP_DIR}'`);
 
-export type RemapResult = 'applied' | 'removed' | 'launcher-missing' | 'files-missing' | 'failed';
-const RESULTS: RemapResult[] = ['applied', 'removed', 'launcher-missing', 'files-missing'];
+/** 'unsupported': the TV's config service has no key filter list (com.webos.surfacemanager.keyFilters), so this method can't
+ *  work on it; "Map additional keys" (the key hook) is the way there. */
+export type RemapResult = 'applied' | 'removed' | 'launcher-missing' | 'files-missing' | 'unsupported' | 'failed';
+const RESULTS: RemapResult[] = ['applied', 'removed', 'launcher-missing', 'files-missing', 'unsupported'];
 
 /** The apply script's result word in its output (the last one wins); anything else is a failure. */
 export function parseRemapResult (output: string): RemapResult {

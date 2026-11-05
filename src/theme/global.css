@@ -180,6 +180,8 @@ html, body {
 	z-index: 0;
 }
 .clock--noshadow { --clock-shadow: none; }
+/* 2.0.3 (R1): soft dark (or light, for dark ink) gradient behind the widget; the colour and strength are inline, the shape is here. No blur, no filter. */
+.clock__scrim { position: absolute; left: -50%; top: -80%; width: 200%; height: 260%; z-index: -1; pointer-events: none; }
 /* Widget alignment: the clock's position is its centre (default), its left edge or its right edge */
 .clock--left { text-align: left; transform: none; }
 .clock--right { text-align: right; transform: translateX(-100%); }
@@ -350,6 +352,19 @@ html, body {
 .mono-light.mono-accent .tile .tile__box { background: var(--color-accent-ink); }
 .mono-light.mono-accent .tile__mono { background: var(--color-icon-tile); }
 .mono-light.mono-accent .tile__monogram { color: var(--color-icon-tile); }
+/* 2.0.3 W1: Glyph = the mono shape with no tile, no ring, no bar and no brightness change; the focused icon is only larger (Minimal's 1.22 via look-minimal). Dark: light shape; Light: dark shape. Labels keep one colour. */
+.mono-glyph.mono .tile .tile__box { background: transparent; }
+.mono-glyph .tile__label, .mono-glyph .tile--focused .tile__label { color: var(--color-text-secondary); }
+.mono-light.mono-glyph .tile__label, .mono-light.mono-glyph .tile--focused .tile__label { color: var(--color-icon-tile); }
+/* Z3 (user 2026-11-05): with no tile the choice names the SHAPE: Dark = dark shapes and labels, Light = light shapes and labels (was the other way round). Specificity beats the tile rules above. */
+.mono-glyph.mono .tile__mono { background: var(--color-icon-tile); }
+.mono-glyph.mono .tile__monogram { color: var(--color-icon-tile); }
+.mono-glyph.mono .tile__glyph { stroke: var(--color-icon-tile); }
+.mono-glyph .tile__label, .mono-glyph .tile--focused .tile__label { color: var(--color-icon-tile); }
+.mono-light.mono-glyph.mono .tile__mono { background: var(--color-icon-ink); }
+.mono-light.mono-glyph.mono .tile__monogram { color: var(--color-icon-ink); }
+.mono-light.mono-glyph.mono .tile__glyph { stroke: var(--color-icon-ink); }
+.mono-light.mono-glyph .tile__label, .mono-light.mono-glyph .tile--focused .tile__label { color: var(--color-text-secondary); }
 /* B4: drawn icons on the dark tile follow the shape colour of the style too (they stayed white); Soft and Accent later, so they win; Gradient uses the top colour */
 .mono .tile__glyph { stroke: var(--color-icon-ink); }
 .mono-soft .tile__glyph { stroke: var(--color-soft-ink); }
@@ -375,7 +390,7 @@ html, body {
    keeps a soft shadow so the picked-up icon is still clear. */
 .look-minimal .tile__box { box-shadow: none; }
 .look-minimal .tile__ring { display: none; }
-.look-minimal .tile--focused .tile__frame { transform: scale(1.16); }
+.look-minimal .tile--focused .tile__frame { transform: scale(1.22); }   /* 2.0.3 (R8): was 1.16 */
 .look-minimal .tile--lifted .tile__ring { display: block; opacity: 1; box-shadow: 0 18px 40px var(--color-lift-shadow); }
 /* Icon shapes (Settings > Look > Icon shape); the default rounded square uses the theme's own radius. */
 .rows--shape-square .tile__box, .rows--shape-square .tile__ring { border-radius: 4%; }
@@ -536,7 +551,6 @@ html, body {
 	box-shadow: 0 0 0 4px var(--color-tile-border-focus);
 	transform: scale(1.06);
 }
-.settings__button--off { opacity: 0.4; }
 .settings__button--active {
 	background: var(--color-button-active-bg);
 	color: var(--color-button-active-text);
@@ -568,7 +582,7 @@ html, body {
 .grid__track .tile__badge { right: 8px; top: 8px; width: 28px; height: 28px; }
 .grid__track .tile__badge svg { width: 16px; height: 16px; }
 
-/* re-order mode: the picked-up tile floats above the others */
+/* move mode (home row): the picked-up tile floats above the others */
 .tile--lifted .tile__frame,
 .tile--lifted.tile--focused .tile__frame {
 	transform: scale(var(--motion-lift-scale)) translateY(-6px);
@@ -579,6 +593,21 @@ html, body {
 	box-shadow: 0 0 0 5px var(--color-tile-border-focus), 0 18px 40px var(--color-lift-shadow);
 }
 .tile--lifted .tile__label { color: var(--color-text-primary); }
+/* 2.0.3 T2 move mode: darker wallpaper, a short text on top, the picked-up tile with a white frame and arrows (an arrow dims at an end) */
+.hearth-move .wallpaper::after { content: ''; position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 4; background: rgba(0, 0, 0, 0.5); }
+.movehint { position: absolute; left: 0; right: 0; top: 44px; padding: 0 120px; text-align: center; pointer-events: none; }
+.movehint__main { font-size: 24px; line-height: 1.35; color: var(--color-text-primary); }
+.movehint__sub { margin-top: 6px; font-size: 19px; line-height: 1.3; color: var(--color-text-muted); }
+/* 2.0.3 U1: the row viewport clips, so in move mode it gets more room for the lifted tile, its ring and its arrows (old: padding 16px 24px, margin -16px -24px) */
+.hearth-move .row__viewport { padding: 48px 80px; margin: -48px -80px; }
+/* 2.0.3 U2: in move mode the track and the two swapped tiles glide with the same short linear move (Row.tsx); the lifted tile stays on top while they pass */
+.hearth-move .row__track { transition: transform 150ms linear; }
+.tile--lifted { position: relative; z-index: 3; }
+.tile--moving .tile__ring { box-shadow: 0 0 0 4px #FFFFFF, 0 18px 40px var(--color-lift-shadow); }
+.tile__arrow { position: absolute; top: 50%; width: 26px; height: 26px; margin-top: -13px; fill: #FFFFFF; }
+.tile__arrow--left { left: -36px; }
+.tile__arrow--right { right: -36px; }
+.tile__arrow--off { opacity: 0.25; }
 .tile--dimmed .tile__label { color: var(--color-text-muted); }
 /* two rows of apps: both stay fully visible, with a little space between */
 .rows--multi .row__viewport { opacity: 1; }
@@ -607,7 +636,7 @@ html, body {
 	padding: 15px 28px;       /* compact: the Clock tab has seven settings and must fit the screen */
 	margin-bottom: 11px;
 	border-radius: var(--layout-tile-radius);
-	background: transparent;
+	background: rgba(0, 0, 0, 0.35);   /* 2.0.3 R2-b3: was transparent (user 2026-11-05) */
 	box-shadow: 0 0 0 1px var(--color-outline);
 	transition: box-shadow var(--motion-focus-ms) ease-out, background var(--motion-focus-ms) ease-out;
 }
@@ -671,7 +700,7 @@ html, body {
 	text-overflow: ellipsis;
 }
 .picker { width: 1300px; margin-top: 24px; }
-.picker__note { width: 1300px; margin-top: 24px; padding: 18px 28px; border-radius: 20px; background: var(--color-tile-bg); box-sizing: border-box; }
+.picker__note { width: 1300px; margin-top: 24px; padding: 18px 28px; border-radius: 20px; background: var(--color-picker-tile); box-sizing: border-box; }
 .picker__note-title { font-size: 22px; color: var(--color-text-primary); margin-bottom: 8px; }
 .picker__note-para + .picker__note-para { margin-top: 12px; }
 .picker__note-line { font-size: 19px; line-height: 1.45; color: var(--color-text-secondary); }
@@ -685,12 +714,12 @@ html, body {
 	margin-bottom: 12px;
 	padding: 0 28px;
 	border-radius: 20px;
-	background: var(--color-tile-bg);
-	box-shadow: 0 0 0 2px var(--color-tile-border);
+	background: var(--color-picker-tile);
+	box-shadow: 0 0 0 2px var(--color-picker-edge);
 	transition: box-shadow var(--motion-focus-ms) ease-out, background var(--motion-focus-ms) ease-out;
 }
 .picker__row--focused {
-	background: var(--color-tile-bg-focus);
+	background: var(--color-picker-tile-focus);
 	box-shadow: 0 0 0 5px var(--color-tile-border-focus);
 }
 .picker__row--danger, .picker__row--danger.picker__row--focused { background: #b3261e; }
@@ -737,7 +766,7 @@ html, body {
 	padding: 24px 28px 0;
 	border-radius: 28px 28px 0 0;
 	background: var(--color-picker-bg);
-	box-shadow: 0 0 0 2px var(--color-tile-border), 0 -20px 60px rgba(0, 0, 0, 0.5);
+	box-shadow: 0 0 0 2px var(--color-picker-edge), 0 -20px 60px rgba(0, 0, 0, 0.5);
 	overflow: hidden;
 }
 .recents__head { display: flex; flex-direction: row; align-items: center; justify-content: space-between; margin-bottom: 22px; }
@@ -756,7 +785,7 @@ html, body {
 	transform: translate(-50%, -50%);
 	border-radius: 28px;
 	background: var(--color-picker-bg);
-	box-shadow: 0 0 0 2px var(--color-tile-border), 0 30px 80px rgba(0, 0, 0, 0.6);
+	box-shadow: 0 0 0 2px var(--color-picker-edge), 0 30px 80px rgba(0, 0, 0, 0.6);
 }
 .dialog__title {
 	margin: 0 0 8px;
@@ -807,9 +836,9 @@ html, body {
 
 /* P61c: remote drawing on the Remote control pages */
 .remote-draw { position: absolute; right: 70px; top: 90px; height: 880px; width: 300px; }
-.remote-draw__body { fill: var(--color-tile-bg); stroke: var(--color-tile-border); stroke-width: 3; }
+.remote-draw__body { fill: var(--color-picker-tile); stroke: var(--color-picker-edge); stroke-width: 3; }
 .remote-draw__shape > * { fill: inherit; stroke: none; }
-.remote-draw__key .remote-draw__shape { fill: var(--color-tile-bg-focus); }
+.remote-draw__key .remote-draw__shape { fill: var(--color-picker-tile-focus); }
 .remote-draw__key--white .remote-draw__shape { fill: #f2f2f2; }
 .remote-draw__text { fill: var(--color-text-secondary); text-anchor: middle; font-weight: 600; pointer-events: none; }
 .remote-draw__key--white .remote-draw__text { fill: #222222; }
@@ -823,3 +852,12 @@ html, body {
 /* Settings -> Widget: miniature of the widget only (P76d). Left, width and height come from WidgetPreview (free space right of the option list). */
 .widget-preview { position: absolute; top: 540px; z-index: 5; pointer-events: none; }
 .widget-preview__strip { position: absolute; left: 0; top: 0; -webkit-transform-origin: 0 0; transform-origin: 0 0; }
+
+/* ---------- Check for updates (R2-a): version list on the left, summary on the right ---------- */
+.upd { display: flex; flex-direction: row; width: 1300px; margin-top: 24px; }
+.upd__list { flex: 0 0 480px; margin-right: 28px; }
+.upd__panel { flex: 1 1 auto; min-height: 408px; padding: 28px 36px; border-radius: 20px; background: var(--color-picker-tile); box-sizing: border-box; }
+.upd__title { font-size: 30px; color: var(--color-text-primary); }
+.upd__sub { margin: 6px 0 22px; font-size: var(--font-option-description); color: var(--color-text-muted); }
+.upd__line { position: relative; padding-left: 28px; margin-bottom: 14px; font-size: 24px; line-height: 1.35; color: var(--color-text-primary); }
+.upd__line::before { content: ''; position: absolute; left: 4px; top: 0.55em; width: 9px; height: 9px; border-radius: 50%; background: var(--color-text-secondary); }

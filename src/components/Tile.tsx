@@ -30,12 +30,18 @@ interface Props {
 	focused: boolean;
 	/** picked up in re-order mode */
 	lifted?: boolean;
+	/** move mode: the picked-up tile shows left/right arrows; an arrow dims where the tile cannot go on */
+	arrows?: {left: boolean; right: boolean};
 	/** shown with a tick badge (settings picker) */
 	checked?: boolean;
 	/** greyed out (settings picker: not on the home screen) */
 	dimmed?: boolean;
 	onHover?: () => void;
 	onActivate?: () => void;
+}
+
+function sameArrows (a?: {left: boolean; right: boolean}, b?: {left: boolean; right: boolean}): boolean {
+	return a === b || !!a && !!b && a.left === b.left && a.right === b.right;
 }
 
 /** A class so a tile can skip its redraw: moving the highlight changes two tiles, not all of them. The handlers are
@@ -48,7 +54,7 @@ export class Tile extends Component<Props> {
 		const a = this.props.model;
 		const b = next.model;
 		if (this.monoSeen !== monoVersion()) return true;
-		return this.props.focused !== next.focused || this.props.lifted !== next.lifted || this.props.checked !== next.checked || this.props.dimmed !== next.dimmed ||
+		return this.props.focused !== next.focused || this.props.lifted !== next.lifted || !sameArrows(this.props.arrows, next.arrows) || this.props.checked !== next.checked || this.props.dimmed !== next.dimmed ||
 			a !== b && (a.key !== b.key || a.label !== b.label || a.imageUrl !== b.imageUrl || a.glyphImageUrl !== b.glyphImageUrl || a.sourceIcon !== b.sourceIcon || a.glyph !== b.glyph || a.color !== b.color || a.disconnected !== b.disconnected || a.pending !== b.pending || a.note !== b.note);
 	}
 
@@ -56,10 +62,10 @@ export class Tile extends Component<Props> {
 	private activate = () => { if (this.props.onActivate) this.props.onActivate(); };
 
 	render () {
-		const {model, focused, lifted, checked, dimmed} = this.props;
+		const {model, focused, lifted, checked, dimmed, arrows} = this.props;
 		this.monoSeen = monoVersion();
 		const mono = monoIconsOn() && model.imageUrl ? monoFor(model.imageUrl, this.again) : null;
-		const classes = ['tile', focused && 'tile--focused', lifted && 'tile--lifted', (dimmed || model.disconnected) && 'tile--dimmed', model.note && 'tile--noted'].filter(Boolean).join(' ');
+		const classes = ['tile', focused && 'tile--focused', lifted && 'tile--lifted', arrows && 'tile--moving', (dimmed || model.disconnected) && 'tile--dimmed', model.note && 'tile--noted'].filter(Boolean).join(' ');
 		return (
 			<div class={classes} onMouseEnter={this.hover} onClick={this.activate}>
 				<div class="tile__frame">
@@ -76,6 +82,8 @@ export class Tile extends Component<Props> {
 					{checked && <div class="tile__badge"><CheckMark /></div>}
 				</div>
 				<div class="tile__ring" />
+				{arrows && <svg class={`tile__arrow tile__arrow--left${arrows.left ? '' : ' tile__arrow--off'}`} viewBox="0 0 24 24"><path d="M15 4 L7 12 L15 20 Z" /></svg>}
+				{arrows && <svg class={`tile__arrow tile__arrow--right${arrows.right ? '' : ' tile__arrow--off'}`} viewBox="0 0 24 24"><path d="M9 4 L17 12 L9 20 Z" /></svg>}
 				</div>
 				<div class="tile__label">{model.label}{model.note && <span class="tile__note">{model.note}</span>}</div>
 			</div>

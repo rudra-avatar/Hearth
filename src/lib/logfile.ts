@@ -4,7 +4,7 @@
 
 import {exec, shellQuote} from './apps';
 import {rootState} from './failure';
-import {logLines, onLog} from './log';
+import {allLogLines, onLog} from './log';
 import {REPORT_FILE} from './debuginfo';
 
 const KEEP_LINES = 100;          // what is kept from the last run
@@ -35,7 +35,7 @@ export function writeReport (text: string): Promise<unknown> {
 function begin (): boolean {
 	if (rootState() !== 'yes') return false;
 	live = true;
-	queue = logLines();
+	queue = allLogLines();
 	// read the old tail and trim the file to it, so it never grows without end
 	const script = `t=$(tail -n ${KEEP_LINES} ${REPORT_FILE} 2>/dev/null); printf '%s\\n' "$t" > ${REPORT_FILE}; printf '%s\\n' "$t"`;
 	exec(script, 5000).then((out) => { before = out.split('\n').filter((l) => l.trim() !== ''); }, () => undefined);

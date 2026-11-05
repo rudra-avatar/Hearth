@@ -13,6 +13,14 @@ import {forecastUrl} from './weather';
 import {SSAP_TESTS} from './probessap';
 import {KEY_TESTS} from './probekeys';
 import {PERF_TESTS} from './probeperf';
+import {MORE_TESTS} from './probemore';
+import {SAM_TESTS} from './probesam';
+import {HOME_TESTS} from './probehome';
+import {STORAGE_TESTS} from './probestorage';
+import {GUARD_TESTS} from './probeguard';
+import {STANDIN_TESTS} from './probestandin';
+import {NOROOT_TESTS} from './probenoroot';
+import {INSTALL_TESTS} from './probeinstall';
 
 export interface ProbeResult {
 	ok: boolean;
@@ -187,7 +195,16 @@ const BASE_TESTS: ProbeTest[] = [
 	}
 ];
 
-export const PROBE_TESTS: ProbeTest[] = BASE_TESTS.concat(SSAP_TESTS, KEY_TESTS, PERF_TESTS);
+/** The number in a test's label ("21b. ..." -> 21, suffix "b"): the Tests tab lists tests in this order. */
+function testOrder (t: ProbeTest): [number, string] {
+	const m = /^(\d+)([a-z]?)\./.exec(t.label);
+	return m ? [parseInt(m[1], 10), m[2]] : [9999, ''];
+}
+
+export const PROBE_TESTS: ProbeTest[] = BASE_TESTS.concat(SSAP_TESTS, KEY_TESTS, PERF_TESTS, MORE_TESTS, SAM_TESTS, HOME_TESTS, STORAGE_TESTS, GUARD_TESTS, STANDIN_TESTS, NOROOT_TESTS, INSTALL_TESTS)
+	.map((t, i) => ({t, i, k: testOrder(t)}))
+	.sort((a, b) => a.k[0] - b.k[0] || (a.k[1] < b.k[1] ? -1 : a.k[1] > b.k[1] ? 1 : 0) || a.i - b.i)
+	.map((x) => x.t);
 
 export type ProbeState = Record<string, {state: 'running' | 'done'; result?: ProbeResult}>;
 
@@ -221,7 +238,7 @@ export function probeOptions (state: ProbeState): OptionItem[] {
 	const rows: OptionItem[] = [{
 		id: RUN_ALL_ID,
 		label: 'Run all tests',
-		description: `${running ? 'Running… ' : ''}${done ? `Done ${done} of ${PROBE_TESTS.length}. ` : 'Runs the tests that need no action (21, 26 and 29-31 are started one by one). Nothing is changed on the TV. '}✓ worked, ✗ did not: ${summaryText(state)}`,
+		description: `${running ? 'Running… ' : ''}${done ? `Done ${done} of ${PROBE_TESTS.length}. ` : 'Runs the tests that need no action (21, 26, 29-31, 33, 35, 37, 44 and 45 are started one by one). Nothing is changed on the TV. '}✓ worked, ✗ did not: ${summaryText(state)}`,
 		valueText: running ? 'Running' : done ? 'Run again' : 'Run'
 	}];
 	PROBE_TESTS.forEach((t) => {

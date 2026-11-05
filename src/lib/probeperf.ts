@@ -5,6 +5,7 @@
 
 import {markList} from './perfmarks';
 import type {ProbeResult, ProbeTest} from './probe';
+import {probeContext} from './probecontext';
 
 const clip = (text: string, n = 230): string => (text.length > n ? text.slice(0, n - 1) + '…' : text);
 const KEYS = [37, 38, 39, 40];
@@ -19,6 +20,7 @@ interface Stats {
 	keys: number;
 	keyAvg: number;
 	keyWorst: number;
+	gaps: number[];
 }
 
 /** Measures frames and key-to-picture delay for totalMs, ignoring the first skipMs. */
@@ -55,7 +57,8 @@ function measure (totalMs: number, skipMs: number): Promise<Stats> {
 					stutter: gaps.filter((g) => g > 34).length,
 					keys: delays.length,
 					keyAvg: delays.length ? sum(delays) / delays.length : 0,
-					keyWorst: delays.length ? Math.max(...delays) : 0
+					keyWorst: delays.length ? Math.max(...delays) : 0,
+					gaps
 				});
 			}, 50);
 		};
@@ -72,6 +75,17 @@ function frameText (s: Stats, withKeys: boolean): ProbeResult {
 	let text = `${s.frames} frames, avg ${ms(s.avg)} ms (${fps} fps), worst ${ms(s.worst)} ms, over 20 ms ${pct(s.slow, s.frames)}, over 34 ms ${pct(s.stutter, s.frames)}`;
 	if (withKeys) text += s.keys ? `. ${s.keys} keys, delay avg ${ms(s.keyAvg)} ms, worst ${ms(s.keyWorst)} ms` : '. No arrow keys pressed (use ← → ↑ ↓ during the run)';
 	return {ok: true, text: clip(text)};
+}
+
+/** R11: how many frames came at 60 fps (up to 18.5 ms), at about 30 fps and slower; median and slowest 5 %. */
+function fpsText (s: Stats): ProbeResult {
+	if (s.frames < 5) return {ok: false, text: 'FAILED: too few frames seen (the page was hidden?)'};
+	const g = s.gaps.slice().sort((a, b) => a - b);
+	const share = (from: number, to: number) => pct(g.filter((x) => x > from && x <= to).length, g.length);
+	const median = g[Math.floor(g.length / 2)];
+	const p95 = g[Math.min(g.length - 1, Math.floor(g.length * 0.95))];
+	const text = `${s.frames} frames: ${share(0, 18.5)} at 60 fps, ${share(18.5, 35)} at 30-54 fps, ${share(35, 1e9)} slower; median ${ms(median)} ms, slowest 5% from ${ms(p95)} ms, worst ${ms(s.worst)} ms. ${s.keys ? s.keys + ' keys, delay avg ' + ms(s.keyAvg) + ' ms' : 'No arrow keys pressed'}. Screen ${window.screen.width}x${window.screen.height}, pixel ratio ${window.devicePixelRatio}`;
+	return {ok: true, text: clip(text + ' | ' + probeContext(), 760)};
 }
 
 function startup (): Promise<ProbeResult> {
@@ -104,5 +118,10 @@ export const PERF_TESTS: ProbeTest[] = [
 		id: 'frames-home', manual: true, label: '31. Frame timer and key delay, Home (25 s)',
 		description: 'Start it, then press Back to leave Settings. After 5 seconds move along the home row with the arrow keys until 25 seconds pass. Then open Settings > Tests for the answer.',
 		run: () => measure(25000, 5000).then((s) => frameText(s, true))
+	},
+	{
+		id: 'fps60', manual: true, label: '37. 60 FPS check, Home (25 s)',
+		description: 'Same steps as test 31. Shows the share of frames at 60 fps, at about 30 fps and slower, the median frame time and the slowest 5 %. Measures only.',
+		run: () => measure(25000, 5000).then(fpsText)
 	}
 ];

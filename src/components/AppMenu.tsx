@@ -1,15 +1,10 @@
 import {useCallback, useState} from 'preact/hooks';
 import {useKeys, clamp, type NavKey} from '../hooks/useKeys';
 import {useOkPress} from '../hooks/useOkPress';
-import type {MoveAction} from '../lib/tileorder';
 import {t as tt} from '../i18n';
 
 interface Props {
 	title: string;
-	/** which moves are possible from the tile's place on the row */
-	moves: {start: boolean; left: boolean; right: boolean; end: boolean};
-	/** set while the row follows the last opened apps: every Move is greyed out with this reason */
-	moveBlocked?: string;
 	/** where to get a hidden tile back (differs for apps and inputs) */
 	hideDetail: string;
 	/** apps have an Uninstall entry; inputs don't */
@@ -19,9 +14,13 @@ interface Props {
 	/** P102b: whether the tile is a favourite (the entry then reads Remove) */
 	isFavourite: boolean;
 	onFavourite: () => void;
-	onMove: (action: MoveAction) => void;
+	/** 2.0.3 T2: starts the home row's move mode with this tile picked up; not given while the row follows the last opened apps */
+	onReorder?: () => void;
 	onHide: () => void;
 	onUninstall: () => void;
+	/** R10: while the Settings tile is hidden (or being practised) the menu has an entry that opens Hearth Settings; the text is its detail line */
+	settingsDetail?: string;
+	onSettings?: () => void;
 	/** 2.0.2: open straight at the uninstall confirmation (Settings -> Apps -> Uninstall apps); Back then closes */
 	startAtConfirm?: boolean;
 	onClose: () => void;
@@ -37,17 +36,14 @@ interface MenuRow {
 	run: () => void;
 }
 
-/** What opens when OK is held on an app or input: move it along the row, hide it, or (apps) uninstall it.
+/** What opens when OK is held on an app or input: reorder the home row, hide it, or (apps) uninstall it.
  *  Uninstall asks for confirmation, and the confirmation starts on Cancel. */
-export function AppMenu ({title, moves, moveBlocked, hideDetail, showUninstall, blockedReason, isFavourite, onFavourite, onMove, onHide, onUninstall, onClose, startAtConfirm}: Props) {
+export function AppMenu ({title, hideDetail, showUninstall, blockedReason, isFavourite, onFavourite, onReorder, onHide, onUninstall, onClose, startAtConfirm, settingsDetail, onSettings}: Props) {
 	const [step, setStep] = useState<Step>(startAtConfirm ? 'confirm' : 'menu');
 
 	const menuRows = (): MenuRow[] => {
 		const rows: MenuRow[] = [
-			{key: 'start', label: tt('appmenu.moveToStart'), detail: moveBlocked || (moves.start ? undefined : tt('appmenu.alreadyFirst')), disabled: !!moveBlocked || !moves.start, run: () => onMove('start')},
-			{key: 'left', label: tt('appmenu.moveLeft'), detail: moveBlocked || (moves.left ? undefined : tt('appmenu.alreadyFirst2')), disabled: !!moveBlocked || !moves.left, run: () => onMove('left')},
-			{key: 'right', label: tt('appmenu.moveRight'), detail: moveBlocked || (moves.right ? undefined : tt('appmenu.alreadyLast')), disabled: !!moveBlocked || !moves.right, run: () => onMove('right')},
-			{key: 'end', label: tt('appmenu.moveToEnd'), detail: moveBlocked || (moves.end ? undefined : tt('appmenu.alreadyLast2')), disabled: !!moveBlocked || !moves.end, run: () => onMove('end')},
+			...(onReorder ? [{key: 'reorder', label: tt('appmenu.reorderRow'), run: onReorder}] : []),
 			{key: 'favourite', label: isFavourite ? tt('appmenu.removeFromFavourites') : tt('appmenu.addToFavourites'), detail: isFavourite ? undefined : tt('appmenu.shownAloneOnThe'), run: onFavourite},
 			{key: 'hide', label: tt('appmenu.hideFromTheHome'), detail: hideDetail, run: onHide}
 		];
@@ -57,6 +53,7 @@ export function AppMenu ({title, moves, moveBlocked, hideDetail, showUninstall, 
 				run: () => { setStep('confirm'); setIndex(0); }
 			});
 		}
+		if (settingsDetail && onSettings) rows.push({key: 'settings', label: tt('appmenu.hearthSettings'), detail: settingsDetail, run: onSettings});
 		rows.push({key: 'cancel', label: tt('appmenu.cancel'), run: onClose});
 		return rows;
 	};
@@ -82,7 +79,7 @@ export function AppMenu ({title, moves, moveBlocked, hideDetail, showUninstall, 
 			default: break;
 		}
 		return true;
-	}, [step, rows.length, moves.start, moves.left, moves.right, moves.end, blockedReason, onClose]);
+	}, [step, rows.length, blockedReason, onClose, settingsDetail]);
 
 	useKeys(handleKey, true);
 	useOkPress({

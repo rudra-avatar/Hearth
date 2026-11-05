@@ -96,7 +96,7 @@ export function checkRemap (remap: RemapConfig): Promise<RemapCheck> {
 		if (installed === null) return {result: 'failed', detail: tt('remap.theHomebrewServiceDidNot'), fatal: false, unreachable: true};
 		if (installed !== REMAP_VERSION) return installRemap(remap).then((o): RemapCheck => ({...o, fatal: o.result !== 'applied'}));
 		return exec(CHECK_COMMAND, 10000).then(parseRemapResult, (): RemapResult => 'failed')
-			.then((result): RemapCheck => ({result, detail: '', fatal: result === 'launcher-missing' || result === 'files-missing'}));
+			.then((result): RemapCheck => ({result, detail: '', fatal: result === 'launcher-missing' || result === 'files-missing' || result === 'unsupported'}));
 	});
 }
 
@@ -106,6 +106,7 @@ export function remapMessage (result: RemapResult, detail = ''): string {
 		case 'removed': return tt('remap.offEveryButtonDoes');
 		case 'launcher-missing': return tt('remap.hearthMustBeInstalled');
 		case 'files-missing': return tt('remap.theHelperFilesAre');
+		case 'unsupported': return tt('remap.thisTvHasNoKeyFilterList');
 		default: return tt('remap.couldnTSetThat', {detail: detail ? ': ' + detail : ''});
 	}
 }

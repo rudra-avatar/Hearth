@@ -1,4 +1,5 @@
 import {HomeKey} from './screens/HomeKey';
+import {Updates} from './screens/Updates';
 import {ExtraKeys} from './screens/ExtraKeys';
 import {setMonoIcons} from './lib/monoicon';
 import {useCallback, useEffect, useMemo, useRef, useState} from 'preact/hooks';
@@ -19,7 +20,7 @@ import {Recents} from './screens/Recents';
 import {lazyTab} from './lib/lazytab';
 import {SourceEditor} from './screens/SourceEditor';
 import {iconFromFile} from './lib/customicon';
-import {log, logLines} from './lib/log';
+import {log, logLines, allLogLines} from './lib/log';
 import {noteLife, previousLife} from './lib/lifemark';
 import {startDelay, TIER2_MS, TIER3_MS} from './lib/startup';
 import {debugPages, reportText} from './lib/debuginfo';
@@ -38,6 +39,7 @@ import {listInputs, MOCK_INPUTS, readCecDevices, withDeviceNames, type CecDevice
 import {launchApp, launchLgHome, launchSystemSettings} from './lib/launch';
 import {exportThemeBase} from './lib/themeexport';
 import {isWebOS} from './lib/luna';
+import {listening, resumeListening} from './lib/keydetect';
 import {hearthCodes, keyLabel, readRecord, type AutoResult} from './lib/homekeycore';
 import {setEngineAtBoot} from './lib/homeengine';
 import {readBinds, syncKeepBind} from './lib/homekey';
@@ -58,12 +60,15 @@ import {getHookStatus, hookMessage, installHomeHook, launchParams, logLine, mark
 import {SAVER_PHOTOS, SAVER_VIDEO} from './lib/saverconfig';
 import {installSaver, reapplySaver, removeSaver, saverMessage, saverSettings, showSaver} from './lib/screensaver';
 import {cleanupMessage, removeTakeover} from './lib/takeover';
+import {getSamStatus, installSamHome, reapplySamHome, removeSamHome, samMessage, stockSam} from './lib/samhome';
 import {t as tt} from './i18n';
 import {applyLanguage, removePack, bundledReady, loadBundled, reapply} from './i18n/pack';
 import {loadPackFile} from './lib/langpack';
 import {PACK_ID, isBundledLanguage} from './lib/languages';
 import {applyPref, disabledReason, findPref, GROUP_PREFIX, optionsFor, resetLook, type Press, type PrefTab, type SystemInfo} from './lib/prefs';
-import {loadConfig, saveConfig, isMonoStyle, effectiveIconStyle, hasLightTile, toggleId, DEFAULT_WALLPAPER, withBackedUpLook, dropPrefsBackup, type UserConfig} from './lib/storage';
+import {storeReport} from './lib/storeguard';
+import {setProbeContext} from './lib/probecontext';
+import {loadConfig, saveConfig, saveConfigVerified, setSaveFailHandler, isMonoStyle, effectiveIconStyle, hasLightTile, toggleId, DEFAULT_WALLPAPER, withBackedUpLook, dropPrefsBackup, type UserConfig} from './lib/storage';
 import {readLastOpened, writeLastOpened} from './lib/homefocus';
 import {checkColdBoot, markOpened, openedThisPage} from './lib/coldstart';
 import {applyTheme, THEMES} from './theme/tokens';
@@ -81,17 +86,18 @@ import {capturedButton, checkRemap, installRemap, keepRemap, remapMessage, remap
 import {buttonLabel, setButton, type RemapAction, type RemapConfig} from './lib/remapcmd';
 import {noteRecent, orderByRecent, readRecent, writeRecent} from './lib/recency';
 import {addTvInput, removeTvInput, TV_INPUT_LOG} from './lib/tvinput';
+import {guardAtStart, noteGuardChange, readBootTrace} from './lib/bootguard';
 import {uninstallApp, uninstallVerdict, UNINSTALL_LOG} from './lib/uninstall';
 import {appTile, inputTile, pickInOrder} from './lib/tiles';
-import {moveGroup, moveKey, movesFor, orderTiles, orderUpdate, reslot, type MoveAction} from './lib/tileorder';
+import {orderTiles, orderUpdate, stepKeys} from './lib/tileorder';
 import {APP_ID, TIMING, WALLPAPER} from './config/constants';
-import {PROBE_ENABLED, WEATHER_ENABLED} from './config/features';
+import {LEGACY, PROBE_ENABLED, WEATHER_ENABLED} from './config/features';
 import {PROBE_TESTS, RUN_ALL_ID, bad as probeBad, probeOptions, runAll, withLimit, type ProbeState} from './lib/probe';
 import {fetchWeather} from './lib/weathernet';
 import {FRESH_MS, isFresh, readWeatherCache, usableCached, weatherView, writeWeatherCache, type City, type WeatherData} from './lib/weather';
 import {CONNECT_APPS_NOTE} from './config/connectapps';
 
-type Screen = 'home' | 'settings' | 'picker' | 'saverpicker' | 'cities' | 'source' | 'iconpicker' | 'homekey' | 'preload' | 'poweron' | 'remote' | 'extrakeys' | 'themes' | 'languages';
+type Screen = 'home' | 'settings' | 'picker' | 'saverpicker' | 'cities' | 'source' | 'iconpicker' | 'homekey' | 'preload' | 'poweron' | 'remote' | 'extrakeys' | 'themes' | 'languages' | 'updates';
 
 const TAB = {apps: 'apps', sources: 'sources', appsSources: 'appsources', look: 'look', clock: 'clock', wallpaper: 'wallpaper', saver: 'saver', system: 'system', debug: 'debug', tests: 'tests'} as const;
 const MISC = {lgHome: 'lg-home', settings: 'settings', system: 'system-settings'} as const;
@@ -104,7 +110,8 @@ const MISC_TILES: TileModel[] = [
 ];
 
 export function App () {
-	const [screen, setScreen] = useState<Screen>('home');
+	// W2: Hearth was left while listening for buttons (the user pressed Home) and starts again within the window: back to the button screen, which finishes the mapping and shows its pop-up
+	const [screen, setScreen] = useState<Screen>(() => (listening(resumeListening()) ? 'homekey' : 'home'));
 	const settingsOpen = screen !== 'home';   // Settings stays open under its sub-screens (editor, pickers)
 	const [config, setConfig] = useState<UserConfig>(loadConfig);
 	applyLanguage(config.language);       // T2b: the texts follow the saved language (cheap when nothing changed; a loaded pack was already applied at start-up)
@@ -127,8 +134,12 @@ export function App () {
 	const prevSel = useRef(config.themeSel);
 	const [themeRev, setThemeRev] = useState(0);          // P81: bumped when the theme's pictures change, so the tiles are drawn again
 	const [notice, setNotice] = useState<{title: string; text: string; buttons: NoticeButton[]; onBack?: () => void} | null>(null);       // a pop-up (warning or question)
+	const [hidePractice, setHidePractice] = useState(false);     // R10: the person is trying the Hold OK way before the Settings tile is hidden
+	const [tileBack, setTileBack] = useState(false);               // R10: Down x5 showed the hidden Settings tile again, until the next start
 	const [menu, setMenu] = useState<{key: string; title: string; app: AppEntry | null; direct?: boolean} | null>(null);   // the tile whose Move / Hide / Uninstall menu is open
 	const [focus, setFocus] = useState<{key: string; seq: number} | undefined>(undefined);               // asks Home to follow a moved tile
+	const [moveMode, setMoveMode] = useState<{picked: string | null} | null>(null);                     // 2.0.3 T2: the home row's move mode (`picked` = the tile held up)
+	const keysRef = useRef<string[]>([]);                                                               // the saved order as it is right now (a second key press before the redraw builds on it)
 	const bootFirst = useRef(false);                                   // H1: this page started with the TV: the highlight starts on the first app
 	const keyedSinceStart = useRef(false);
 	const lastOpened = useRef<string | null>(readLastOpened());       // the app or input opened last (Settings -> Look -> When Home is pressed)
@@ -157,7 +168,7 @@ export function App () {
 	const remapChecked = useRef(0);
 	const keepAsked = useRef(false);
 	const lastWakeAt = useRef(0);
-	const replaceRef = useRef(config.replaceHome);
+	const replaceRef = useRef(config.replaceHome || config.samHome);
 	const [allInputs, setInputs] = useState<InputSource[]>([]);
 	// the launcher itself may be in the TV's input list (see Options): it is not offered as a source
 	const inputs = useMemo(() => allInputs.filter((i) => i.appId !== APP_ID), [allInputs]);
@@ -191,7 +202,7 @@ export function App () {
 	// With the hand-over helper on, note in its log how long this launcher took to show its first screen.
 	useEffect(() => {
 		if (!isWebOS()) return undefined;
-		const noHelper = !config.replaceHome;
+		const noHelper = !config.replaceHome && !config.samHome;
 		const frame = window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
 			const began = window.performance && window.performance.timing ? window.performance.timing.navigationStart : 0;
 			if (noHelper) {          // P94: no helper (non-root): the line goes to the Debug tab and the last starts are kept
@@ -251,13 +262,13 @@ export function App () {
 			showToast(unsaved ? tt('app.themeTakenOffIt') : tt('app.themeTakenOff'));
 		});
 	}, [config.themeSel]);   // eslint-disable-line react-hooks/exhaustive-deps
-	useEffect(() => { document.documentElement.classList.toggle('look-minimal', config.minimal); }, [config.minimal]);
 	const iconStyle = effectiveIconStyle(config.iconStyle, config.theme);          // Accent mono is not offered in OLED black
+	useEffect(() => { document.documentElement.classList.toggle('look-minimal', config.minimal || iconStyle === 'glyph'); }, [config.minimal, iconStyle]);   // W1: Glyph uses Minimal's focus (larger only, no ring)
 	// Dark mono icons: the tile background and the shape colour come from the theme (OLED black: pure #000, pixels off)
 	useEffect(() => {
 		const el = document.documentElement.classList;
 		el.toggle('mono', isMonoStyle(iconStyle));
-		for (const k of ['soft', 'accent', 'gradient']) el.toggle(`mono-${k}`, iconStyle === k);
+		for (const k of ['soft', 'accent', 'gradient', 'glyph']) el.toggle(`mono-${k}`, iconStyle === k);
 		el.toggle('tinted', iconStyle === 'tinted');
 		el.toggle('mono-light', config.iconLight && hasLightTile(iconStyle));          // P59b: light tile, dark shape
 	}, [iconStyle, config.iconLight]);
@@ -269,6 +280,25 @@ export function App () {
 		if (kind === 'error') log('Problem shown: ' + text);
 		setToast({text, kind});
 		toastTimer.current = window.setTimeout(() => setToast(null), TIMING.toastMs);
+	}, []);
+
+	// I2: a save that fails even after freeing caches tells the user once per start; the Debug report gets the store sizes (Debug tab on only, after the 30 s tier)
+	useEffect(() => { setSaveFailHandler(() => showToast(tt('app.settingsNotSaved'), 'error')); return () => setSaveFailHandler(null); }, [showToast]);
+	useEffect(() => {
+		if (!config.showDebug) return;
+		const timer = window.setTimeout(() => { try { storeReport(localStorage).forEach((l) => log(l)); } catch { /* no figures */ } }, startDelay(TIER3_MS, 3000));
+		return () => window.clearTimeout(timer);
+	}, [config.showDebug]);
+
+	// J: state line written with tests 37 and 44 (the latest settings are read through a ref; nothing runs until a test asks)
+	const ctxRef = useRef({config, systemInfo});
+	ctxRef.current = {config, systemInfo};
+	useEffect(() => {
+		setProbeContext(() => {
+			const {config: c, systemInfo: si} = ctxRef.current;
+			return `state: theme ${c.theme}, backdrop ${c.clock.show ? (c.clock.scrim || 'off') : 'widget off'}, wallpaper ${c.wallpaper.mode}/${c.wallpaper.intervalSec}s bg ${c.background}, helper ${si.homeHook && si.homeHook.running ? 'on' : 'off'}, SAM ${c.samHome ? 'on' : 'off'}, keep-ready ${c.keepReady ? 'on' : 'off'}, ${storeReport(localStorage)[0]}`;
+		});
+		return () => setProbeContext(null);
 	}, []);
 
 	// T4: a bundled language is copied from the app folder the first time it is picked (and once after an update); no root needed.
@@ -442,7 +472,9 @@ export function App () {
 	// In the background the launcher lets go of its wallpaper (the big bitmap) and stops its clock, but it
 	// keeps its screen: if the TV ever reports "hidden" wrongly, the launcher must still be visible,
 	// not a black screen. The state is also re-read every second as a safety net.
-	replaceRef.current = config.replaceHome;
+	replaceRef.current = config.replaceHome || config.samHome;
+	// X1: Home pressed while the key mapper listens: it stays open (and keeps reading the key log) when Hearth comes back; every other screen goes home
+	const keepKeyMapper = (s: Screen): Screen => (s === 'homekey' && listening(resumeListening()) ? s : 'home');
 	useEffect(() => {
 		const sync = (why: string) => {
 			const hidden = document.hidden;
@@ -462,7 +494,7 @@ export function App () {
 				}
 				return hidden;
 			});
-			if (hidden) { setScreen('home'); setMenu(null); setRecents(false); }
+			if (hidden) { setScreen(keepKeyMapper); setMenu(null); setRecents(false); }
 		};
 		const onVisibility = () => sync('event');
 		document.addEventListener('visibilitychange', onVisibility);
@@ -482,7 +514,7 @@ export function App () {
 			if (pressed && captureOn.current) { setCaptured((c) => ({name: pressed, seq: (c ? c.seq : 0) + 1})); return; }
 			homeFirst.current = homeShowing.current && Date.now() - lastWakeAt.current > 1500;          // a relaunch right after a wake is the same press
 			openedSince.current = false;
-			setScreen('home'); setMenu(null); setRecents(false); setWakes((n) => n + 1);
+			setScreen(keepKeyMapper); setMenu(null); setRecents(false); setWakes((n) => n + 1);
 			// a burst of presses makes one note and one touch set per 2.5 s
 			const now = Date.now();
 			if (now - lastRelaunchNote < 2500) return;
@@ -571,9 +603,9 @@ export function App () {
 					log(`settings: root check answered +${since()} ms`);
 					if (!live) return undefined;
 					if (root === 'no') { setSystemInfo({homeApp: null, homeHook: null, logo: null, powerOn: null, root, rootDetail}); return undefined; }
-					return Promise.all([getHookStatus(), getLogo(), readPowerOn(), readHomeApp(), readInputHookInUse(), root === 'yes' ? readHomebrewVersion() : Promise.resolve(undefined)]).then(([homeHook, logo, powerOn, homeApp, inputHook, homebrew]) => {
+					return Promise.all([getHookStatus(), getLogo(), readPowerOn(), readHomeApp(), readInputHookInUse(), root === 'yes' ? readHomebrewVersion() : Promise.resolve(undefined), getSamStatus()]).then(([homeHook, logo, powerOn, homeApp, inputHook, homebrew, samHome]) => {
 						if (!live) return;
-						setSystemInfo((previous) => ({homeApp, homeHook, logo, powerOn, root, rootDetail, inputHook, keepList: previous.keepList}));
+						setSystemInfo((previous) => ({homeApp, homeHook, samHome, logo, powerOn, root, rootDetail, inputHook, keepList: previous.keepList, samBusy: previous.samBusy}));
 						readKeepList().then((keepList) => { if (live && keepList !== null) setSystemInfo((previous) => ({...previous, keepList})); });     // K2: apart, so the other rows never wait for it
 						if (homebrew) setVersions((p) => ({...p, homebrew}));
 						log(`settings: status reads done +${since()} ms`);
@@ -589,7 +621,7 @@ export function App () {
 	// settings say it was on gets it switched off a few seconds after start (LG Home's own place is given back, the old files
 	// and the start-up link are deleted). It never turns anything else on: the helper script is the user's choice.
 	useEffect(() => {
-		if (!config.takeoverHome || !isWebOS()) return undefined;
+		if (!config.takeoverHome || config.samHome || !isWebOS()) return undefined;
 		let cancelled = false;
 		const timer = window.setTimeout(() => {
 			showToast(tt('app.removingTheOldSam'));
@@ -599,7 +631,7 @@ export function App () {
 			});
 		}, startDelay(TIER3_MS, 5000));
 		return () => { cancelled = true; window.clearTimeout(timer); };
-	}, [config.takeoverHome, showToast]);
+	}, [config.takeoverHome, config.samHome, showToast]);
 
 	// Screen saver (when on): a few seconds after start, and whenever what it plays or how it plays changes, make sure the files
 	// on the TV are current and mounted. A change is sent after a short pause so stepping through values sends only the last one.
@@ -649,6 +681,20 @@ export function App () {
 					});
 					tryHelper(0);
 				}
+				if (config.samHome) {
+					// 2.0.3 (R3): the SAM stand-in is kept in place the same way (files from an older Hearth are rewritten, nothing is switched)
+					const trySam = (attempt: number) => reapplySamHome().then(({result, detail, fatal, unreachable}) => {
+						if (unreachable) {
+							if (attempt < 4) retryTimer = window.setTimeout(() => { if (!document.hidden) trySam(attempt + 1); }, [10000, 30000, 90000, 240000][attempt]);
+							return;
+						}
+						if (!fatal) return;
+						setConfig((c) => { const next = {...c, samHome: false}; saveConfig(next); return next; });
+						removeSamHome();
+						showToast(samMessage(result, detail), 'error');
+					});
+					trySam(0);
+				}
 				if (config.closeHome || config.replaceHome) closeLgHome().catch(() => undefined);      // the Homebrew service may not be up yet: nothing to do then
 			}, TIMING.backgroundWorkMs);
 		};
@@ -662,7 +708,43 @@ export function App () {
 		arm();
 		document.addEventListener('visibilitychange', onVisibility);
 		return () => { window.clearTimeout(timer); window.clearTimeout(retryTimer); document.removeEventListener('visibilitychange', onVisibility); };
-	}, [config.closeHome, config.replaceHome, showToast]);
+	}, [config.closeHome, config.replaceHome, config.samHome, showToast]);
+
+	// 2.0.3 (S3c, webOS 3 only): Hearth reached its screen, so the boot guard (on while the TV input or the power-on app
+	// is on) sets its count of boots without Hearth back to 0. If the guard switched the rows off by itself after boots that
+	// never reached Hearth, say so once. The Homebrew service is often not up yet just after the TV starts: tried again later.
+	useEffect(() => {
+		if (!LEGACY || !isWebOS() || rootState() === 'no') return undefined;
+		let timer = 0;
+		let done = false;
+		let running = false;
+		const attempt = (n: number) => {
+			window.clearTimeout(timer);
+			if (done || running || document.hidden) return;
+			timer = window.setTimeout(() => {
+				if (done || running || document.hidden) return;
+				running = true;
+				guardAtStart().then((state) => {
+					running = false;
+					if (state === 'unreachable') {
+						if (n < 4) timer = window.setTimeout(() => attempt(n + 1), [10000, 30000, 90000, 240000][n]);
+						return;
+					}
+					done = true;
+					if (state !== 'reverted') return;
+					log('bootguard: the guard switched the TV input / power-on app off after boots that never reached Hearth');
+					showToast(tt('app.bootGuardReverted'), 'error');
+					readPowerOn().then((status) => {       // the saved power-on choice follows what the TV has now
+						if (status) setConfig((c) => { const next = {...c, powerOnApp: status.chosen, powerOnNetwork: status.network}; saveConfig(next); return next; });
+					});
+				});
+			}, n === 0 ? TIMING.backgroundWorkMs : 0);
+		};
+		const onVisibility = () => { if (!document.hidden) attempt(0); };
+		attempt(0);
+		document.addEventListener('visibilitychange', onVisibility);
+		return () => { window.clearTimeout(timer); document.removeEventListener('visibilitychange', onVisibility); };
+	}, [showToast]);
 
 	// The weather line: read from the saved copy at once (nothing is fetched to draw the home screen), refreshed in
 	// the background a few seconds after the launcher appears, and then every 30 minutes while it is in front.
@@ -746,6 +828,8 @@ export function App () {
 		setNotice({title: diff || outcome.iconsFailed ? tt('app.withDifferences', {title}) : title, text: notes.join(' '), buttons: [{label: tt('app.ok'), tone: 'light', run: () => setNotice(null)}], onBack: () => setNotice(null)});
 	};
 	const updateConfig = (next: UserConfig) => { setConfig(next); saveConfig(next); };
+	// I2: for callbacks that run later (after an await): applies the change to the CURRENT settings, never to the copy from click time
+	const patchConfig = (patch: Partial<UserConfig> | ((c: UserConfig) => Partial<UserConfig>)) => setConfig((c) => { const next = {...c, ...(typeof patch === 'function' ? patch(c) : patch)}; saveConfig(next); return next; });
 
 	// ----- Root has failed (P83) -----
 	// Turns on the experimental app list through the TV's remote-control service (SSAP); no root needed.
@@ -773,6 +857,7 @@ export function App () {
 		});
 	};
 	const rootNoticed = useRef(false);
+	const bootWarned = useRef(false);        // L1: the webOS 3 start-up warning for the power-on row shows once per start
 	const offerNoRoot = () => {
 		if (rootNoticed.current || rootState() !== 'no' || tvAppsRef.current) return;
 		rootNoticed.current = true;
@@ -823,8 +908,8 @@ export function App () {
 		[shownApps, shownInputs, config.tileOrder, config.sourceEdits, config.inputStatus, appEditsShown, config.orderByRecent, config.favourites, recentWake, themeRev]
 	);
 	const homeItems: TileModel[] = useMemo(
-		() => orderedTiles.concat(MISC_TILES.filter((t) => (t.key === MISC.lgHome ? config.showLgHome : t.key === MISC.system ? config.showSystem : true))),
-		[orderedTiles, config.showLgHome, config.showSystem, config.language, langTick]
+		() => orderedTiles.concat(MISC_TILES.filter((t) => (t.key === MISC.lgHome ? config.showLgHome : t.key === MISC.system ? config.showSystem : !config.hideSettings || tileBack))),
+		[orderedTiles, config.showLgHome, config.showSystem, config.hideSettings, tileBack, config.language, langTick]
 	);
 
 	const timeFormat: TimeFormat = config.clockFormat === 'tv' ? tvFormat : config.clockFormat;
@@ -854,7 +939,7 @@ export function App () {
 		if (id !== TAB.debug) return;
 		setDebugTick((n) => n + 1);
 		if (rootState() !== 'yes') return;
-		const save = () => writeReport(reportText(buildDebug(), logLines(), previousRunLines()));
+		const save = () => (LEGACY ? readBootTrace() : Promise.resolve([] as string[])).then((trace) => writeReport(reportText(buildDebug(), allLogLines(), previousRunLines(), trace)));
 		readStats().then((st) => { statsRef.current = st; setDebugTick((n) => n + 1); save(); });
 	}, [config, versions]);                                                  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -891,6 +976,7 @@ export function App () {
 			setPowerOnBusy(false);
 			setSystemInfo((previous) => ({...previous, powerOn: status}));
 			const ok = result === 'applied' || result === 'removed';
+			if (ok && LEGACY) noteGuardChange(id ? 'powerOnSet' : 'powerOnCleared').then((done) => log(`bootguard: power-on app ${id ? 'set' : 'cleared'}, guard ${done ? 'updated' : 'NOT updated'}`));      // S3c: webOS 3 boot guard
 			// the saved choice follows what the TV has now (a failed change leaves the earlier one in place)
 			const now = status ? {app: status.chosen, network: status.network} : (ok ? {app: id, network} : null);
 			if (now) setConfig((c) => { const next = {...c, powerOnApp: now.app, powerOnNetwork: now.network}; saveConfig(next); return next; });
@@ -917,23 +1003,23 @@ export function App () {
 	}, [showToast]);
 
 	const tabs: SettingsTab[] = useMemo(() => [
-		{id: TAB.appsSources, label: tt('app.appsSources'), noun: '', items: [], shown: [], subs: [
-			lazyTab({id: TAB.apps, label: tt('app.apps'), noun: tt('app.apps2'), refresh: true, fav: true, remove: rootState() !== 'no', recent: {on: config.orderByRecent}, items: [], shown: [], edit: true}, {
+		{id: TAB.appsSources, label: tt('app.appsSources'), items: [], shown: [], subs: [
+			lazyTab({id: TAB.apps, label: tt('app.apps'), refresh: true, fav: true, remove: rootState() !== 'no', recent: {on: config.orderByRecent}, items: [], shown: [], edit: true}, {
 				items: () => orderTiles(apps.map((a) => appTile(a, appEditsShown)), (t) => t.key, config.appIds),
 				shown: () => shownApps.map((a) => appTile(a, appEditsShown))
 			}),
-			lazyTab({id: TAB.sources, label: tt('app.sources'), noun: tt('app.sources2'), fav: true, recent: {on: config.orderByRecent}, items: [], shown: [], edit: true}, {
+			lazyTab({id: TAB.sources, label: tt('app.sources'), fav: true, recent: {on: config.orderByRecent}, items: [], shown: [], edit: true}, {
 				items: () => inputs.map((i) => inputTile(i, config.sourceEdits, config.inputStatus)),
 				shown: () => shownInputs.map((i) => inputTile(i, config.sourceEdits, config.inputStatus))
 			})
 		]},
-		lazyTab({id: TAB.look, label: tt('app.look'), noun: '', items: [], shown: []}, {options: () => groupsOf('look', systemInfo)}),
-		lazyTab({id: TAB.clock, label: tt('app.widget'), noun: '', items: [], shown: []}, {options: () => groupsOf('clock')}),
-		lazyTab({id: TAB.wallpaper, label: tt('app.wallpaper'), noun: '', items: [], shown: []}, {options: () => groupsOf('wallpaper')}),
-		...(noRoot ? [] : [lazyTab({id: TAB.saver, label: tt('app.screenSaver'), noun: '', items: [], shown: []}, {options: () => groupsOf('saver', systemInfo)})]),
-		lazyTab({id: TAB.system, label: tt('app.system'), noun: '', items: [], shown: []}, {options: () => groupsOf('system', {...systemInfo, tvInput, powerOnNames})}),
-		...(config.showDebug ? [{id: TAB.debug, label: tt('app.debug'), noun: '', items: [], shown: [], pages: debugPagesNow}] : []),
-		...(PROBE_ENABLED && config.showDebug ? [{id: TAB.tests, label: tt('app.tests'), noun: '', items: [], shown: [], options: probeOptions(probe)}] : [])
+		lazyTab({id: TAB.look, label: tt('app.look'), items: [], shown: []}, {options: () => groupsOf('look', systemInfo)}),
+		lazyTab({id: TAB.clock, label: tt('app.widget'), items: [], shown: []}, {options: () => groupsOf('clock')}),
+		lazyTab({id: TAB.wallpaper, label: tt('app.wallpaper'), items: [], shown: []}, {options: () => groupsOf('wallpaper')}),
+		...(noRoot ? [] : [lazyTab({id: TAB.saver, label: tt('app.screenSaver'), items: [], shown: []}, {options: () => groupsOf('saver', systemInfo)})]),
+		lazyTab({id: TAB.system, label: tt('app.system'), items: [], shown: []}, {options: () => groupsOf('system', {...systemInfo, tvInput, powerOnNames})}),
+		...(config.showDebug ? [{id: TAB.debug, label: tt('app.debug'), items: [], shown: [], pages: debugPagesNow}] : []),
+		...(PROBE_ENABLED && config.showDebug ? [{id: TAB.tests, label: tt('app.tests'), items: [], shown: [], options: probeOptions(probe)}] : [])
 	], [apps, inputs, shownApps, shownInputs, config, systemInfo, tvInput, probe, debugPagesNow, openGroups, noRoot, powerOnNames, themeRev, langTick]);    // eslint-disable-line react-hooks/exhaustive-deps
 
 	const editedSource = editKey ? inputs.filter((i) => i.appId === editKey)[0] : undefined;
@@ -950,24 +1036,25 @@ export function App () {
 
 	// ----- actions -----
 	const onActivate = useCallback((item: TileModel) => {
-		if (item.key === MISC.settings) { setScreen('settings'); return; }
+		if (item.key === MISC.settings) { setHidePractice(false); setScreen('settings'); return; }
 		if (item.key === MISC.system) { launchSystemSettings().catch(() => showToast(tt('app.couldnTOpenThe'), 'error')); return; }
 		if (item.key === MISC.lgHome) {
 			const open = () => launchLgHome().catch(() => showToast(tt('app.couldnTOpenLg'), 'error'));
 			// With the helper on, the real LG Home is let through first (the helper takes over again once LG Home is left)
 			if (config.replaceHome) stockHome().then(() => window.setTimeout(open, 1200));
+			else if (config.samHome) stockSam().then(() => window.setTimeout(open, 1200));
 			else open();
 			return;
 		}
 		// With the helper on: say the launcher is alive and note what is being opened, so the helper's check
 		// can never mistake this moment for a failure, and its log shows what happened if an app does not open.
-		if (config.replaceHome) markAliveSoon(`launcher: opening ${item.key}`, false);
+		if (config.replaceHome || config.samHome) markAliveSoon(`launcher: opening ${item.key}`, false);
 		noteOpened(item.key);
 		launchApp(item.key).catch(() => {
-			if (config.replaceHome) logLine(`launcher: the TV refused to open ${item.key}`);
+			if (config.replaceHome || config.samHome) logLine(`launcher: the TV refused to open ${item.key}`);
 			showToast(tt('app.couldnTOpen', {label: item.label}), 'error');
 		});
-	}, [showToast, config.replaceHome]);
+	}, [showToast, config.replaceHome, config.samHome]);
 
 	const onToggle = useCallback((tabId: string, key: string) => {
 		if (tabId === TAB.apps) {
@@ -984,20 +1071,11 @@ export function App () {
 		updateConfig({...config, favourites: toggleId(config.favourites, key)});
 	}, [config]);
 
-	/** Replace a row's order with `keys` (the full list of what's shown). */
-	const onReorder = useCallback((tabId: string, keys: string[]) => {
-		// the tiles of this tab take the places they already hold on the shared row, in their new order
-		const whole = reslot(orderedTiles.map((t) => t.key), keys);
-		const update = orderUpdate(whole, shownApps.map((a) => a.id), shownInputs.map((i) => i.appId), config.appIds, config.sourceIds);
-		const hiddenIds = config.hiddenIds !== null ? config.hiddenIds : hiddenAfterUpgrade(apps, config.appIds);
-		updateConfig({...config, tileOrder: update.tileOrder, hiddenIds, appIds: tabId === TAB.apps ? keys.concat((config.appIds || []).filter((id) => keys.indexOf(id) === -1)) : update.appIds, sourceIds: tabId === TAB.sources ? keys : update.sourceIds});
-	}, [config, apps, orderedTiles, shownApps, shownInputs]);
-
 	const changeOption = useCallback((optionId: string, press: Press) => {
 		if (PROBE_ENABLED && optionId.indexOf('probe:') === 0) {
 			if (press !== 'ok') return;
 			const start = (id: string) => setProbe((p) => ({...p, [id]: {state: 'running'}}));
-			const done = (id: string, result: {ok: boolean; text: string}) => setProbe((p) => ({...p, [id]: {state: 'done', result}}));
+			const done = (id: string, result: {ok: boolean; text: string}) => { log(`probe ${id}: ${result.ok ? 'ok' : 'failed'}: ${result.text}`); setProbe((p) => ({...p, [id]: {state: 'done', result}})); };
 			if (optionId === RUN_ALL_ID) { runAll(PROBE_TESTS, start, done); return; }
 			const test = PROBE_TESTS.filter((t) => 'probe:' + t.id === optionId)[0];
 			if (!test) return;
@@ -1029,6 +1107,18 @@ export function App () {
 			});
 			return;
 		}
+		if (optionId === 'hideSettings' && press === 'ok' && !config.hideSettings) {       // R10: the tile is hidden only after the Hold OK way was used once
+			setNotice({
+				title: tt('app.hidePracticeTitle'),
+				text: tt('app.hidePracticeText'),
+				buttons: [
+					{label: tt('app.hidePracticeGo'), tone: 'light', run: () => { setNotice(null); setHidePractice(true); setScreen('home'); }},
+					{label: tt('appmenu.cancel'), run: () => setNotice(null)}
+				],
+				onBack: () => setNotice(null)
+			});
+			return;
+		}
 		if (optionId === 'theme' && press === 'ok' && systemInfo.root === 'yes') { setScreen('themes'); return; }       // OK (rooted TVs): load a theme zip; ← → step the built-in themes
 		if (optionId === 'language' && press === 'ok' && systemInfo.root === 'yes') { setScreen('languages'); return; }       // OK (rooted TVs): load a language file; ← → switch
 		if (optionId === 'wallpaper' && press === 'ok') { setScreen('picker'); return; }       // OK: pick a picture or folder; ← → step the built-in backgrounds
@@ -1036,7 +1126,7 @@ export function App () {
 			if (optionId === 'weatherCity') setScreen('cities');
 			else if (optionId === 'restoreLook') {
 				const back = withBackedUpLook(config);
-				if (back) { updateConfig(back); dropPrefsBackup(); showToast(tt('app.yourEarlierSettingsAre')); }
+				if (back) { setConfig(back); if (saveConfigVerified(back)) { dropPrefsBackup(); showToast(tt('app.yourEarlierSettingsAre')); } else showToast(tt('app.restoreNotSaved'), 'error'); }          // I2: the backup goes only after a save that read back
 				else { dropPrefsBackup(); showToast(tt('app.noEarlierSettingsFound'), 'error'); }
 			}
 			else if (optionId === 'languageRemove') { removePack(); updateConfig({...config, language: 'en'}); showToast(tt('app.languageRemoved')); }
@@ -1048,7 +1138,7 @@ export function App () {
 					showToast(r.ok ? tt('app.savedThemeBaseZip', {apps: r.apps, icons: r.icons}) : (r.reason || tt('app.notSaved')), r.ok ? 'info' : 'error');
 				});
 			}
-			else if (optionId === 'themeSave') saveLoadedTheme().then((r) => { showToast(r.ok ? tt('app.themeSavedInHearth') : (r.reason || tt('app.notSaved')), r.ok ? 'info' : 'error'); updateConfig({...config}); });
+			else if (optionId === 'themeSave') saveLoadedTheme().then((r) => { showToast(r.ok ? tt('app.themeSavedInHearth') : (r.reason || tt('app.notSaved')), r.ok ? 'info' : 'error'); patchConfig({}); });
 			else if (optionId === 'themeRemove') {
 				const slug = config.themeSel;
 				const t = applied.t && themeSlug(applied.t.name) === slug ? applied.t : null;
@@ -1058,17 +1148,29 @@ export function App () {
 			else if (optionId === 'homeKey') setScreen('homekey');
 			else if (optionId === 'remap') setScreen('extrakeys');
 			else if (optionId === 'preload') setScreen('preload');
+			else if (optionId === 'updates') setScreen('updates');
 			else if (optionId === 'powerOnApp') {
 				if (systemInfo.powerOn && systemInfo.powerOn.foreign) showToast(powerOnMessage('foreign'), 'error');
+				else if (LEGACY && !bootWarned.current) {       // L1: webOS 3 only (legacy bundle)
+					setNotice({
+						title: tt('app.bootLoopTitle'),
+						text: tt('app.bootLoopPowerOn'),
+						buttons: [
+							{label: tt('app.keepItOff'), tone: 'light', run: () => setNotice(null)},
+							{label: tt('app.bootLoopGo'), detail: tt('app.bootLoopGoDetail'), tone: 'danger', run: () => { bootWarned.current = true; setNotice(null); setScreen('poweron'); }}
+						],
+						onBack: () => setNotice(null)
+					});
+				}
 				else setScreen('poweron');
 			}
 			else if (optionId === 'screensaver') {
 				if (config.screensaver) {
-					removeSaver().then(() => { updateConfig({...config, screensaver: false}); showToast(tt('app.turnedOffTheTv')); });
+					removeSaver().then(() => { patchConfig({screensaver: false}); showToast(tt('app.turnedOffTheTv')); });
 				} else {
 					showToast(tt('app.settingUp'));
 					installSaver(config).then(({result, detail}) => {
-						if (result === 'applied') updateConfig({...config, screensaver: true});
+						if (result === 'applied') patchConfig({screensaver: true});
 						showToast(saverMessage(result, detail), result === 'applied' ? 'info' : 'error');
 					});
 				}
@@ -1097,14 +1199,14 @@ export function App () {
 				if (on) {
 					showToast(tt('app.puttingTheTvS'));
 					restoreHomeApp(config.homeAppPrevious).then(({result, detail}) => {
-						if (result === 'restored') updateConfig({...config, homeApp: false, homeAppPrevious: ''});
+						if (result === 'restored') patchConfig({homeApp: false, homeAppPrevious: ''});
 						refresh();
 						showToast(homeAppMessage(result, detail), result === 'restored' ? 'info' : 'error');
 					});
 				} else {
 					showToast(tt('app.settingUp2'));
 					setHearthAsHome().then(({result, detail}) => {
-						if (result === 'applied') updateConfig({...config, homeApp: true, homeAppPrevious: detail});
+						if (result === 'applied') patchConfig({homeApp: true, homeAppPrevious: detail});
 						refresh();
 						showToast(homeAppMessage(result, detail), result === 'applied' ? 'info' : 'error');
 					});
@@ -1116,7 +1218,7 @@ export function App () {
 				if (running) {
 					// off: only the helper goes; the Home button mapping is separate (System -> Remote control -> Map home button)
 					removeHomeHook().then(() => {
-						updateConfig({...config, replaceHome: false});
+						patchConfig({replaceHome: false});
 						refresh();
 						showToast(tt('app.turnedOffLgHome'));
 					});
@@ -1127,7 +1229,7 @@ export function App () {
 						showToast(tt('app.settingUp3'));
 						installHomeHook().then(({result, detail}) => {
 							if (result !== 'applied') { refresh(); showToast(hookMessage(result, detail), 'error'); return; }
-							updateConfig({...config, replaceHome: true});
+							patchConfig({replaceHome: true});
 							refresh();
 							showToast(tt('app.lgHomeIsReplaced'));
 						});
@@ -1146,17 +1248,72 @@ export function App () {
 					});
 				}
 			}
+			else if (optionId === 'samHome') {
+				// 2.0.3 (R3): experimental. On: a pop-up first (it explains the restart of SAM), then install + switch on. Off: LG Home gets its place back.
+				const refresh = () => getSamStatus().then((samHome) => setSystemInfo((previous) => ({...previous, samHome})));
+				if (systemInfo.samBusy) return;          // F2: a set-up or switch-off is already running
+				const busy = (v: boolean) => setSystemInfo((previous) => ({...previous, samBusy: v}));
+				const on = !!(systemInfo.samHome && (systemInfo.samHome.enabled || systemInfo.samHome.linked)) || config.samHome;
+				if (on) {
+					busy(true);
+					showToast(tt('app.samSettingUp'));
+					removeSamHome().then((freed) => {
+						patchConfig({samHome: false});
+						busy(false);
+						refresh();
+						showToast(freed ? tt('app.turnedOffLgHome') : tt('app.samNeedsRestart'));
+					});
+				} else {
+					setNotice({
+						title: tt('app.replaceLgHomeWithSam'),
+						text: tt('app.samExplain'),
+						buttons: [
+							{label: tt('app.keepItOff'), tone: 'light', run: () => setNotice(null)},
+							{label: tt('app.turnOnExperimental'), detail: tt('app.samMayRestart'), tone: 'danger', run: () => {
+								setNotice(null);
+								busy(true);
+								showToast(tt('app.samSettingUp'));
+								patchConfig({samHome: true});          // saved first: SAM may restart under this page before the answer comes
+								installSamHome().then(({result, detail}) => {
+									if (result !== 'applied' && result !== 'busy') patchConfig({samHome: false});
+									busy(false);
+									refresh();
+									showToast(samMessage(result, detail), result === 'applied' ? 'info' : 'error');
+								});
+							}}
+						],
+						onBack: () => setNotice(null)
+					});
+				}
+			}
 			else if (optionId === 'tvInput') {
 				const adding = tvInput !== true;          // 2.0.2 (D1): one toggle: add when not listed, remove when listed
-				showToast(tt(adding ? 'app.addingHearthToThe' : 'app.removingHearthFromThe'));
-				(adding ? addTvInput() : removeTvInput())
-					.then((accepted) => (isWebOS() ? listInputs() : Promise.resolve(MOCK_INPUTS)).then((list) => {
-						setInputs(list);
-						const listed = list.some((i) => i.appId === APP_ID);
-						if (listed === adding) showToast(tt(adding ? 'app.addedToTheTv' : 'app.removedFromTheTv'));
-						else showToast(accepted ? tt('app.theTvAcceptedThat') : tt('app.theTvDidnT2', {TV_INPUT_LOG}), 'error');
-					}))
-					.catch((error) => showToast(failureText(error, tt('app.changeTheTvInput')), 'error'));
+				const changeInput = () => {
+					showToast(tt(adding ? 'app.addingHearthToThe' : 'app.removingHearthFromThe'));
+					(adding ? addTvInput() : removeTvInput())
+						.then((accepted) => (isWebOS() ? listInputs() : Promise.resolve(MOCK_INPUTS)).then((list) => {
+							setInputs(list);
+							const listed = list.some((i) => i.appId === APP_ID);
+							if (listed === adding) {
+								showToast(tt(adding ? 'app.addedToTheTv' : 'app.removedFromTheTv'));
+								if (LEGACY) noteGuardChange(adding ? 'inputAdded' : 'inputRemoved').then((ok) => log(`bootguard: input ${adding ? 'added' : 'removed'}, guard ${ok ? 'updated' : 'NOT updated'}`));      // S3c: webOS 3 boot guard
+							}
+							else showToast(accepted ? tt('app.theTvAcceptedThat') : tt('app.theTvDidnT2', {TV_INPUT_LOG}), 'error');
+						}))
+						.catch((error) => showToast(failureText(error, tt('app.changeTheTvInput')), 'error'));
+				};
+				if (adding && LEGACY) {       // L1: webOS 3 only (legacy bundle); removing needs no warning
+					setNotice({
+						title: tt('app.bootLoopTitle'),
+						text: tt('app.bootLoopInput'),
+						buttons: [
+							{label: tt('app.keepItOff'), tone: 'light', run: () => setNotice(null)},
+							{label: tt('app.bootLoopGo'), detail: tt('app.bootLoopGoDetail'), tone: 'danger', run: () => { setNotice(null); changeInput(); }}
+						],
+						onBack: () => setNotice(null)
+					});
+				}
+				else changeInput();
 			}
 			else if (optionId === 'lgLogo') {
 				const wantOn = systemInfo.logo !== 'on';
@@ -1219,22 +1376,69 @@ export function App () {
 		setMenu({key: item.key, title: item.label, app});
 	}, [apps]);
 
+	// R10: the menu entry that opens Hearth Settings; during the practice it also hides the tile for good
+	const onMenuSettings = useCallback(() => {
+		setMenu(null);
+		if (hidePractice) {
+			setHidePractice(false);
+			updateConfig({...config, hideSettings: true});
+			showToast(tt('app.settingsTileHidden'));
+		}
+		setScreen('settings');
+	}, [hidePractice, config, showToast]);       // eslint-disable-line react-hooks/exhaustive-deps
+
+	const showTileAgain = useCallback(() => { setTileBack(true); showToast(tt('app.settingsTileBack')); }, [showToast]);
+
 	const hideTile = useCallback((tile: {key: string; title: string; app: AppEntry | null}) => {
 		onToggle(tile.app ? TAB.apps : TAB.sources, tile.key);
 		setMenu(null);
 		showToast(tt('app.tileHidden', {title: tile.title, tab: tile.app ? tt('app.tabApps') : tt('app.tabSources')}));
 	}, [onToggle, showToast]);
 
-	// Move to start / left / right on the shared row of apps and inputs; the highlight follows the tile.
-	const moveTile = useCallback((key: string, action: MoveAction) => {
-		const keys = orderedTiles.map((t) => t.key);
-		// with favourites on the row, a tile moves among the tiles of its own row (favourites, or all the others)
-		const next = reslot(keys, moveKey(moveGroup(keys, config.favourites, key), key, action));
-		const update = orderUpdate(next, shownApps.map((a) => a.id), shownInputs.map((i) => i.appId), config.hiddenIds !== null ? (config.appIds || []) : null, config.sourceIds);
-		updateConfig({...config, tileOrder: update.tileOrder, appIds: update.appIds !== null ? update.appIds : config.appIds, sourceIds: update.sourceIds});
+	// T2 move mode: OK on the long-press menu's *Reorder home row* starts it with that tile picked up.
+	const startMoveMode = useCallback((key: string) => { setMenu(null); setMoveMode({picked: key}); }, []);
+	const configLive = useRef(config);                                    // U2: the newest config, for the delayed save of the move mode
+	configLive.current = config;
+	const moveDirty = useRef(false);
+	const moveTimer = useRef(0);
+	const flushMoveSave = useCallback(() => {
+		window.clearTimeout(moveTimer.current);
+		if (!moveDirty.current) return;
+		moveDirty.current = false;
+		saveConfig(configLive.current);
+	}, []);
+	const onMoveStep = useCallback((key: string, dir: 'left' | 'right') => {
+		const keys = keysRef.current;
+		const next = stepKeys(keys, config.favourites, key, dir);          // favourites and the other tiles keep separate orders; stops at the ends
+		if (next === keys) return;
+		keysRef.current = next;
+		const apps = shownApps.map((a) => a.id);
+		const inputs = shownInputs.map((i) => i.appId);
+		// U2: the screen changes at once, the save follows a moment after the last step (one write, not one per step)
+		const c = configLive.current;                                      // built on the newest config, so two quick steps (or a save right after one) never use an older copy
+		const update = orderUpdate(next, apps, inputs, c.hiddenIds !== null ? (c.appIds || []) : null, c.sourceIds);
+		const out = {...c, tileOrder: update.tileOrder, appIds: update.appIds !== null ? update.appIds : c.appIds, sourceIds: update.sourceIds};
+		configLive.current = out;
+		setConfig(out);
+		moveDirty.current = true;
+		window.clearTimeout(moveTimer.current);
+		moveTimer.current = window.setTimeout(flushMoveSave, 700);
 		setFocus((f) => ({key, seq: (f ? f.seq : 0) + 1}));
-		setMenu(null);
-	}, [config, orderedTiles, shownApps, shownInputs]);
+	}, [config.favourites, shownApps, shownInputs]);        // eslint-disable-line react-hooks/exhaustive-deps
+	const onMoveExit = useCallback(() => { flushMoveSave(); setMoveMode(null); }, []);
+	const onMovePick = useCallback((key: string | null) => { if (!key) flushMoveSave(); setMoveMode((m) => (m ? {picked: key} : m)); }, []);
+	useEffect(() => { if (!moveMode) flushMoveSave(); }, [!!moveMode]);                  // any way out of the mode saves the order
+	useEffect(() => {                                                      // Hearth sent to the background or closed: nothing waits for the timer
+		const out = () => { if (document.hidden) flushMoveSave(); };
+		document.addEventListener('visibilitychange', out);
+		window.addEventListener('pagehide', flushMoveSave);
+		return () => { document.removeEventListener('visibilitychange', out); window.removeEventListener('pagehide', flushMoveSave); };
+	}, []);
+	useEffect(() => {                                                      // the wallpaper darkens while the mode is on (CSS: `body.hearth-move`)
+		document.body.classList.toggle('hearth-move', !!moveMode);
+		return () => document.body.classList.remove('hearth-move');
+	}, [!!moveMode]);
+	useEffect(() => { if (moveMode && config.orderByRecent) setMoveMode(null); }, [config.orderByRecent]);       // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Uninstall (after the menu's confirmation): remove it, then re-read the app list to see whether it is really gone.
 	const removeApp = useCallback((app: AppEntry) => {
@@ -1301,7 +1505,7 @@ export function App () {
 		work.then(({result, detail}) => {
 			setRemapBusy(false);
 			const ok = result === 'applied' || result === 'removed';
-			if (ok) { updateConfig({...config, remap: next, remapKept: next.on ? config.remapKept : false}); remapChecked.current = Date.now(); }
+			if (ok) { patchConfig((c) => ({remap: next, remapKept: next.on ? c.remapKept : false})); remapChecked.current = Date.now(); }
 			showToast(ok && message ? message : remapMessage(result, detail), ok ? 'info' : 'error');
 			if (ok && next.on && !config.remapKept && Object.keys(next.keys).length > 0) askKeepRemap();
 		});
@@ -1349,18 +1553,23 @@ export function App () {
 		const next = {...setButton(config.remap, name, action), on: true};       // giving a button a job turns the feature on
 		applyRemap(next, action ? `${buttonLabel(name)}: ${target ? (action.t === 'app' ? 'opens ' + target.label : target.label.toLowerCase()) : 'changed'}` : tt('app.v1BackToTheTv', {v1: buttonLabel(name)}));
 	}, [config, remapTargets, applyRemap]);
-	const onRemapCapture = useCallback((waiting: boolean) => {
+	/** Resolves true once the filter is listening (the screen stops waiting on false). */
+	const onRemapCapture = useCallback((waiting: boolean): Promise<boolean> => {
 		captureOn.current = waiting;
-		if (!waiting) { setCapture(false); return; }
+		if (!waiting) { setCapture(false); return Promise.resolve(true); }
 		// the filter must be on the TV to hear the press (it is added, with no button changed, if it isn't)
-		const ready = config.remap.on ? Promise.resolve(true) : installRemap({...config.remap, on: true}).then(({result}) => {
-			if (result === 'applied') { updateConfig({...config, remap: {...config.remap, on: true}}); return true; }
-			showToast(remapMessage(result), 'error');
+		const ready = config.remap.on ? Promise.resolve(true) : installRemap({...config.remap, on: true}).then(({result, detail}) => {
+			if (result === 'applied') { patchConfig((c) => ({remap: {...c.remap, on: true}})); return true; }
+			// issue #36: say why (the detail was dropped here), and don't let "Couldn't listen" below replace it
+			captureOn.current = false;
+			log(`remap: the filter could not be added for "Press a button": ${result}${detail ? ' (' + detail + ')' : ''}`);
+			showToast(remapMessage(result, detail), 'error');
 			return false;
 		});
-		ready.then((ok) => ok && setCapture(true)).then((ok) => {
+		return ready.then((ok) => ok && setCapture(true)).then((ok) => {
 			log(`remap: waiting for a button, filter told: ${ok ? 'yes' : 'no'}`);
 			if (!ok && captureOn.current) showToast(tt('app.couldnTListenFor'), 'error');
+			return ok;
 		});
 	}, [config, showToast]);
 
@@ -1396,19 +1605,19 @@ export function App () {
 
 	homeShowing.current = screen === 'home' && !menu && !recents;
 	const menuBlocked = menuVerdict && !menuVerdict.ok ? menuVerdict.reason : null;
-	const menuMoves = menu ? movesFor(moveGroup(orderedTiles.map((t) => t.key), config.favourites, menu.key), menu.key) : {start: false, left: false, right: false, end: false};
+	keysRef.current = orderedTiles.map((t) => t.key);
 
 	return (
 		<>
 			{wallpaperOn && photoShow && <PhotoShow fit={config.wallpaper.fit === 'fit'} intervalSec={config.wallpaper.intervalSec} shuffle={config.wallpaper.shuffle} paused={asleep} />}
 			{wallpaperOn && !photoShow && <Wallpaper config={config.wallpaper} opacity={config.wallpaperOpacity} onProblem={(text) => showToast(text, 'error')} />}
 			{/* Home stays mounted under the other screens so it keeps its focus position. */}
-			<Home items={homeItems} favourites={config.favourites} timeFormat={timeFormat} appearance={appearance} active={screen === 'home' && !menu && !recents && !notice} paused={asleep} onActivate={onActivate} onLongPress={onLongPress} onBack={openRecents} wake={wakes} homeKey={config.homeFocus === 'last' && !homeFirst.current && !bootFirst.current ? lastOpened.current : null} focus={focus} weather={weatherLine} />
+			<Home items={homeItems} favourites={config.favourites} timeFormat={timeFormat} appearance={appearance} active={screen === 'home' && !menu && !recents && !notice} paused={asleep} onActivate={onActivate} onLongPress={onLongPress} onDeadDown={config.hideSettings && !tileBack ? showTileAgain : undefined} onBack={openRecents} wake={wakes} homeKey={config.homeFocus === 'last' && !homeFirst.current && !bootFirst.current ? lastOpened.current : null} focus={focus} weather={weatherLine} moveMode={moveMode} tileKeys={keysRef.current} onMovePick={onMovePick} onMoveStep={onMoveStep} onMoveExit={onMoveExit} />
 			{recents && screen === 'home' && <Recents icons={recentIcons} edits={config.appEdits} inputs={allInputs} sourceEdits={config.sourceEdits} width={config.recentsW} height={config.recentsH} onClose={closeRecents} onOpen={noteOpened} onToast={showToast} />}
-			{menu && <AppMenu title={menu.title} moves={menuMoves} moveBlocked={config.orderByRecent ? tt('app.theRowFollowsTheLast') : undefined} hideDetail={menu.app ? tt('app.youCanAddItBack') : tt('app.youCanAddItBack2')} showUninstall={!!menu.app} blockedReason={menuBlocked} isFavourite={config.favourites.indexOf(menu.key) !== -1} onFavourite={() => { onFavourite('', menu.key); setMenu(null); }} onMove={(action) => moveTile(menu.key, action)} onHide={() => hideTile(menu)} onUninstall={() => { if (menu.app) removeApp(menu.app); }} startAtConfirm={!!menu.direct} onClose={() => setMenu(null)} />}
 			{/* Settings stays mounted under the picker so it keeps its tab. */}
 			{screen === 'settings' && settingsTab === TAB.clock && appearance.clock.show && !config.showDebug && <WidgetPreview now={previewNow} format={timeFormat} config={appearance.clock} weather={weatherLine} />}
-			{(screen !== 'home') && <Settings tabs={tabs} active={screen === 'settings' && !notice && !menu} onToggle={onToggle} onReorder={onReorder} onRecent={onRecent} onOption={onOption} onRefresh={onRefresh} favourites={config.favourites} onFavourite={onFavourite} onUninstallPick={onUninstallPick} onEdit={(key) => { setEditKey(key); setScreen('source'); }} onAdjust={onAdjust} onTab={onTab} onCollapse={onCollapse} onClose={() => { onCollapse(); setScreen('home'); }} about={aboutText(versions, rootState(), lastFailure())} />}
+			{(screen !== 'home') && <Settings tabs={tabs} active={screen === 'settings' && !notice && !menu} onToggle={onToggle} onRecent={onRecent} onOption={onOption} onRefresh={onRefresh} favourites={config.favourites} onFavourite={onFavourite} onUninstallPick={onUninstallPick} onEdit={(key) => { setEditKey(key); setScreen('source'); }} onAdjust={onAdjust} onTab={onTab} onCollapse={onCollapse} onClose={() => { onCollapse(); setScreen('home'); }} about={aboutText(versions, rootState(), lastFailure())} />}
+			{menu && <AppMenu title={menu.title} hideDetail={menu.app ? tt('app.youCanAddItBack') : tt('app.youCanAddItBack2')} showUninstall={!!menu.app} blockedReason={menuBlocked} isFavourite={config.favourites.indexOf(menu.key) !== -1} onFavourite={() => { onFavourite('', menu.key); setMenu(null); }} onReorder={config.orderByRecent || menu.key === MISC.lgHome || menu.key === MISC.settings || menu.key === MISC.system ? undefined : () => startMoveMode(menu.key)} onHide={() => hideTile(menu)} onUninstall={() => { if (menu.app) removeApp(menu.app); }} startAtConfirm={!!menu.direct} settingsDetail={menu.direct ? undefined : hidePractice ? tt('appmenu.settingsPractice') : config.hideSettings && !tileBack ? tt('appmenu.settingsDetail') : undefined} onSettings={onMenuSettings} onClose={() => setMenu(null)} />}
 			{screen === 'source' && (editedSource || editedApp) && (
 				<SourceEditor
 					base={editedSource ? {label: editedSource.label, icon: autoIcon(editedSource.icon)} : {label: editedApp!.title, icon: '', image: editedApp!.iconUrl}}
@@ -1435,9 +1644,9 @@ export function App () {
 				/>
 			)}
 			{screen === 'picker' && <Picker onChoose={onChooseWallpaper} onClose={() => setScreen('settings')} />}
-			{notice && <Notice title={notice.title} text={notice.text} buttons={notice.buttons} onBack={notice.onBack} />}
 			{screen === 'preload' && <Preload apps={apps} onClose={() => setScreen('settings')} onChanged={(n) => setConfig((c) => { if (c.preloadOff === n) return c; const next = {...c, preloadOff: n}; saveConfig(next); return next; })} onToast={showToast} />}
 			{screen === 'remote' && <RemoteButtons remap={config.remap} kept={config.remapKept} targets={remapTargets} captured={captured} busy={remapBusy} onSwitch={onRemapSwitch} onKeep={onRemapKeep} onAssign={onRemapAssign} onCapture={onRemapCapture} onClose={() => setScreen('extrakeys')} />}
+			{screen === 'updates' && <Updates debug={config.showDebug} paused={!!notice} notify={setNotice} closeNotice={() => setNotice(null)} onClose={() => setScreen('settings')} />}
 			{screen === 'extrakeys' && <ExtraKeys targets={remapTargets} model={config.remoteModel} onModel={onRemoteModel} onOtherMethod={() => setScreen('remote')} onClose={() => setScreen('settings')} onToast={showToast} />}
 			{screen === 'themes' && <Picker forTheme onChoose={() => undefined} onClose={() => setScreen('settings')} onTheme={(path) => loadThemeZip(path, apps.map((a) => a.id)).then((outcome: LoadOutcome) => {
 				if (outcome.ok) { setScreen('settings'); afterTheme(outcome, tt('app.themeLoaded')); }
@@ -1462,9 +1671,11 @@ export function App () {
 					onClose={() => setScreen('settings')}
 				/>
 			)}
-			{screen === 'homekey' && <HomeKey model={config.remoteModel} onModel={onRemoteModel} onClose={() => setScreen('settings')} onChanged={(code) => setSystemInfo((previous) => ({...previous, homeKey: code}))} onToast={showToast}  onAuto={onAutoMap} />}
+			{screen === 'homekey' && <HomeKey model={config.remoteModel} onModel={onRemoteModel} onClose={() => setScreen('settings')} onChanged={(code) => setSystemInfo((previous) => ({...previous, homeKey: code}))} onToast={showToast}  onAuto={onAutoMap} paused={!!notice} />}
 			{screen === 'saverpicker' && <Picker forSaver onBuiltinVideo={onChooseSaverVideo} onChoose={onChooseSaver} onClose={() => setScreen('settings')} />}
 			{WEATHER_ENABLED && screen === 'cities' && <CityPicker allowShell={isWebOS()} onChoose={onChooseCity} onClose={() => setScreen('settings')} />}
+			{/* W2: last, so a pop-up is in front of every screen (all screens share one layer; the later one is on top) */}
+			{notice && <Notice title={notice.title} text={notice.text} buttons={notice.buttons} onBack={notice.onBack} />}
 			<Toast message={toast} />
 		</>
 	);

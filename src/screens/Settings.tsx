@@ -4,22 +4,19 @@ import {OptionList, type OptionItem} from '../components/OptionList';
 import type {TileModel} from '../components/Tile';
 import {useKeys, clamp, type NavKey} from '../hooks/useKeys';
 import {useOkPress} from '../hooks/useOkPress';
-import {moveItem} from '../lib/order';
 import {LAYOUT} from '../theme/tokens';
 import {t as tt} from '../i18n';
 
 export interface SettingsTab {
 	id: string;
 	label: string;
-	/** noun for the re-order button, e.g. "apps" → "Re-order apps" */
-	noun: string;
 	/** everything available */
 	items: TileModel[];
 	/** what's on the home screen, in home-screen order */
 	shown: TileModel[];
-	/** a "Refresh list" button next to the re-order button */
+	/** a "Refresh list" button */
 	refresh?: boolean;
-	/** an "Order by last opened" switch next to the re-order button; while on, re-ordering is greyed out */
+	/** an "Order by last opened" switch (while on, the home row's move mode is not offered) */
 	recent?: {on: boolean};
 	/** a "Favourites" button: pick which of the shown items are favourites */
 	fav?: boolean;
@@ -41,7 +38,6 @@ interface Props {
 	tabs: SettingsTab[];
 	active: boolean;
 	onToggle: (tabId: string, key: string) => void;
-	onReorder: (tabId: string, keys: string[]) => void;
 	/** the "Order by last opened" switch */
 	onRecent?: () => void;
 	onOption: (optionId: string) => void;
@@ -67,42 +63,31 @@ interface Props {
 }
 
 /** Focus is on the tabs row (a tab, or a button) or in the tab's content. */
-type Zone = 'tabs' | 'subs' | 'refresh' | 'fav' | 'remove' | 'button' | 'recent' | 'content';
-
-/** A tile that has been picked up in re-order mode, and the order to restore on Back. */
-interface Held {
-	index: number;
-	original: string[];
-}
+type Zone = 'tabs' | 'subs' | 'refresh' | 'fav' | 'remove' | 'recent' | 'content';
 
 const HINT = {
 	get select () { return tt('settings.okAddsOrRemovesAn'); },
 	get edit () { return tt('settings.okAddsOrRemovesAn'); },
-	get reorder () { return tt('settings.okPicksUpAnItem'); },
-	get holding () { return tt('settings.arrowsMoveItOkPuts'); },
 	get picking () { return tt('settings.okMarksOrUnmarksA'); },
 	get removing () { return tt('settings.okUninstallsTheApp'); },
 	get options () { return tt('settings.okChangesASettingAdjust'); }
 };
 
-/** Settings: pick which apps and sources appear on the home row and their order, plus the
- *  wallpaper and other options.
+/** Settings: pick which apps and sources appear on the home row, plus the
+ *  wallpaper and other options. (The order is changed on the home row itself: hold OK, Reorder home row.)
  *
  *  Tabs: grid tabs (Apps, Sources) and option tabs (Look, Clock, Wallpaper, Options).
  *  Grid tabs, select mode: everything available; OK adds/removes an item.
  *  Grid tabs: hold OK on a tile to edit its name and icon (Apps, Sources).
- *  Grid tabs, re-order mode (the Re-order button): only what's on the home screen, in order;
- *  OK picks an item up, arrows move it, OK puts it down. Hold OK or press Done to leave. */
-export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption, onRefresh, favourites, onFavourite, onUninstallPick, onEdit, onAdjust, onClose, onTab, onCollapse, about}: Props) {
+ */
+export function Settings ({tabs, active, onToggle, onRecent, onOption, onRefresh, favourites, onFavourite, onUninstallPick, onEdit, onAdjust, onClose, onTab, onCollapse, about}: Props) {
 	const [tabIndex, setTabIndex] = useState(0);
 	const [subIndex, setSubIndex] = useState(0);
 	const [zone, setZone] = useState<Zone>('tabs');
 	const [gridIndex, setGridIndex] = useState(0);
 	const [optionIndex, setOptionIndex] = useState(0);
-	const [reordering, setReordering] = useState(false);
 	const [pickKind, setPickKind] = useState<'' | 'fav' | 'remove'>('');          // the Favourites or the Uninstall apps button is on
 	const picking = pickKind !== '';
-	const [held, setHeld] = useState<Held | null>(null);
 	const [pageIndex, setPageIndex] = useState(0);
 
 	const tabCount = tabs.length;
@@ -121,14 +106,14 @@ export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption
 	const hasRemove = !!(tab && tab.remove && onUninstallPick);
 	const hasRecent = !!(tab && tab.recent && onRecent);
 	const recentOn = !!(tab && tab.recent && tab.recent.on);
-	const bar: Zone[] = picking ? [pickKind === 'remove' ? 'remove' : 'fav'] : ([hasRefresh && !reordering && 'refresh', hasFav && !reordering && 'fav', hasRemove && !reordering && 'remove', 'button', hasRecent && !reordering && 'recent'] as (Zone | false)[]).filter((z): z is Zone => !!z);
-	const items = tab ? (reordering || pickKind === 'fav' ? tab.shown : tab.items) : [];
+	const bar: Zone[] = picking ? [pickKind === 'remove' ? 'remove' : 'fav'] : ([hasRefresh && 'refresh', hasFav && 'fav', hasRemove && 'remove', hasRecent && 'recent'] as (Zone | false)[]).filter((z): z is Zone => !!z);
+	const items = tab ? (pickKind === 'fav' ? tab.shown : tab.items) : [];
 	const count = onPages ? pages.length : onOptions ? options.length : items.length;
 	const cols = LAYOUT.gridColumns;
 	const keysOf = (list: TileModel[]) => list.map((t) => t.key);
 
 	const selectTab = (i: number) => {
-		if (reordering || picking) return;          // tab is locked while re-ordering or picking favourites
+		if (picking) return;          // tab is locked while picking favourites
 		const at = ((i % tabCount) + tabCount) % tabCount;          // the tab bar loops
 		if (at !== tabIndex && onCollapse) onCollapse();          // a new tab always shows its groups closed
 		setTabIndex(at);
@@ -139,22 +124,9 @@ export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption
 	};
 
 	const selectSub = (i: number) => {
-		if (reordering || picking || !hasSubs) return;
+		if (picking || !hasSubs) return;
 		setSubIndex(((i % subs.length) + subs.length) % subs.length);
 		setGridIndex(0);
-	};
-
-	/** Switch re-order mode, keeping focus on the same item where it exists in both lists. */
-	const setMode = (next: boolean) => {
-		if (!tab || next === reordering) return;
-		if (next && recentOn) return;                                  // the row follows the last opened apps: nothing to re-order
-		const focusedKey = items[gridIndex] && items[gridIndex].key;
-		const target = next ? tab.shown : tab.items;
-		const i = focusedKey ? keysOf(target).indexOf(focusedKey) : -1;
-		setGridIndex(Math.max(0, i));
-		setHeld(null);
-		setReordering(next);
-		if (next && (zone === 'tabs' || target.length === 0)) setZone('button');
 	};
 
 	/** Switch the Favourites button on or off (the grid then shows what is on the home screen, favourites ticked). */
@@ -168,34 +140,16 @@ export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption
 		setZone(kind === 'remove' ? 'remove' : 'fav');
 	};
 
-	/** Move the held tile to `to`, updating the home screen as it goes. */
-	const moveHeld = (to: number) => {
-		if (!tab || !held) return;
-		const dest = clamp(to, 0, count - 1);
-		if (dest === held.index) return;
-		onReorder(tab.id, moveItem(keysOf(tab.shown), held.index, dest));
-		setHeld({...held, index: dest});
-		setGridIndex(dest);
-	};
-
 	const activateGridItem = (i: number) => {
 		if (!tab || !items[i]) return;
 		if (picking) { if (pickKind === 'remove') { if (onUninstallPick) onUninstallPick(items[i].key); } else if (onFavourite) onFavourite(tab.id, items[i].key); return; }
-		if (!reordering) { onToggle(tab.id, items[i].key); return; }
-		if (held) {                                                   // put down (pointer: at the clicked tile)
-			if (i !== held.index) moveHeld(i);
-			setHeld(null);
-			return;
-		}
-		setHeld({index: i, original: keysOf(tab.shown)});             // pick up
-		setGridIndex(i);
+		onToggle(tab.id, items[i].key);
 	};
 
 	const onPress = () => {
 		if (zone === 'refresh') { if (onRefresh) onRefresh(); return; }
 		if (zone === 'fav') { setPickMode(!picking); return; }
 		if (zone === 'remove') { setPickMode(!picking, 'remove'); return; }
-		if (zone === 'button') { setMode(!reordering); return; }
 		if (zone === 'recent') { if (onRecent) onRecent(); return; }
 		if (zone === 'tabs') { if (hasSubs) setZone('subs'); else if (count > 0) setZone('content'); return; }
 		if (zone === 'subs') { if (count > 0) setZone('content'); return; }
@@ -204,11 +158,10 @@ export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption
 		activateGridItem(gridIndex);
 	};
 
-	// Hold OK: on a tile, edit that app or source; while re-ordering, finish re-ordering
+	// Hold OK: on a tile, edit that app or source
 	const onLongPress = () => {
 		if (!tab) return;
 		if (picking) { setPickMode(false); return; }
-		if (reordering) { setMode(false); return; }
 		if (zone === 'content' && hasEdit && onEdit && items[gridIndex]) onEdit(items[gridIndex].key);
 	};
 
@@ -218,19 +171,9 @@ export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption
 		if (key === 'enter') return true;           // handled by useOkPress (press vs hold)
 
 		if (key === 'back') {
-			if (held && tab) { onReorder(tab.id, held.original); setGridIndex(held.index); setHeld(null); }
-			else if (reordering) setMode(false);
-			else if (picking) setPickMode(false);
+			if (picking) setPickMode(false);
 			else if (zone === 'content' && onOptions && onCollapse && options.some((o) => o.header && o.open)) onCollapse(current ? current.id : undefined);          // first Back closes the open group
 			else onClose();
-			return true;
-		}
-
-		if (held) {
-			if (key === 'left') moveHeld(held.index - 1);
-			else if (key === 'right') moveHeld(held.index + 1);
-			else if (key === 'up') moveHeld(held.index - cols);
-			else if (key === 'down') moveHeld(held.index + cols);
 			return true;
 		}
 
@@ -248,11 +191,11 @@ export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption
 			return true;
 		}
 		// The buttons sit in a row under the tabs: Down from the tabs reaches them, Down again reaches the tiles.
-		if (zone === 'refresh' || zone === 'fav' || zone === 'remove' || zone === 'button' || zone === 'recent') {
+		if (zone === 'refresh' || zone === 'fav' || zone === 'remove' || zone === 'recent') {
 			const at = bar.indexOf(zone);
 			if (key === 'left' && at > 0) setZone(bar[at - 1]);
 			else if (key === 'right' && at < bar.length - 1) setZone(bar[at + 1]);
-			else if (key === 'up' && !reordering && !picking) setZone(hasSubs ? 'subs' : 'tabs');
+			else if (key === 'up' && !picking) setZone(hasSubs ? 'subs' : 'tabs');
 			else if (key === 'down' && count > 0) setZone('content');
 			return true;
 		}
@@ -283,11 +226,11 @@ export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption
 			case 'down': setGridIndex((i) => (i + cols < count ? i + cols : i)); break;
 		}
 		return true;
-	}, [pageIndex, onPages, zone, tabIndex, subIndex, subs, hasSubs, tabCount, gridIndex, optionIndex, count, tab, onOptions, options, reordering, picking, held, items, hasRefresh, hasEdit, hasRecent, recentOn, onRecent, onReorder, onAdjust, onClose, onCollapse, current]);
+	}, [pageIndex, onPages, zone, tabIndex, subIndex, subs, hasSubs, tabCount, gridIndex, optionIndex, count, tab, onOptions, options, picking, items, hasRefresh, hasEdit, hasRecent, recentOn, onRecent, onAdjust, onClose, onCollapse, current]);
 
 	useKeys(handleKey, active);
 
-	const hint = onPages ? tt('settings.photographThePageChangePage') : onOptions ? HINT.options : held ? HINT.holding : reordering ? HINT.reorder : pickKind === 'remove' ? HINT.removing : picking ? HINT.picking : hasEdit ? HINT.edit : HINT.select;
+	const hint = onPages ? tt('settings.photographThePageChangePage') : onOptions ? HINT.options : pickKind === 'remove' ? HINT.removing : picking ? HINT.picking : hasEdit ? HINT.edit : HINT.select;
 	const labels = tabs.map((t) => t.label);
 	const focusedId = useRef('');
 	// The rows panel is as wide as the tab bar (first tab's left edge to the last tab's right edge, plus the focus border).
@@ -318,7 +261,6 @@ export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption
 		const f = options[optionIndex];
 		if (!(zone === 'content' && f && ((f.header && f.open) || f.grouped))) onCollapse(current.id);
 	}, [zone, optionIndex, options, tabIndex]);          // eslint-disable-line react-hooks/exhaustive-deps
-	const buttonClass = ['settings__button', reordering && 'settings__button--active', recentOn && 'settings__button--off', zone === 'button' && 'settings__button--focused'].filter(Boolean).join(' ');
 
 	return (
 		<div class="screen screen--settings">
@@ -329,8 +271,8 @@ export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption
 					{labels.map((label, i) => (
 						<div
 							key={label}
-							class={['tab', i === tabIndex && 'tab--active', (reordering || picking) && i !== tabIndex && 'tab--locked', zone === 'tabs' && i === tabIndex && 'tab--focused'].filter(Boolean).join(' ')}
-							onMouseEnter={() => { if (!reordering && !picking) { setZone('tabs'); selectTab(i); } }}
+							class={['tab', i === tabIndex && 'tab--active', picking && i !== tabIndex && 'tab--locked', zone === 'tabs' && i === tabIndex && 'tab--focused'].filter(Boolean).join(' ')}
+							onMouseEnter={() => { if (!picking) { setZone('tabs'); selectTab(i); } }}
 						>
 							{label}
 						</div>
@@ -341,8 +283,8 @@ export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption
 						{subs.map((t, i) => (
 							<div
 								key={t.id}
-								class={['tab', t === tab && 'tab--active', (reordering || picking) && t !== tab && 'tab--locked', zone === 'subs' && t === tab && 'tab--focused'].filter(Boolean).join(' ')}
-								onMouseEnter={() => { if (!reordering && !picking) { setZone('subs'); selectSub(i); } }}
+								class={['tab', t === tab && 'tab--active', picking && t !== tab && 'tab--locked', zone === 'subs' && t === tab && 'tab--focused'].filter(Boolean).join(' ')}
+								onMouseEnter={() => { if (!picking) { setZone('subs'); selectSub(i); } }}
 							>
 								{t.label}
 							</div>
@@ -351,7 +293,7 @@ export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption
 				)}
 				{tab && (
 					<div class="settings__toolbar">
-						{hasRefresh && !reordering && !picking && (
+						{hasRefresh && !picking && (
 							<div
 								class={['settings__button', zone === 'refresh' && 'settings__button--focused'].filter(Boolean).join(' ')}
 								onMouseEnter={() => setZone('refresh')}
@@ -359,7 +301,7 @@ export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption
 							>
 								{tt('settings.refreshList')}</div>
 						)}
-						{hasFav && !reordering && pickKind !== 'remove' && (
+						{hasFav && pickKind !== 'remove' && (
 							<div
 								class={['settings__button', picking && 'settings__button--active', zone === 'fav' && 'settings__button--focused'].filter(Boolean).join(' ')}
 								onMouseEnter={() => setZone('fav')}
@@ -368,7 +310,7 @@ export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption
 								{picking ? tt('preloadcmd.done') : tt('group.Favourites')}
 							</div>
 						)}
-						{hasRemove && !reordering && pickKind !== 'fav' && (
+						{hasRemove && pickKind !== 'fav' && (
 							<div
 								class={['settings__button', picking && 'settings__button--active', zone === 'remove' && 'settings__button--focused'].filter(Boolean).join(' ')}
 								onMouseEnter={() => setZone('remove')}
@@ -377,16 +319,7 @@ export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption
 								{picking ? tt('preloadcmd.done') : tt('settings.uninstallApps')}
 							</div>
 						)}
-						{!picking && (
-							<div
-								class={buttonClass}
-								onMouseEnter={() => setZone('button')}
-								onClick={() => setMode(!reordering)}
-							>
-								{reordering ? tt('preloadcmd.done') : tt('settings.reOrderNoun', {noun: tab.noun})}
-							</div>
-						)}
-						{hasRecent && !reordering && !picking && (
+						{hasRecent && !picking && (
 							<div
 								class={['settings__button', recentOn && 'settings__button--active', zone === 'recent' && 'settings__button--focused'].filter(Boolean).join(' ')}
 								onMouseEnter={() => setZone('recent')}
@@ -395,18 +328,16 @@ export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption
 								{recentOn ? tt('settings.orderByLastOpenedOn') : tt('settings.orderByLastOpenedOff')}
 							</div>
 						)}
-						{tab.note && !reordering && !picking && <p class="settings__note">{tab.note}</p>}
+						{tab.note && !picking && <p class="settings__note">{tab.note}</p>}
 					</div>
 				)}
 				{tab && (
 					<Grid
 						items={items}
-						mode={reordering ? 'reorder' : 'select'}
 						checkedKeys={pickKind === 'fav' ? (favourites || []) : pickKind === 'remove' ? [] : keysOf(tab.shown)}
-						liftedIndex={held ? held.index : -1}
 						focused={zone === 'content'}
 						selected={gridIndex}
-						onSelect={(i) => { if (!held) { setZone('content'); setGridIndex(i); } }}
+						onSelect={(i) => { setZone('content'); setGridIndex(i); }}
 						onActivate={(i) => { setZone('content'); activateGridItem(i); }}
 					/>
 				)}
@@ -437,7 +368,7 @@ export function Settings ({tabs, active, onToggle, onReorder, onRecent, onOption
 					/>
 				)}
 				{about && <p class="settings__about">{about}</p>}
-				{(reordering || pickKind === 'fav') && count === 0 && <p class="settings__hint">{tt('settings.nothingOnTheHome')}</p>}
+				{pickKind === 'fav' && count === 0 && <p class="settings__hint">{tt('settings.nothingOnTheHome')}</p>}
 			</div>
 		</div>
 	);

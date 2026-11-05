@@ -43,6 +43,15 @@ export function moveKey (keys: string[], key: string, action: MoveAction): strin
 	return next;
 }
 
+/** Move mode (2.0.3 T2): `keys` with `key` one place left or right inside its own row (the favourites, or all the others).
+ *  Stops at the ends (no looping). Returns the very same array when nothing moves, so nothing needs saving. */
+export function stepKeys (keys: string[], favourites: string[], key: string, dir: 'left' | 'right'): string[] {
+	const group = moveGroup(keys, favourites, key);
+	const moved = moveKey(group, key, dir);
+	if (moved.join('|') === group.join('|')) return keys;
+	return reslot(keys, moved);
+}
+
 /** `current` with the places held by `subset`'s keys filled in the order `subset` gives
  *  (used when Settings re-orders only the apps, or only the inputs). */
 export function reslot (current: string[], subset: string[]): string[] {

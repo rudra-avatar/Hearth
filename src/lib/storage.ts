@@ -9,6 +9,8 @@ import {currentPhotoId, currentSaverSource} from './legacyids';
 import {cleanEdits, type SourceEdits} from './sourceicons';
 import {CLOCK_FONT_IDS, restoreThemeFonts, type ClockFont} from './clockfont';
 import {SCROLL_SPEED_IDS, type ScrollSpeed} from './scrollspeed';
+import {writeWithRoom} from './storeguard';
+import {log} from './log';
 
 /** thickness choices for the app names */
 export const LABEL_WEIGHTS: readonly number[] = [300, 400, 500, 600, 700];
@@ -37,6 +39,7 @@ export const RANGES = {
 	clockTop:     {min: 0,   max: 70,  step: 2,  def: 20},   // % of the screen height (0 = the very top)
 	clockLeft:    {min: 0,   max: 100, step: 2,  def: 50},   // % of the screen width (where the clock's centre sits)
 	clockShadow: {min: 10,  max: 100, step: 10, def: 100},     // % (strength of the widget's drop shadow)
+	clockScrim:  {min: 0,   max: 100, step: 5,  def: 25},     // strength behind the widget (fresh installs 25; a saved config without the key loads as 0, see loadConfig; 0 = off; 100 = the old 50 % darkness, see Clock.tsx)
 	clockOpacity: {min: 10,  max: 100, step: 10, def: 100},   // % (how solid the clock, date and weather are)
 	iconOpacity:  {min: 30,  max: 100, step: 10, def: 100},   // % (how solid the icons of the home row are)
 	iconGap:      {min: 50,  max: 200, step: 10, def: 100},   // % of the standard space between the home row's icons
@@ -80,6 +83,8 @@ export interface ClockConfig {
 	shadow: boolean;
 	/** how strong that shadow is, % (see RANGES.clockShadow) */
 	shadowStrength: number;
+	/** R1: strength of a soft gradient behind the widget, % (0 = off; 5-100, where 100 = the earlier 50 % darkness, see RANGES.clockScrim) */
+	scrim: number;
 	/** how solid the whole widget is, % */
 	opacity: number;
 	showDate: boolean;
@@ -115,12 +120,12 @@ export interface WallpaperConfig {
 }
 
 /** Icon styles stored in `iconStyle`: 'original'; 'tinted' (P48: the artwork on a themed dark tile, no mask); all others draw the icon
- *  as a mask (Dark, Soft, Accent and Gradient mono, P39c). */
-export const ICON_STYLE_IDS = ['original', 'mono', 'soft', 'accent', 'gradient', 'tinted'];
+ *  as a mask (Dark, Soft, Accent and Gradient mono, P39c). 'glyph' (2.0.3 W1): the same mask without a tile, Minimal's focus (larger only). */
+export const ICON_STYLE_IDS = ['original', 'mono', 'soft', 'accent', 'gradient', 'tinted', 'glyph'];
 /** Accent mono is not offered in OLED black (user, P59b): a saved Accent mono there is drawn as Soft mono (the saved value is kept for other themes). */
 export const effectiveIconStyle = (style: string, theme: string): string => (style === 'accent' && theme === 'black' ? 'soft' : style);
 /** The inverted tile (P59b) exists for Dark, Soft and Accent mono (not Gradient mono, not Tinted tile). */
-export const hasLightTile = (style: string): boolean => style === 'mono' || style === 'soft' || style === 'accent';
+export const hasLightTile = (style: string): boolean => style === 'mono' || style === 'soft' || style === 'accent' || style === 'glyph';
 export const isMonoStyle = (style: string): boolean => style !== 'original' && style !== 'tinted' && ICON_STYLE_IDS.indexOf(style) !== -1;
 
 /** P41f: bumped when this version's one-time reset of saved look settings must run again */
@@ -164,6 +169,8 @@ export interface UserConfig {
 	keepRelaunch: boolean;
 	/** LEGACY: the removed SAM method was on (set by an older version). Cleaned up once at start, then false. Never set by this version. */
 	takeoverHome: boolean;
+	/** 2.0.3 (R3): Hearth sits in LG Home's place through SAM (experimental, rooted); additive, off by default */
+	samHome: boolean;
 	/** the TV's screen saver plays the wallpaper photos (experimental, rooted TVs) */
 	screensaver: boolean;
 	/** folder, picture, GIF or video chosen for the screen saver; '' = follow the wallpaper; '@photos' = the built-in photos; '@video' = the built-in video */
@@ -213,7 +220,7 @@ export interface UserConfig {
 	/** P77: colour of the shapes of the mono icon styles: 'theme' (the theme's own ink) or a plain colour id */
 	iconColor: string;
 	/** P61c: which remote is drawn on the Remote control pages */
-	remoteModel: 'ir' | 'magic-2019' | 'magic-2021' | 'magic-2025';
+	remoteModel: 'ir' | 'magic-2016' | 'magic-2019' | 'magic-2021' | 'magic-2025';
 	/** size of the Recent apps panel, % of the screen */
 	recentsW: number;
 	recentsH: number;
@@ -246,6 +253,8 @@ export interface UserConfig {
 	/** inputs with nothing plugged in are greyed out and HDMI-CEC device names are shown (P62, PR #16) */
 	inputStatus: boolean;
 	showSystem: boolean;
+	/** R10: the Hearth Settings tile is hidden (hold OK on an app opens Settings; Down x5 on Home shows the tile until the next start) */
+	hideSettings: boolean;
 	/** the home row shows the tiles opened last first (Settings -> Apps / Sources); the manual order stays saved */
 	orderByRecent: boolean;
 	/** "Reassign remote buttons" (P61, from PR #19 by Obednal97): what the remote's app buttons do instead; see remapcmd.ts */
@@ -308,6 +317,7 @@ export const DEFAULT_CLOCK: ClockConfig = {
 	color: 'theme',          // P77: Follow theme (identical to white on OLED black); saved settings keep their colour
 	shadow: true,
 	shadowStrength: RANGES.clockShadow.def,
+	scrim: RANGES.clockScrim.def,
 	opacity: RANGES.clockOpacity.def,
 	showDate: true,
 	showPeriod: true,
@@ -332,6 +342,7 @@ export const DEFAULT_CONFIG: UserConfig = {
 	keepReady: false,
 	keepRelaunch: false,
 	takeoverHome: false,
+	samHome: false,
 	screensaver: true,                // P41c: on by default (rooted TVs; a failed set-up turns it off with a message)
 	screensaverSource: '@video',
 	screensaverInterval: 60,
@@ -375,6 +386,7 @@ export const DEFAULT_CONFIG: UserConfig = {
 	showLgHome: false,                // P41c: hidden on a fresh install (saved settings keep theirs)
 	inputStatus: true,
 	showSystem: false,                // P41c: same
+	hideSettings: false,              // R10: additive, off
 	orderByRecent: false,
 	remap: DEFAULT_REMAP,
 	remapKept: false,
@@ -404,8 +416,8 @@ function ranged (value: unknown, name: RangeName): number {
 }
 
 /** Fields left alone by the P41f reset: the user's own apps, order, names and favourites, and everything installed on the TV (helper, Home key, power-on app, saver, keep-ready, remote, debug). */
-const KEPT_ON_RESET: readonly (keyof UserConfig)[] = ['appIds', 'hiddenIds', 'sourceIds', 'tileOrder', 'favourites', 'sourceEdits', 'appEdits', 'closeHome', 'tvApps', 'showDebug', 'language',
-	'replaceHome', 'homeApp', 'homeAppPrevious', 'preloadOff', 'keepReady', 'keepRelaunch', 'takeoverHome', 'screensaver', 'screensaverSource', 'screensaverInterval', 'screensaverShuffle',
+const KEPT_ON_RESET: readonly (keyof UserConfig)[] = ['appIds', 'hiddenIds', 'sourceIds', 'tileOrder', 'favourites', 'sourceEdits', 'appEdits', 'closeHome', 'tvApps', 'showDebug', 'language', 'hideSettings',
+	'replaceHome', 'homeApp', 'homeAppPrevious', 'preloadOff', 'keepReady', 'keepRelaunch', 'takeoverHome', 'samHome', 'screensaver', 'screensaverSource', 'screensaverInterval', 'screensaverShuffle',
 	'screensaverCare', 'screensaverPowerOff', 'screensaverDim', 'screensaverDimLevel', 'screensaverFit', 'screensaverRecursive', 'powerOnApp', 'powerOnNetwork', 'remoteModel', 'remap', 'remapKept', 'defaultsV'];
 
 /** P41f: the saved settings with every look, widget, wallpaper, home-row and quiet-mode value at its default. */
@@ -464,9 +476,12 @@ export function dropPrefsBackup (): void {
 	backupSeen = false;
 }
 
+const RESCUE_KEY = 'hearth-config-rescue-v1';
+
 export function loadConfig (): UserConfig {
+	let raw: string | null = null;
 	try {
-		const raw = localStorage.getItem(STORAGE_KEY);
+		raw = localStorage.getItem(STORAGE_KEY);
 		if (!raw) return {...DEFAULT_CONFIG};
 		restoreThemeFonts();          // P80: the kept theme's font ids must be known before the saved font is checked
 		const parsed = JSON.parse(raw) as Partial<UserConfig> & {wallpaper?: Partial<WallpaperConfig>; clock?: Partial<ClockConfig>; weather?: Partial<WeatherConfig>};
@@ -480,7 +495,7 @@ export function loadConfig (): UserConfig {
 		const city: City | null = wc && typeof wc.name === 'string' && wc.name && validCoords(wc.lat, wc.lon) ? {name: wc.name.slice(0, 60), lat: wc.lat as number, lon: wc.lon as number, detail: typeof wc.detail === 'string' ? wc.detail.slice(0, 80) : undefined} : null;
 		const mode: WallpaperMode = w.mode === 'image' || w.mode === 'folder' ? w.mode : 'gradient';
 		const path = typeof w.path === 'string' ? w.path : '';
-		const interval = typeof w.intervalSec === 'number' && w.intervalSec >= 5 ? w.intervalSec : DEFAULT_WALLPAPER.intervalSec;
+		const interval = typeof w.intervalSec === 'number' && (w.intervalSec === 0 || w.intervalSec >= 5) ? w.intervalSec : DEFAULT_WALLPAPER.intervalSec;
 		const out: UserConfig = {
 			defaultsV: DEFAULTS_VERSION,
 			appIds: stringList(parsed.appIds),
@@ -502,6 +517,7 @@ export function loadConfig (): UserConfig {
 			keepRelaunch: parsed.keepRelaunch === true,
 			preloadOff: typeof parsed.preloadOff === 'number' && parsed.preloadOff > 0 && parsed.preloadOff < 500 ? Math.floor(parsed.preloadOff) : 0,
 			takeoverHome: parsed.takeoverHome === true,
+			samHome: parsed.samHome === true,
 			screensaver: parsed.screensaver !== false,        // P41c: a saved setting without the field (updaters) reads as On
 			screensaverSource: typeof parsed.screensaverSource !== 'string' ? DEFAULT_CONFIG.screensaverSource : (parsed.screensaverSource.charAt(0) === '/' || /^@(photos|video|photo:photo-[0-9][0-9])$/.test(parsed.screensaverSource)) && parsed.screensaverSource.length < 400 ? parsed.screensaverSource : '',   // P41c: the built-in choices (@photos, @video) were dropped on reload before
 			screensaverInterval: typeof parsed.screensaverInterval === 'number' && parsed.screensaverInterval >= 5 && parsed.screensaverInterval <= 3600 ? Math.round(parsed.screensaverInterval) : 60,
@@ -523,7 +539,7 @@ export function loadConfig (): UserConfig {
 			iconLight: parsed.iconLight === true,
 			themeSel: typeof parsed.themeSel === 'string' && /^[a-z0-9-]{1,40}$/.test(parsed.themeSel) ? parsed.themeSel : '',
 			iconColor: PLAIN_COLOR_IDS.indexOf(parsed.iconColor as string) !== -1 ? (parsed.iconColor as string) : 'theme',
-			remoteModel: parsed.remoteModel === 'magic-2019' || parsed.remoteModel === 'magic-2021' || parsed.remoteModel === 'magic-2025' ? parsed.remoteModel : 'ir',
+			remoteModel: parsed.remoteModel === 'magic-2016' || parsed.remoteModel === 'magic-2019' || parsed.remoteModel === 'magic-2021' || parsed.remoteModel === 'magic-2025' ? parsed.remoteModel : 'ir',
 			tileShape: TILE_SHAPE_IDS.indexOf(parsed.tileShape as string) !== -1 ? (parsed.tileShape as string) : 'rounded',
 			recentsW: ranged(parsed.recentsW, 'recentsW'),
 			recentsH: ranged(parsed.recentsH, 'recentsH'),
@@ -543,6 +559,7 @@ export function loadConfig (): UserConfig {
 			showLgHome: parsed.showLgHome !== false,
 			inputStatus: parsed.inputStatus !== false,   // P41c: a saved setting without the field (updaters) reads as On; an explicit Off stays
 			showSystem: parsed.showSystem !== false,
+			hideSettings: parsed.hideSettings === true,
 			orderByRecent: parsed.orderByRecent === true,
 			remap: cleanRemap(parsed.remap),
 			remapKept: parsed.remapKept === true,
@@ -565,6 +582,7 @@ export function loadConfig (): UserConfig {
 				...(validInk(c.ink) ? {ink: validInk(c.ink)} : {}),
 				shadow: c.shadow !== false,
 				shadowStrength: ranged(c.shadowStrength, 'clockShadow'),
+				scrim: typeof c.scrim === 'number' ? ranged(c.scrim, 'clockScrim') : 0,   // saved config from before the row existed: stays Off (no change for updaters)
 				opacity: ranged(c.opacity, 'clockOpacity'),
 				showDate: c.showDate !== false,
 				showPeriod: c.showPeriod !== false,
@@ -593,14 +611,35 @@ export function loadConfig (): UserConfig {
 			return fresh;
 		}
 		return out;
-	} catch {
+	} catch (e) {
+		// 2.0.3 I2: the unreadable value is kept once (only when it fits; never freed for) and the reason is logged; the next save would overwrite it with defaults
+		let kept = false;
+		try { if (raw && !localStorage.getItem(RESCUE_KEY)) { localStorage.setItem(RESCUE_KEY, raw); kept = true; } } catch { /* no room: no rescue copy */ }
+		log(`settings: stored value unreadable (${e instanceof Error ? e.message.slice(0, 40) : 'error'}); defaults used${kept ? '; raw copy kept' : ''}`);
 		return {...DEFAULT_CONFIG};
 	}
 }
 
-export function saveConfig (config: UserConfig): void {
-	try { localStorage.setItem(STORAGE_KEY, JSON.stringify(config)); }
-	catch { /* nothing sensible to do on a TV */ }
+let saveFailHandler: (() => void) | null = null;
+/** Called (at most once per page) when a save still fails after freeing caches. */
+export function setSaveFailHandler (fn: (() => void) | null): void { saveFailHandler = fn; }
+let failReported = false;
+
+/** Saves the settings. A full store frees rebuildable caches (lib/storeguard.ts) and retries. Returns whether the value was stored. */
+export function saveConfig (config: UserConfig): boolean {
+	let json = '';
+	try { json = JSON.stringify(config); } catch { return false; }
+	const r = writeWithRoom(localStorage, STORAGE_KEY, json);
+	if (r.freed.length) log(`settings: store full, freed ${r.freed.join(', ')}; save ${r.ok ? 'ok' : 'FAILED'}`);
+	else if (!r.ok) log('settings: save FAILED (nothing left to free)');
+	if (!r.ok && !failReported) { failReported = true; if (saveFailHandler) saveFailHandler(); }
+	return r.ok;
+}
+
+/** Saves and reads the value back: true only when what is stored equals what was written. */
+export function saveConfigVerified (config: UserConfig): boolean {
+	if (!saveConfig(config)) return false;
+	try { return localStorage.getItem(STORAGE_KEY) === JSON.stringify(config); } catch { return false; }
 }
 
 /** Toggle an ID in an ordered list: remove if present, else append. */

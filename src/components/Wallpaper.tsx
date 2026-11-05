@@ -10,6 +10,11 @@ import {
 } from '../lib/wallpaper';
 import {t as tt} from '../i18n';
 
+/** R9 (Each visit, interval 0): away this long = a new picture on return; delay of the picture change after a restart */
+const AWAY_CHANGE_MS = 60000;
+const RESTART_CHANGE_MS = 8000;
+let restartHandled = false;
+
 interface Props {
 	config: WallpaperConfig;
 	/** how solid the picture is, % (100 = fully) */
@@ -57,6 +62,9 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 		const held = st.held;                            // the picture URL each layer holds
 		const cacheId = wallpaperCacheId(config.mode, config.path + (config.recursive ? '|sub' : ''));
 		let disposed = false;
+		let hiddenAt = 0;
+		const atRestart = !restartHandled;            // R9: first run after the page started (a later setting change is no restart)
+		restartHandled = true;
 		let failed = false;
 		let told = false;
 		let busy = false;
@@ -168,7 +176,7 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 		const schedule = () => {
 			stopTimer();
 			const rotates = config.mode === 'folder' && (files.length === 0 || files.length > 1);
-			if (rotates && !document.hidden) timer = window.setTimeout(advance, config.intervalSec * 1000);
+			if (rotates && config.intervalSec > 0 && !document.hidden) timer = window.setTimeout(advance, config.intervalSec * 1000);
 		};
 
 		const next = (attempt: number) => {
@@ -217,7 +225,10 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 				unsaved = false;
 				cacheKnown = true;
 				// the saved shuffle order picks the next picture after one interval: nothing is loaded at start-up
-				if (config.mode === 'folder') schedule();
+				if (config.mode === 'folder') {
+					schedule();
+					if (config.intervalSec === 0 && atRestart) timer = window.setTimeout(advance, RESTART_CHANGE_MS);   // R9 Each visit: a new picture after a restart, once the first screen is calm
+				}
 				return;
 			}
 			if (config.mode === 'image') { files = [config.path]; next(0); return; }
@@ -235,9 +246,13 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 
 		const onVisibility = () => {
 			if (config.mode === 'gradient') return;
-			if (document.hidden) { stopTimer(); saveCache(); return; }
+			if (document.hidden) { hiddenAt = Date.now(); stopTimer(); saveCache(); return; }
+			const away = hiddenAt ? Date.now() - hiddenAt : 0;
+			hiddenAt = 0;
 			if (failed) start();                                   // the USB drive may be back
-			else if (config.mode === 'folder') {
+			else if (config.mode === 'folder' && config.intervalSec === 0) {
+				if (away >= AWAY_CHANGE_MS) advance();             // R9 Each visit: a new picture after 1+ min away
+			} else if (config.mode === 'folder') {
 				// carry on where the interval left off: coming back to the front must not start a fade of its own
 				stopTimer();
 				timer = window.setTimeout(advance, Math.max(1500, config.intervalSec * 1000 - (Date.now() - shownAt)));
@@ -274,6 +289,7 @@ export function PhotoShow ({intervalSec, shuffle, paused, fit}: {intervalSec: nu
 	const layerB = useRef<HTMLDivElement>(null);
 	const wrap = useRef<HTMLDivElement>(null);
 	const firstPhoto = useRef(takeEarlyPhoto()).current;       // chosen and already loading since main.tsx, else random
+	const away = useRef(0);
 	const state = useRef({front: -1, index: firstPhoto >= 0 ? firstPhoto : Math.floor(Math.random() * PHOTO_IDS.length), busy: false});
 
 	useEffect(() => { clearWallpaperCache(); }, []);
@@ -286,6 +302,9 @@ export function PhotoShow ({intervalSec, shuffle, paused, fit}: {intervalSec: nu
 		let timer = 0;
 		let warm = 0;
 		let img: HTMLImageElement | null = null;
+		let back = false;                                      // R9 Each visit: back in front after 1+ min away
+		if (paused) { if (!away.current) away.current = Date.now(); }
+		else if (away.current) { back = intervalSec === 0 && Date.now() - away.current >= AWAY_CHANGE_MS; away.current = 0; }
 
 		const show = (url: string) => {
 			const back = st.front === 0 ? 1 : 0;
@@ -338,7 +357,7 @@ export function PhotoShow ({intervalSec, shuffle, paused, fit}: {intervalSec: nu
 			st.index = nextPhoto(st.index, shuffle);
 			load(schedule);
 		};
-		const schedule = () => { window.clearTimeout(timer); if (!paused) timer = window.setTimeout(tick, intervalSec * 1000); };
+		const schedule = () => { window.clearTimeout(timer); if (!paused && intervalSec > 0) timer = window.setTimeout(tick, intervalSec * 1000); };
 
 		// P63: a re-run (the launcher went to the background, a setting changed) may have cancelled the end of a fade: finish it,
 		// so the new picture is fully on and the old layer is empty (a stuck old layer showed through at a lowered picture opacity)
@@ -353,7 +372,7 @@ export function PhotoShow ({intervalSec, shuffle, paused, fit}: {intervalSec: nu
 			void f.offsetWidth;
 			f.style.transition = ''; o.style.transition = '';
 		}
-		if (st.front < 0) load(schedule); else schedule();
+		if (st.front < 0) load(schedule); else if (back) tick(); else schedule();
 		return () => {
 			disposed = true;
 			window.clearTimeout(timer);

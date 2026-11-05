@@ -7,10 +7,10 @@ import {
 	type HookStatus, type Outcome
 } from '../lib/homekey';
 import {
-	DETECT_KEEP_MS, HOME_CODES, autoPick, describeBind, hearthCodes, isHearthBind, isHomeCode, isProtected, keyLabel, rankDetected, type AutoResult,
+	DETECT_KEEP_MS, HOME_CODES, autoPick, describeBind, hearthCodes, isGuardBind, isHearthBind, isHomeCode, stripGuard, isProtected, keyLabel, rankDetected, type AutoResult,
 	type DetectedKey, type Keybinds
 } from '../lib/homekeycore';
-import {beginListening, endListening, listening, pressedKeys} from '../lib/keydetect';
+import {beginListening, endListening, listening, pressedKeys, resumeListening} from '../lib/keydetect';
 import {log} from '../lib/log';
 import {startEngine, type EngineOutcome} from '../lib/homeengine';
 import {isWebOS} from '../lib/luna';
@@ -31,8 +31,10 @@ interface Props {
 	/** the button that now opens Hearth (null: none), so the Options row can show it */
 	onChanged: (code: number | null) => void;
 	onToast: (text: string, kind?: 'info' | 'error') => void;
-	/** K1: an automatic mapping ended (also when this screen was left meanwhile): the app shows the pop-up and the row */
+	/** K1/U3: a mapping ended, automatic or chosen (also when this screen was left meanwhile): the app shows the pop-up and the row */
 	onAuto: (result: AutoResult) => void;
+	/** U3: a pop-up is in front: this screen takes no keys meanwhile */
+	paused?: boolean;
 }
 
 type IconKind = 'folder' | 'picture' | 'drive' | 'slideshow' | 'default' | 'info' | 'search' | 'pin';
@@ -50,7 +52,7 @@ interface Row {
 const VISIBLE_ROWS = 5;
 const POLL_MS = 2000;
 
-export function HomeKey ({onClose, model, onModel, onChanged, onToast, onAuto}: Props) {
+export function HomeKey ({onClose: closeScreen, model, onModel, onChanged, onToast, onAuto, paused}: Props) {
 	const [status, setStatus] = useState<HookStatus | null>(null);
 	const [problem, setProblem] = useState('');
 	const [binds, setBinds] = useState<Keybinds | null>(null);
@@ -73,6 +75,8 @@ export function HomeKey ({onClose, model, onModel, onChanged, onToast, onAuto}: 
 	const onTv = isWebOS();
 
 	useEffect(() => () => { alive.current = false; }, []);
+	// Z: leaving by Back or *No, go back* ends the listening (the key files go, a later start of Hearth does not reopen this screen); a Home press does not come through here
+	const onClose = () => { if (onTv) endListening(); closeScreen(); };
 
 	/** Input Hook's state and its keybinds file. */
 	const refresh = () => {
@@ -81,7 +85,7 @@ export function HomeKey ({onClose, model, onModel, onChanged, onToast, onAuto}: 
 			if (!alive.current) return;
 			setStatus(s);
 			setProblem('');
-			if (r.ok) { setBinds(r.binds); setBindsWhy(''); } else { setBinds(null); setBindsWhy(r.why); }
+			if (r.ok) { setBinds(stripGuard(r.binds)); setBindsWhy(''); } else { setBinds(null); setBindsWhy(r.why); }
 		}, (e) => { if (alive.current) setProblem(failureText(e, tt('homekey.readTheKeyEngine'))); });
 	};
 
@@ -102,7 +106,7 @@ export function HomeKey ({onClose, model, onModel, onChanged, onToast, onAuto}: 
 		(s.injected && s.ready ? Promise.resolve(null) : startEngine())
 			.then((o) => { if (o && alive.current) setEngine(o); })
 			.catch((e) => { if (alive.current) setProblem(failureText(e, tt('homekey.startTheKeyEngine'))); })
-			.then(() => { if (alive.current) { refresh(); if (!mapped) begin(false); } });
+			.then(() => { if (alive.current) { refresh(); if (!mapped) { const at = resumeListening(); if (at) setSince(at); } } });   // listening starts only on the last row; a fresh earlier start is kept
 	};
 
 	// First look at what is already there. Nothing is started while button settings of someone else exist and the user has
@@ -112,9 +116,9 @@ export function HomeKey ({onClose, model, onModel, onChanged, onToast, onAuto}: 
 		Promise.all([readStatus(), readBinds()]).then(([s, r]) => {
 			if (!alive.current) return;
 			setStatus(s);
-			if (r.ok) { setBinds(r.binds); setBindsWhy(''); } else { setBinds(null); setBindsWhy(r.why); }
-			const others = r.ok ? Object.keys(r.binds).filter((k) => !isHearthBind(r.binds[k])) : [];
-			const ours = r.ok && hearthCodes(r.binds).length > 0;
+			if (r.ok) { setBinds(stripGuard(r.binds)); setBindsWhy(''); } else { setBinds(null); setBindsWhy(r.why); }
+			const others = r.ok ? Object.keys(r.binds).filter((k) => !isHearthBind(r.binds[k]) && !isGuardBind(r.binds[k])) : [];
+			const ours = r.ok && hearthCodes(stripGuard(r.binds)).length > 0;
 			if (r.ok && others.length && !ours) {
 				setForeign(others.slice(0, 3).map((k) => `button ${/^\d+$/.test(k) ? keyLabel(Number(k)) : k} ${describeBind(r.binds[k])}`).concat(others.length > 3 ? [`and ${others.length - 3} more`] : []));
 				setGate('ask');
@@ -157,12 +161,18 @@ export function HomeKey ({onClose, model, onModel, onChanged, onToast, onAuto}: 
 	const apply = (code: number, auto = false) => {
 		setPending(null);
 		setBusy(tt('homekey.settingButtonV1', {v1: keyLabel(code)}));
-		setHomeKey(code).then((r) => { if (r.ok) stopListening(); if (auto) log(`homekey: auto map of ${code} ${r.ok ? 'done' : 'failed: ' + r.text}`); if (auto) onAuto({ok: r.ok, code, why: r.ok ? '' : r.text}); return r; }).then((r) => finish(r, r.ok ? code : undefined, tt('homekey.textPressItOnThe', {text: r.text})));
+		// U3: the pop-up comes for every way of setting the button (automatic or chosen), success or failure
+		setHomeKey(code).then((r) => {
+			if (r.ok) stopListening();
+			log(`homekey: ${auto ? 'auto' : 'chosen'} map of ${code} ${r.ok ? 'done' : 'failed: ' + r.text}`);
+			onAuto({ok: r.ok, code, why: r.ok ? '' : r.text});
+			return r;
+		}).then((r) => finish(r, r.ok ? code : undefined, tt('homekey.textPressItOnThe', {text: r.text})));
 	};
 
 	const remove = () => {
 		setBusy(tt('homekey.removingTheMapping'));
-		clearHomeKey().then((r) => { finish(r, r.ok ? null : undefined); if (r.ok) { autoTried.current = 0; setStopped(false); begin(true); } });
+		clearHomeKey().then((r) => { finish(r, r.ok ? null : undefined); if (r.ok) { autoTried.current = 0; setStopped(false); } });
 	};
 
 	const choose = (code: number) => {
@@ -218,29 +228,27 @@ export function HomeKey ({onClose, model, onModel, onChanged, onToast, onAuto}: 
 		});
 		rows.push({key: 'no', label: tt('homekey.noGoBack2'), detail: tt('homekey.nothingIsChanged'), icon: 'default', run: () => { setPending(null); setIndex(0); }});
 	} else {
-		const detected = rankDetected(found).slice(0, 5);
+		const detected = rankDetected(found).filter((d) => !isHomeCode(d.code)).slice(0, 5);
+		HOME_CODES.forEach((h, n) => {
+			const seen = found.filter((d) => d.code === h.code)[0];
+			rows.push({
+				key: `known:${h.code}`, label: tt('homekey.knownHomeCode', {keyLabel: keyLabel(h.code)}), icon: 'pin',
+				detail: codeDetail(h.code, `${seen ? `seen ${seen.count}× · ` : ''}${n === 0 ? 'First choice · OK to use it' : 'OK to use it if the one above did nothing'}`),
+				run: () => choose(h.code), code: h.code
+			});
+		});
 		detected.forEach((d) => {
 			rows.push({
 				key: `found:${d.code}`, label: tt('homekey.detectedButton', {keyLabel: keyLabel(d.code)}), icon: 'search',
-				detail: codeDetail(d.code, `${isHomeCode(d.code) ? 'One of LG\'s Home codes · ' : ''}seen ${d.count}× · OK to use it for Home`),
+				detail: codeDetail(d.code, `seen ${d.count}× · OK to use it for Home`),
 				run: () => choose(d.code), code: d.code
 			});
-		});
-		let first = true;
-		HOME_CODES.forEach((h) => {
-			if (detected.some((d) => d.code === h.code)) return;
-			rows.push({
-				key: `known:${h.code}`, label: tt('homekey.knownHomeCode', {keyLabel: keyLabel(h.code)}), icon: 'pin',
-				detail: codeDetail(h.code, first ? 'First choice · OK to use it' : 'OK to use it if the one above did nothing'),
-				run: () => choose(h.code), code: h.code
-			});
-			first = false;
 		});
 		mapped.forEach((c) => {
 			rows.push({key: `remove:${c}`, label: tt('homekey.removeButtonOpensHearth', {keyLabel: keyLabel(c)}), detail: tt('homekey.okGivesTheButton'), icon: 'default', run: remove, code: c});
 		});
 		rows.push({
-			key: 'again', label: stopped ? tt('homekey.listenForButtonsAgain') : tt('homekey.forgetWhatWasDetected'), icon: 'slideshow',
+			key: 'again', label: since ? tt('homekey.forgetWhatWasDetected') : stopped ? tt('homekey.listenForButtonsAgain') : tt('homekey.listenForTheHomeButton'), icon: 'slideshow',
 			detail: tt('homekey.thenPressTheHome'),
 			run: () => { setStopped(false); setFound([]); setResult(null); setIndex(0); refresh(); begin(true); }
 		});
@@ -261,7 +269,7 @@ export function HomeKey ({onClose, model, onModel, onChanged, onToast, onAuto}: 
 	const minutes = Math.round(DETECT_KEEP_MS / 60000);
 	const detectLine = !onTv ? ''
 		: stopped && !since ? tt('homekey.notListeningNowBecauseA')
-		: !since ? tt('homekey.startingToListenForButton')
+		: !since ? tt('homekey.notListeningYet')
 		: found.length ? tt('homekey.detectingLengthButtonV2Seen', {length: found.length, v2: found.length === 1 ? '' : tt('homekey.pluralSuffix')})
 		: !listening(since) ? tt('homekey.listeningHasEndedAndNothing')
 		: tt('homekey.detectingPressTheHomeButton') + minutes + tt('homekey.minutesEnd');
@@ -290,7 +298,7 @@ export function HomeKey ({onClose, model, onModel, onChanged, onToast, onAuto}: 
 		else if (key === 'back') { if (pending !== null) { setPending(null); setIndex(0); } else onClose(); }
 		return true;
 	};
-	useKeys(handleKey, true);
+	useKeys(handleKey, !paused);
 
 	const start = clamp(at - Math.floor(VISIBLE_ROWS / 2), 0, Math.max(0, rows.length - VISIBLE_ROWS));
 	const visible = rows.slice(start, start + VISIBLE_ROWS);

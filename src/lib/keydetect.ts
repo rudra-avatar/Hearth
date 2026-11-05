@@ -3,10 +3,11 @@
 // Listening is a short fixed window that starts only when a detect screen asks; nothing runs at start-up or while idle.
 
 import {exec} from './apps';
-import {startDetecting, readNewLines} from './homekey';
+import {startDetecting, newLinesCommand, startHomeGuard, stopHomeGuard} from './homekey';
+import {log} from './log';
 import {DETECT_KEEP_MS, detectKeys, readBaseline, writeBaseline, type DetectedKey} from './homekeycore';
 import {isWebOS} from './luna';
-import {RAW_READ_COMMAND, RAW_START_COMMAND, RAW_WINDOW_S, parseRawKeys} from './rawkeyscmd';
+import {RAW_CLEAN_COMMAND, RAW_START_COMMAND, RAW_WINDOW_S, parseGuardHits, parseRawKeys, pollCommand, splitPoll} from './rawkeyscmd';
 
 const AT_KEY = 'customlauncher-rawkeys-at-v1';
 
@@ -34,17 +35,25 @@ function writeAt (at: number): void {
  *  and came back) is kept unless `forget`. */
 export function beginListening (forget: boolean): Promise<number> {
 	if (!isWebOS()) return Promise.resolve(0);
+	failLogged = false;
 	const saved = forget ? 0 : readAt();
 	if (saved) return Promise.resolve(saved);
 	const at = Date.now();
 	writeAt(at);
-	return Promise.all([exec(RAW_START_COMMAND, 8000).catch(() => ''), startDetecting().catch(() => null)]).then(() => at);
+	return Promise.all([exec(RAW_START_COMMAND, 8000).then((out) => { log(`keys: ${String(out).replace(/\s+/g, ' ').trim().slice(0, 100)}`); }, () => ''), startDetecting().catch(() => null), startHomeGuard()]).then(() => at);
+}
+
+/** The start time of a listening that is still fresh (the user pressed a button that took them out of Hearth and came back), else 0. Starts nothing. */
+export function resumeListening (): number {
+	return isWebOS() ? readAt() : 0;
 }
 
 /** Stops showing what was detected (the readers end by themselves). */
 export function endListening (): void {
+	failLogged = false;
 	writeAt(0);
 	writeBaseline(null);
+	if (isWebOS()) { exec(RAW_CLEAN_COMMAND, 5000).catch(() => ''); stopHomeGuard(); }       // W1: the key files are not needed any more
 }
 
 /** True while the reader window of a start at `at` is still open. */
@@ -52,19 +61,28 @@ export function listening (at: number, now: number = Date.now()): boolean {
 	return !!at && now - at < LISTEN_WINDOW_MS;
 }
 
-/** Every button pressed since listening began (raw devices first, then Input Hook's log), each once, the newest at the end. */
+/** Z (idea 6): the first failed poll of a listening is written to the debug log once (a silent failure looked like "nothing pressed"). */
+let failLogged = false;
+const failedPoll = (why: string): DetectedKey[] => {
+	if (!failLogged) { failLogged = true; log(`keys: poll failed: ${why}`); }
+	return [];
+};
+
+/** Every button pressed since listening began (raw devices first, then Input Hook's log), each once, the newest at the end.
+ *  Z (idea 1): ONE shell call reads both. */
 export function pressedKeys (): Promise<DetectedKey[]> {
 	if (!isWebOS() || !readAt()) return Promise.resolve([]);
 	const baseline = readBaseline();
-	return Promise.all([
-		exec(RAW_READ_COMMAND, 8000).then((out): DetectedKey[] => parseRawKeys(out), (): DetectedKey[] => []),
-		baseline ? readNewLines(baseline).then((text): DetectedKey[] => detectKeys(text), (): DetectedKey[] => []) : Promise.resolve([] as DetectedKey[])
-	]).then(([raw, logged]) => {
+	return exec(pollCommand(baseline ? newLinesCommand(baseline) : ''), 8000).then((out) => {
+		const parts = splitPoll(out);
+		if (!parts.complete) return failedPoll(`unexpected output (${out.length} characters, no end marker)`);
+		const raw = parseRawKeys(parts.raw);
+		const logged = baseline ? detectKeys(parts.hook) : [];
 		const merged: DetectedKey[] = [];
-		raw.concat(logged).forEach((k) => {
+		raw.concat(logged, parseGuardHits(parts.hits)).forEach((k) => {
 			const same = merged.filter((m) => m.code === k.code)[0];
 			if (same) same.count += k.count; else merged.push({code: k.code, count: k.count});
 		});
 		return merged;
-	});
+	}, (e) => failedPoll(e && e.message ? String(e.message).slice(0, 120) : 'no answer'));
 }

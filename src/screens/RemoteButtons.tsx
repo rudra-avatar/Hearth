@@ -27,7 +27,7 @@ interface Props {
 	onKeep: () => void;
 	onAssign: (name: string, action: RemapAction | null) => void;
 	/** start or stop waiting for a button press */
-	onCapture: (waiting: boolean) => void;
+	onCapture: (waiting: boolean) => Promise<boolean>;
 	onClose: () => void;
 }
 
@@ -62,6 +62,7 @@ export function RemoteButtons ({remap, kept, targets, captured, busy, onSwitch, 
 	const [index, setIndex] = useState(0);
 	const [listIndex, setListIndex] = useState(0);
 	const [chosen, setChosen] = useState<string | null>(null);
+	const [listening, setListening] = useState(false);     // the TV's filter has said it is listening (issue #36)
 
 	const choose = (name: string) => {
 		setChosen(name);
@@ -92,13 +93,14 @@ export function RemoteButtons ({remap, kept, targets, captured, busy, onSwitch, 
 		if (mode !== 'waiting') return undefined;
 		const COLOURS: Record<number, string> = {403: tt('remotebuttons.keyWebosRed'), 404: tt('remotebuttons.keyWebosGreen'), 405: tt('remotebuttons.keyWebosYellow'), 406: tt('remotebuttons.keyWebosBlue')};
 		const onKey = (e: KeyboardEvent) => {
+			if (!listening) return;
 			log(`remap: page saw key ${e.keyCode}`);
 			const name = COLOURS[e.keyCode];
 			if (name) { onCapture(false); choose(name); }
 		};
 		window.addEventListener('keydown', onKey);
 		return () => window.removeEventListener('keydown', onKey);
-	}, [mode]);                                      // eslint-disable-line react-hooks/exhaustive-deps
+	}, [mode, listening]);                           // eslint-disable-line react-hooks/exhaustive-deps
 
 	const rows: Row[] = [];
 	if (mode === 'list') {
@@ -119,7 +121,7 @@ export function RemoteButtons ({remap, kept, targets, captured, busy, onSwitch, 
 		if (!row || busy) return;
 		if (row.kind === 'switch') onSwitch();
 		else if (row.kind === 'keep') onKeep();
-		else if (row.kind === 'capture') { setListIndex(i); setMode('waiting'); setIndex(0); onCapture(true); }
+		else if (row.kind === 'capture') { setListIndex(i); setMode('waiting'); setIndex(0); setListening(false); onCapture(true).then((ok) => { if (ok) setListening(true); else { setMode('list'); setIndex(i); } }); }
 		else if (row.kind === 'button' && row.name) choose(row.name);
 		else if (row.kind === 'target' && row.target && chosen) {
 			onAssign(chosen, row.target.action);

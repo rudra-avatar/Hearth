@@ -15,7 +15,8 @@
 #   apply.sh capture / nocapture
 #                   tell the filter that Hearth is waiting for one button press ("Press a button"), or not any more
 #
-# Prints one word: applied, removed, launcher-missing, files-missing or failed.
+# Prints one word: applied, removed, launcher-missing, files-missing, unsupported (this TV has no key filter list in
+# configd, so there is nothing to add to) or failed.
 # Run at boot by a link in /var/lib/webosbrew/init.d, and by Hearth when the setting changes or Hearth opens.
 
 REMAP="${REMAP:-/media/developer/launcher-remap}"
@@ -70,19 +71,8 @@ if [ "$mode" = capture ] || [ "$mode" = nocapture ]; then
     exit 1
 fi
 
-# The filter chain as the TV has it now (compact JSON, one line). The entries are flat objects, so the
-# list is everything between the first [ and its ].
-current="$(config getConfigs "{\"configNames\":[\"$FILTERS\"]}")"
-list="$(printf '%s' "$current" | tr -d '\n' | sed -n "s/.*\"$FILTERS\" *: *\(\[[^]]*\]\).*/\1/p")"
-if [ -z "$list" ]; then
-    log "could not read the key filter list: $(printf '%s' "$current" | head -c 200)"
-    echo failed
-    exit 1
-fi
-# the list without Hearth's entry (wherever it is, whatever its path)
-stock="$(printf '%s' "$list" | sed -e 's/{[^}]*"hearthRemap"[^}]*}//g' -e 's/,,*/,/g' -e 's/\[,/[/' -e 's/,\]/]/')"
-
 if [ "$mode" = off ]; then
+    # (before the chain is read: taking the map out needs no chain, so this also works on a TV that has none)
     # null takes the in-memory value away again, so the TV's own list (and no map) is back
     out="$(setconfigs "{\"volatile\":true,\"configs\":{\"$FILTERS\":null,\"$MAPNAME\":null}}")"
     if ok "$out"; then
@@ -94,6 +84,32 @@ if [ "$mode" = off ]; then
     echo failed
     exit 1
 fi
+
+# The filter chain as the TV has it now (compact JSON, one line). The entries are flat objects, so the
+# list is everything between the first [ and its ].
+current="$(config getConfigs "{\"configNames\":[\"$FILTERS\"]}")"
+list="$(printf '%s' "$current" | tr -d '\n' | sed -n "s/.*\"$FILTERS\" *: *\(\[[^]]*\]\).*/\1/p")"
+if [ -z "$list" ]; then
+    # configd answered but has no such setting (or names it as missing): this TV's window manager does not take its key filters
+    # from configd (webOS 3.4.3, 05.70.45, issue #36: the chain is fixed inside surface-manager). A list that is there but
+    # unreadable is a failure, not "none".
+    none=0
+    case "$current" in
+        *missingConfigs*"$FILTERS"*) none=1 ;;
+        *"$FILTERS"*) ;;
+        *) ok "$current" && none=1 ;;
+    esac
+    if [ "$none" = 1 ]; then
+        log "this TV has no key filter list ($FILTERS): $(printf '%s' "$current" | head -c 200)"
+        echo unsupported
+        exit 5
+    fi
+    log "could not read the key filter list: $(printf '%s' "$current" | head -c 200)"
+    echo failed
+    exit 1
+fi
+# the list without Hearth's entry (wherever it is, whatever its path)
+stock="$(printf '%s' "$list" | sed -e 's/{[^}]*"hearthRemap"[^}]*}//g' -e 's/,,*/,/g' -e 's/\[,/[/' -e 's/,\]/]/')"
 
 if [ "$mode" = reload ] && [ "$stock" != "$list" ]; then
     # out first (the TV's own list comes back), so putting it in again below is a change the TV acts on

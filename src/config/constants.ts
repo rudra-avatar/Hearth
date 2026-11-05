@@ -34,7 +34,7 @@ export const TIMING = {
 	lunaTimeoutMs: 4000,
 	toastMs: 2200,
 	clockTickMs: 1000,
-	longPressMs: 600,       // OK held this long enters/leaves re-order mode
+	longPressMs: 600,       // OK held this long opens the tile's menu
 	/** Everything that is not needed to show the home screen (re-reading the app list, the helper check,
 	 *  closing LG Home) waits this long after the launcher appears, so the screen comes up first. */
 	backgroundWorkMs: 5000
@@ -52,6 +52,6 @@ export const WALLPAPER = {
 	maxBytes: 8 * 1024 * 1024,    // pictures bigger than this file size are skipped
 	chunkBytes: 98304,            // read per shell call: ~128 KB of base64, safely under the service's output limit; a multiple of 3 so every chunk's base64 stands alone
 	parallelChunks: 3,
-	intervals: [10, 20, 30, 60, 300, 900, 1800, 3600]   // seconds, the choices in Settings
+	intervals: [0, 10, 20, 30, 60, 300, 900, 1800, 3600]   // seconds, the choices in Settings; 0 = Each visit (R9: new picture on restart and after 1+ min away)
 } as const;
 

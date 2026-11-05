@@ -89,8 +89,9 @@ export function debugPages (s: DebugSnapshot): DebugPage[] {
 }
 
 /** The pages as plain text, for the report file. */
-export function reportText (pages: DebugPage[], allEvents?: string[], beforeRestart?: string[]): string {
+export function reportText (pages: DebugPage[], allEvents?: string[], beforeRestart?: string[], bootTrace?: string[]): string {
 	const base = pages.map((p) => p.title + '\n' + p.lines.join('\n') + (p.right ? '\n\n' + p.right.title + '\n' + p.right.lines.join('\n') : '')).join('\n\n') + '\n';
 	const earlier = beforeRestart && beforeRestart.length ? '\nBefore the last restart (end of the old file)\n' + beforeRestart.join('\n') + '\n' : '';
-	return (allEvents && allEvents.length ? base + '\nAll events since this start (oldest first)\n' + allEvents.join('\n') + '\n' : base) + earlier;
+	const trace = bootTrace && bootTrace.length ? '\nBoot trace of the webOS 3 guard (oldest first)\n' + bootTrace.join('\n') + '\n' : '';
+	return (allEvents && allEvents.length ? base + '\nAll events since this start (oldest first)\n' + allEvents.join('\n') + '\n' : base) + earlier + trace;
 }

@@ -3,8 +3,9 @@ import {td} from '../i18n';
 // Pure functions (no UI). A held key repeats far faster than the row can glide, so repeats are
 // thinned out: the first repeats are slow and the pace builds up gently (a gentle acceleration).
 
-export type ScrollSpeed = 'slow' | 'medium' | 'fast';
-export const SCROLL_SPEED_IDS: readonly ScrollSpeed[] = ['slow', 'medium', 'fast'];
+// Saved ids are permanent: 'fast' (saved by earlier versions) is now shown as "Max"; the new middle level is 'brisk', shown as "Fast".
+export type ScrollSpeed = 'slow' | 'medium' | 'brisk' | 'fast';
+export const SCROLL_SPEED_IDS: readonly ScrollSpeed[] = ['slow', 'medium', 'brisk', 'fast'];
 export const scrollSpeedText = (v: ScrollSpeed): string => td(`scroll.${v}`);
 
 interface Profile {start: number; end: number; ramp: number}
@@ -12,6 +13,7 @@ interface Profile {start: number; end: number; ramp: number}
 const PROFILES: Record<ScrollSpeed, Profile> = {
 	slow: {start: 200, end: 110, ramp: 10},
 	medium: {start: 140, end: 65, ramp: 8},
+	brisk: {start: 110, end: 45, ramp: 7},
 	fast: {start: 80, end: 30, ramp: 6}
 };
 

@@ -24,7 +24,7 @@ export function themeIcon (id: string): string | undefined {
 
 // P94a: the theme's pictures come first in the storage. When they do not fit, the TV-icon copies (P91) and then the mono
 // conversions are given up (both are made again later); the pictures stay in memory for this session even if nothing fits.
-const GIVE_UP_FIRST = ['hearth-ssap-icondata-v1', 'hearth-mono-v2'];
+const GIVE_UP_FIRST = ['hearth-ssap-icondata-v1', 'hearth-mono-v3'];
 
 /** Keeps the pictures (null = none). False when they could not be kept in the storage (storage full). */
 export function setThemeIcons (map: Record<string, string> | null): boolean {

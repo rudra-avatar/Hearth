@@ -1,10 +1,11 @@
 // P61c: simple vector drawings of remotes, as data (made for Hearth, not traced from LG's artwork). Used only on the two
 // "Remote control" pages to show which button a code is. Pure: no imports. Linux key codes are the same numbers the key hook shows.
 
-export type RemoteModel = 'ir' | 'magic-2019' | 'magic-2021' | 'magic-2025';
-export const REMOTE_MODELS: RemoteModel[] = ['ir', 'magic-2019', 'magic-2021', 'magic-2025'];
+export type RemoteModel = 'ir' | 'magic-2016' | 'magic-2019' | 'magic-2021' | 'magic-2025';
+export const REMOTE_MODELS: RemoteModel[] = ['ir', 'magic-2016', 'magic-2019', 'magic-2021', 'magic-2025'];
 export const REMOTE_NAMES: Record<RemoteModel, string> = {
 	'ir': 'Standard IR remote',
+	'magic-2016': 'Magic Remote (2016)',
 	'magic-2019': 'Magic Remote (2019-2020)',
 	'magic-2021': 'Magic Remote (2021-2024)',
 	'magic-2025': 'AI Magic Remote (2025)'
@@ -76,6 +77,25 @@ const numbers = (xs: number[], ys: number[], mk: (id: string, t: string, x: numb
 };
 const MORE_CODE = 994;
 
+// 2016 Magic Remote (AN-MR650 / AN-MR650A, webOS 3.x). Positions laid out for Hearth after LG's AN-MR650 product photo; the bottom
+// row is the AN-MR650A's (TEXT, T.OPT, FOCUS). Codes for 3D, TEXT, T.OPT and FOCUS are the ones an AN-MR650A sent on a 55UH652T
+// (issue #36); keys whose code is not known are drawn with 0 (never highlighted): STB power, the ... key, search, STB MENU, CAPTION.
+const M16: DrawLayout = {
+	model: 'magic-2016', body: {x: 60, y: 20, w: 200, h: 880, r: 95},
+	buttons: [
+		m('power', 115, 93, 32, 32, 'c', 'PWR'), b('stb', 205, 93, 30, 30, 'c', 'STB', 0),
+		...numbers([106, 160, 214], [150, 189, 229, 269], (id, t, x, y) => id === 'more' ? b(id, x, y, 48, 26, 'p', t, 0) : m(id, x, y, 48, 26, 'p', t)),
+		b('volup', 100, 319, 40, 30, 'r', '+', 115), b('voldown', 100, 386, 40, 22, 'r', '\u2212', 114),
+		b('chup', 220, 319, 40, 30, 'r', 'CH+', 402), b('chdown', 220, 386, 40, 22, 'r', 'CH\u2212', 403),
+		m('mute', 160, 319, 32, 32, 'c', 'MUTE'), b('search', 160, 392, 34, 34, 'c', 'FIND', 0),
+		m('home', 89, 428, 42, 24, 'p', 'HOME'), b('stbmenu', 231, 428, 42, 24, 'p', 'MENU', 0), ring(160, 522, 140),
+		m('back', 89, 607, 42, 22, 'p', 'BACK'), b('caption', 231, 607, 50, 22, 'p', 'CAPTION', 0),
+		b('3d', 93, 653, 42, 24, 'p', '3D', 821), m('input', 160, 648, 32, 32, 'c', 'INPUT'), m('settings', 227, 653, 42, 24, 'p', 'SET'),
+		...colours(695, [95, 138, 182, 225], 30, 18),
+		b('text', 108, 737, 46, 22, 'p', 'TEXT', 779), b('topt', 160, 737, 46, 22, 'p', 'T.OPT', 780), b('focus', 212, 737, 46, 22, 'p', 'FOCUS', 1026)
+	]
+};
+
 const M19: DrawLayout = {
 	model: 'magic-2019', body: {x: 60, y: 20, w: 200, h: 880, r: 95},
 	buttons: [
@@ -123,7 +143,7 @@ const M25: DrawLayout = {
 };
 
 export function remoteLayout (model: RemoteModel): DrawLayout {
-	return model === 'magic-2019' ? M19 : model === 'magic-2021' ? M21 : model === 'magic-2025' ? M25 : IR;
+	return model === 'magic-2016' ? M16 : model === 'magic-2019' ? M19 : model === 'magic-2021' ? M21 : model === 'magic-2025' ? M25 : IR;
 }
 
 /** The button drawn for a key code (null: this remote has no such button). */

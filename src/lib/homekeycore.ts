@@ -33,7 +33,7 @@ const KEY_NAMES: Record<number, string> = {
 	139: 'MENU', 167: 'RECORD', 168: 'REWIND', 174: 'EXIT', 207: 'PLAY', 208: 'FASTFORWARD', 217: 'SEARCH', 241: 'TV_VIDEO (Input)',
 	272: 'WHEEL_CLICK', 358: 'INFO', 362: 'GUIDE', 364: 'FAVORITES', 377: 'TV',
 	398: 'RED', 399: 'GREEN', 400: 'YELLOW', 401: 'BLUE', 402: 'CHANNELUP', 403: 'CHANNELDOWN', 412: 'BACK', 428: 'RF_VOICE',
-	773: 'RF_HOME', 774: 'HOME_US', 787: 'LIST', 793: 'QMENU', 987: 'MYAPPS', 994: 'SCREEN_REMOTE', 1008: 'RECENT', 1020: 'E_GALLERY',
+	773: 'RF_HOME', 774: 'HOME_US', 779: 'TELETEXT', 780: 'TEXTOPTION', 787: 'LIST', 793: 'QMENU', 821: '3D_MODE', 987: 'MYAPPS', 994: 'SCREEN_REMOTE', 1008: 'RECENT', 1020: 'E_GALLERY', 1026: 'MAGNIFIER_ZOOM',
 	1037: 'NETFLIX', 1038: 'AMAZON', 1042: 'DISNEY+', 1086: 'ALEXA', 1117: 'GOOGLE_ASSISTANT'
 };
 
@@ -127,6 +127,34 @@ export function isHearthBind (bind: Keybind | undefined | null): boolean {
 	if (!bind) return false;
 	if (bind.action === 'launch') return bind.id === APP_ID;
 	return bind.action === 'exec' && bind.command === OPEN_COMMAND;
+}
+
+/** Z5: while a key mapper listens, the Home codes that nobody uses are bound to a tiny recorder (test 42's way): the press is
+ *  taken by the key engine, so LG Home does not open and Hearth stays; the code is read back from a hits file. */
+export const GUARD_MARK = 'hearth-hkguard';
+export const GUARD_CODES = [773, 774, 125];
+export const GUARD_HITS = '/tmp/hearth-hkguard.hits';
+export const guardScriptPath = (code: number): string => `/tmp/${GUARD_MARK}-${code}.sh`;
+export const guardScriptText = (code: number): string => `#!/bin/sh\necho ${code} >> ${GUARD_HITS}\n`;
+
+export function isGuardBind (bind: Keybind | undefined | null): boolean {
+	return !!bind && bind.action === 'exec' && bind.command.indexOf(GUARD_MARK) !== -1;
+}
+
+/** `binds` without the recorder entries (what the screens and the mapping code see). */
+export function stripGuard (binds: Keybinds): Keybinds {
+	const out: Keybinds = {};
+	Object.keys(binds).forEach((k) => { if (!isGuardBind(binds[k])) out[k] = binds[k]; });
+	return out;
+}
+
+/** The same buttons plus a recorder on every Home code that has no entry yet; `codes` says which were added. The input is not changed. */
+export function addGuard (binds: Keybinds): {binds: Keybinds; codes: number[]} {
+	const next: Keybinds = {};
+	Object.keys(binds).forEach((k) => { next[k] = binds[k]; });
+	const codes = GUARD_CODES.filter((c) => !next[String(c)]);
+	codes.forEach((c) => { next[String(c)] = {action: 'exec', command: `sh ${guardScriptPath(c)}`}; });
+	return {binds: next, codes};
 }
 
 /** The same buttons with `code` set to open `appId`. The input is not changed. */

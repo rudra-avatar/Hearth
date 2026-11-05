@@ -6,7 +6,8 @@ import {startDelay, TIER2_MS} from './startup';
 
 // Converted icons are kept between starts (P52c): the result is a white shape with transparency and the theme colour is
 // applied by a CSS mask, so one saved copy serves every theme. The key holds the converter version: bump it when monoPixels changes.
-const STORE_KEY = 'hearth-mono-v2';
+const STORE_KEY = 'hearth-mono-v3';      // Z3: v3 = masks made at up to 256 px and smoothed (v2 was 128 px, jagged edges without a tile)
+const OLD_STORE_KEY = 'hearth-mono-v2';
 const STORE_MAX_CHARS = 1200000;      // about 1.2 MB of the browser's storage at most
 const STORE_MAX_ENTRIES = 150;
 let stored: {[hash: string]: string} | null = null;   // '-' = this icon cannot be converted
@@ -21,6 +22,7 @@ function hashOf (url: string): string {
 function loadStore (): {[hash: string]: string} {
 	if (stored) return stored;
 	stored = {};
+	try { window.localStorage.removeItem(OLD_STORE_KEY); } catch { /* nothing to free */ }
 	try {
 		const raw = window.localStorage.getItem(STORE_KEY);
 		const parsed = raw ? JSON.parse(raw) : null;
@@ -66,7 +68,7 @@ export function monoIconsOn (): boolean { return on; }
 /** Changes whenever the style is switched, so a tile knows to draw itself again. */
 export function monoVersion (): number { return version; }
 
-const SIZE = 128;
+const SIZE = 256;
 /** brightness difference from the logo's body (0-1) where detail starts to be cut out, and where it is fully cut out (P47) */
 const CUT_LOW = 0.18;
 const CUT_HIGH = 0.32;
@@ -140,20 +142,39 @@ export function monoPixels (px: Uint8ClampedArray, w: number, h: number): void {
 	}
 }
 
+/** Z3: softens the edge of the shape (alpha only, a 1-2-1 blur in both directions), so a shape drawn with no tile behind it has no stair steps. Pure. */
+export function smoothAlpha (px: Uint8ClampedArray, w: number, h: number): void {
+	const a = new Float32Array(w * h);
+	for (let p = 0; p < w * h; p++) a[p] = px[p * 4 + 3];
+	const t = new Float32Array(w * h);
+	for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+		const l = a[y * w + (x > 0 ? x - 1 : x)];
+		const r = a[y * w + (x < w - 1 ? x + 1 : x)];
+		t[y * w + x] = (l + 2 * a[y * w + x] + r) / 4;
+	}
+	for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+		const u = t[(y > 0 ? y - 1 : y) * w + x];
+		const d = t[(y < h - 1 ? y + 1 : y) * w + x];
+		px[(y * w + x) * 4 + 3] = Math.round((u + 2 * t[y * w + x] + d) / 4);
+	}
+}
+
 function convert (url: string, done: (result: string | null) => void): void {
 	const img = new Image();
 	img.onload = () => {
 		try {
-			const scale = Math.min(1, SIZE / Math.max(img.naturalWidth || SIZE, img.naturalHeight || SIZE));
+			const scale = Math.min(2, SIZE / Math.max(img.naturalWidth || SIZE, img.naturalHeight || SIZE));
 			const w = Math.max(8, Math.round((img.naturalWidth || SIZE) * scale));
 			const h = Math.max(8, Math.round((img.naturalHeight || SIZE) * scale));
 			const canvas = document.createElement('canvas');
 			canvas.width = w; canvas.height = h;
 			const ctx = canvas.getContext('2d');
 			if (!ctx) { done(null); return; }
+			ctx.imageSmoothingEnabled = true;
 			ctx.drawImage(img, 0, 0, w, h);
 			const data = ctx.getImageData(0, 0, w, h);   // throws when the image is from another origin
 			monoPixels(data.data, w, h);
+			smoothAlpha(data.data, w, h);          // Z3
 			ctx.putImageData(data, 0, 0);
 			done(canvas.toDataURL('image/png'));
 		} catch { done(null); }

@@ -2,14 +2,22 @@
   "format": 1,
   "versions": [
     {
+      "version": "2.1.2",
+      "date": "2026-11-05",
+      "summary": [
+        "New remote button job: LG Home (Map additional keys).",
+        "LG Home tile: a new way to open it on webOS 3 TVs."
+      ],
+      "ipkUrl": "https://github.com/rudra-avatar/Hearth/releases/download/v2.1.2/tld.my.customlauncher_2.1.2_all.ipk",
+      "sha256": "b91d2d30d9dbc6d0583a01039afc1f9e43eef1e883f69cbbf14ed9e4b3988d01",
+      "size": 19320340
+    },
+    {
       "version": "2.1.1",
       "date": "2026-11-05",
       "summary": [
         "Fix: Check for updates now also shows on TVs without root."
-      ],
-      "ipkUrl": "https://github.com/rudra-avatar/Hearth/releases/download/v2.1.1/tld.my.customlauncher_2.1.1_all.ipk",
-      "sha256": "4607c48575d6704a621a8c5fff2c5fc361adad22dcb389a6f9629e9fe1bd62d6",
-      "size": 19313454
+      ]
     },
     {
       "version": "2.1.0",

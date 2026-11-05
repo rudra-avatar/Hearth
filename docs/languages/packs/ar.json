@@ -1090,6 +1090,15 @@
     "clock.month8": "سبتمبر",
     "clock.month9": "أكتوبر",
     "clock.month10": "نوفمبر",
-    "clock.month11": "ديسمبر"
+    "clock.month11": "ديسمبر",
+    "app.lgHome2": "LG Home",
+    "app.opensLgSOwnHome": "يفتح الشاشة الرئيسية الخاصة بـ LG.",
+    "app.aHomeReplacementIsOn": "بديل الشاشة الرئيسية مفعّل",
+    "app.lgHomeWillNotComeTo": "لن تظهر LG Home في المقدمة إذا كانت إحدى طرق الاستبدال مفعّلة. يرجى تعطيل جميع طرق استبدال LG Home قبل استخدام هذا الإجراء.",
+    "app.disableReplacementsFirst": "عطّل البدائل أولاً",
+    "app.proceed": "متابعة",
+    "app.switchTheLgHomeReplacement": "أوقف استبدال LG Home من الإعدادات، النظام، ثم أعطِ الزر هذه المهمة مرة أخرى.",
+    "extrakeys.couldnTPutTheLg": "تعذّر وضع مساعد LG Home على التلفزيون. حاول مرة أخرى.",
+    "homekeycore.opensLgHome": "يفتح LG Home"
   }
 }

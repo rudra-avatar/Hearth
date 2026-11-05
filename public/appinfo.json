@@ -1,6 +1,6 @@
 {
   "id": "tld.my.customlauncher",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "vendor": "tld.my.customlauncher",
   "type": "web",
   "main": "index.html",

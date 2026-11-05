@@ -1090,6 +1090,15 @@
     "clock.month8": "September",
     "clock.month9": "Oktober",
     "clock.month10": "November",
-    "clock.month11": "Dezember"
+    "clock.month11": "Dezember",
+    "app.lgHome2": "LG Home",
+    "app.opensLgSOwnHome": "Öffnet den eigenen Startbildschirm von LG.",
+    "app.aHomeReplacementIsOn": "Ein Home-Ersatz ist aktiv",
+    "app.lgHomeWillNotComeTo": "LG Home kommt nicht in den Vordergrund, wenn eine Ersatzmethode aktiviert ist. Bitte deaktiviere alle LG-Home-Ersatzmethoden, bevor du diese Aktion nutzt.",
+    "app.disableReplacementsFirst": "Zuerst Ersatz deaktivieren",
+    "app.proceed": "Fortfahren",
+    "app.switchTheLgHomeReplacement": "Schalte den LG-Home-Ersatz unter Einstellungen, System aus und weise der Taste diese Aufgabe dann erneut zu.",
+    "extrakeys.couldnTPutTheLg": "Der LG-Home-Helfer konnte nicht auf dem Fernseher abgelegt werden. Versuche es erneut.",
+    "homekeycore.opensLgHome": "öffnet LG Home"
   }
 }

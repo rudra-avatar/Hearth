@@ -7,6 +7,7 @@
 // change applies at once. See homekey.ts for reading and writing it on the TV.
 
 import {APP_ID} from '../config/constants';
+import {isLgHomeCommand} from './lghomecmd';
 import {t as tt} from '../i18n';
 
 // ----- LG's Home button codes -----
@@ -197,6 +198,7 @@ export function describeBind (bind: Keybind | undefined | null): string {
 	if (bind.action === 'launch') return tt('homekeycore.opensId', {id: bind.id});
 	if (bind.action === 'replace') return tt('homekeycore.actsAsButtonKeycode', {keycode: bind.keycode});
 	if (bind.action === 'ignore') return tt('homekeycore.isSwitchedOff');
+	if (isLgHomeCommand(bind.command)) return tt('homekeycore.opensLgHome');
 	return tt('homekeycore.runsACommand');
 }
 

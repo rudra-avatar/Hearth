@@ -523,7 +523,7 @@ Undo steps: [`src/homeapp/README.md`](src/homeapp/README.md).
 
 ### Other rooted features
 
-- **Reassign remote buttons (experimental).** *System, Remote control, Map additional keys* gives the colour buttons and other dedicated buttons of your remote a new job: open an app or input, Hearth, mute, or nothing.
+- **Reassign remote buttons (experimental).** *System, Remote control, Map additional keys* gives the colour buttons and other dedicated buttons of your remote a new job: open an app or input, Hearth, mute, LG Home, or nothing.
   - *Press a button to reassign it* lets the remote say which button is meant.
   - Home, arrows, OK, Back, power, volume, channels and numbers are never taken.
   - A small key filter is added to the TV's own filter chain, in memory only.

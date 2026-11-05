@@ -1090,6 +1090,15 @@
     "clock.month8": "Septiembre",
     "clock.month9": "Octubre",
     "clock.month10": "Noviembre",
-    "clock.month11": "Diciembre"
+    "clock.month11": "Diciembre",
+    "app.lgHome2": "LG Home",
+    "app.opensLgSOwnHome": "Abre la pantalla de inicio propia de LG.",
+    "app.aHomeReplacementIsOn": "Hay un reemplazo de Inicio activado",
+    "app.lgHomeWillNotComeTo": "LG Home no pasará al primer plano si hay un método de reemplazo activado. Desactiva todos los métodos de reemplazo de LG Home antes de usar esta acción.",
+    "app.disableReplacementsFirst": "Desactivar reemplazos primero",
+    "app.proceed": "Continuar",
+    "app.switchTheLgHomeReplacement": "Desactiva el reemplazo de LG Home en Ajustes, Sistema, y luego vuelve a asignar esta función al botón.",
+    "extrakeys.couldnTPutTheLg": "No se pudo colocar el ayudante de LG Home en el televisor. Inténtalo de nuevo.",
+    "homekeycore.opensLgHome": "abre LG Home"
   }
 }

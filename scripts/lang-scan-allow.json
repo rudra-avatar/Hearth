@@ -246,5 +246,17 @@
  {
   "file": "screens/Updates.tsx",
   "text": "(test: pretending {})"
+ },
+ {
+  "file": "lib/lghome.ts",
+  "text": "the helper script could not be written"
+ },
+ {
+  "file": "lib/lghome.ts",
+  "text": "no answer"
+ },
+ {
+  "file": "lib/lghome.ts",
+  "text": "the shell did not answer"
  }
 ]

@@ -37,6 +37,7 @@ import {keepKnownIcons, sameApps} from './lib/appcache';
 import type {TimeFormat} from './lib/clock';
 import {listInputs, MOCK_INPUTS, readCecDevices, withDeviceNames, type CecDevice, type InputSource} from './lib/inputs';
 import {launchApp, launchLgHome, launchSystemSettings} from './lib/launch';
+import {sendHomeKey} from './lib/lghome';
 import {exportThemeBase} from './lib/themeexport';
 import {isWebOS} from './lib/luna';
 import {listening, resumeListening} from './lib/keydetect';
@@ -65,7 +66,7 @@ import {t as tt} from './i18n';
 import {applyLanguage, removePack, bundledReady, loadBundled, reapply} from './i18n/pack';
 import {loadPackFile} from './lib/langpack';
 import {PACK_ID, isBundledLanguage} from './lib/languages';
-import {applyPref, disabledReason, findPref, GROUP_PREFIX, optionsFor, resetLook, type Press, type PrefTab, type SystemInfo} from './lib/prefs';
+import {applyPref, disabledReason, findPref, homeReplacementOn, GROUP_PREFIX, optionsFor, resetLook, type Press, type PrefTab, type SystemInfo} from './lib/prefs';
 import {storeReport} from './lib/storeguard';
 import {setProbeContext} from './lib/probecontext';
 import {loadConfig, saveConfig, saveConfigVerified, setSaveFailHandler, isMonoStyle, effectiveIconStyle, hasLightTile, toggleId, DEFAULT_WALLPAPER, withBackedUpLook, dropPrefsBackup, type UserConfig} from './lib/storage';
@@ -1039,7 +1040,8 @@ export function App () {
 		if (item.key === MISC.settings) { setHidePractice(false); setScreen('settings'); return; }
 		if (item.key === MISC.system) { launchSystemSettings().catch(() => showToast(tt('app.couldnTOpenThe'), 'error')); return; }
 		if (item.key === MISC.lgHome) {
-			const open = () => launchLgHome().catch(() => showToast(tt('app.couldnTOpenLg'), 'error'));
+			// webOS 3 has no LG Home app: when the launch is refused, the Home key is sent to the TV instead (lghome.ts; needs root)
+			const open = () => launchLgHome().catch(() => sendHomeKey().then((why) => { if (why) showToast(tt('app.couldnTOpenLg'), 'error'); }));
 			// With the helper on, the real LG Home is let through first (the helper takes over again once LG Home is left)
 			if (config.replaceHome) stockHome().then(() => window.setTimeout(open, 1200));
 			else if (config.samHome) stockSam().then(() => window.setTimeout(open, 1200));
@@ -1476,11 +1478,27 @@ export function App () {
 			{key: 'hearth', label: tt('app.hearth2'), detail: tt('app.thisHomeScreen2'), action: {t: 'app', id: APP_ID}},
 			{key: 'mute', label: tt('app.muteOrUnmute'), detail: tt('app.likeTheMuteButton'), action: {t: 'mute'}}
 		];
+		// only "Map additional keys" (key hook) can open LG Home; the other method's key filter has no such job
+		if (screen === 'extrakeys') list.push({key: 'lghome', label: tt('app.lgHome2'), detail: tt('app.opensLgSOwnHome'), action: {t: 'lghome'}});
 		inputs.forEach((i) => list.push({key: 'in:' + i.appId, label: (config.sourceEdits[i.appId] && config.sourceEdits[i.appId].label) || i.label, detail: tt('app.input'), action: {t: 'app', id: i.appId}}));
 		apps.filter((a) => a.id !== APP_ID).slice().sort((a, b) => a.title.localeCompare(b.title))
 			.forEach((a) => list.push({key: 'app:' + a.id, label: a.title, detail: tt('app.app2'), action: {t: 'app', id: a.id}}));
 		return list;
-	}, [screen === 'remote' || screen === 'extrakeys', apps, inputs, config.sourceEdits]);    // eslint-disable-line react-hooks/exhaustive-deps
+	}, [screen === 'remote' || screen === 'extrakeys', screen === 'extrakeys', apps, inputs, config.sourceEdits]);    // eslint-disable-line react-hooks/exhaustive-deps
+
+	/** Before a button gets the LG Home job: with a Home replacement on, LG Home would not stay in front, so ask first. */
+	const askLgHome = useCallback((go: () => void) => {
+		if (!homeReplacementOn(systemInfo, config)) { go(); return; }
+		setNotice({
+			title: tt('app.aHomeReplacementIsOn'),
+			text: tt('app.lgHomeWillNotComeTo'),
+			buttons: [
+				{label: tt('app.disableReplacementsFirst'), tone: 'light', run: () => { setNotice(null); showToast(tt('app.switchTheLgHomeReplacement')); }},
+				{label: tt('app.proceed'), run: () => { setNotice(null); go(); }}
+			],
+			onBack: () => setNotice(null)
+		});
+	}, [systemInfo, config, showToast]);
 
 	/** After the first time the buttons are on: ask whether the remote still works before they are also set at every TV start. */
 	const askKeepRemap = useCallback(() => {
@@ -1647,7 +1665,7 @@ export function App () {
 			{screen === 'preload' && <Preload apps={apps} onClose={() => setScreen('settings')} onChanged={(n) => setConfig((c) => { if (c.preloadOff === n) return c; const next = {...c, preloadOff: n}; saveConfig(next); return next; })} onToast={showToast} />}
 			{screen === 'remote' && <RemoteButtons remap={config.remap} kept={config.remapKept} targets={remapTargets} captured={captured} busy={remapBusy} onSwitch={onRemapSwitch} onKeep={onRemapKeep} onAssign={onRemapAssign} onCapture={onRemapCapture} onClose={() => setScreen('extrakeys')} />}
 			{screen === 'updates' && <Updates debug={config.showDebug} paused={!!notice} notify={setNotice} closeNotice={() => setNotice(null)} onClose={() => setScreen('settings')} />}
-			{screen === 'extrakeys' && <ExtraKeys targets={remapTargets} model={config.remoteModel} onModel={onRemoteModel} onOtherMethod={() => setScreen('remote')} onClose={() => setScreen('settings')} onToast={showToast} />}
+			{screen === 'extrakeys' && <ExtraKeys targets={remapTargets} model={config.remoteModel} onModel={onRemoteModel} onOtherMethod={() => setScreen('remote')} paused={!!notice} onLgHomeCheck={askLgHome} onClose={() => setScreen('settings')} onToast={showToast} />}
 			{screen === 'themes' && <Picker forTheme onChoose={() => undefined} onClose={() => setScreen('settings')} onTheme={(path) => loadThemeZip(path, apps.map((a) => a.id)).then((outcome: LoadOutcome) => {
 				if (outcome.ok) { setScreen('settings'); afterTheme(outcome, tt('app.themeLoaded')); }
 				else setNotice({title: tt('app.themeNotLoaded'), text: tt('app.nothingWasChanged', {reason: outcome.reason}), buttons: [{label: tt('app.ok4'), tone: 'light', run: () => setNotice(null)}], onBack: () => setNotice(null)});

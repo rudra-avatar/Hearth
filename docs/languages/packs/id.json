@@ -1090,6 +1090,15 @@
     "clock.month8": "September",
     "clock.month9": "Oktober",
     "clock.month10": "November",
-    "clock.month11": "Desember"
+    "clock.month11": "Desember",
+    "app.lgHome2": "LG Home",
+    "app.opensLgSOwnHome": "Membuka layar beranda bawaan LG.",
+    "app.aHomeReplacementIsOn": "Pengganti Home sedang aktif",
+    "app.lgHomeWillNotComeTo": "LG Home tidak akan tampil di depan jika metode pengganti diaktifkan. Nonaktifkan semua metode pengganti LG Home sebelum memakai tindakan ini.",
+    "app.disableReplacementsFirst": "Nonaktifkan pengganti dulu",
+    "app.proceed": "Lanjutkan",
+    "app.switchTheLgHomeReplacement": "Matikan pengganti LG Home di Pengaturan, Sistem, lalu berikan tugas ini ke tombol lagi.",
+    "extrakeys.couldnTPutTheLg": "Pembantu LG Home tidak dapat dipasang di TV. Coba lagi.",
+    "homekeycore.opensLgHome": "membuka LG Home"
   }
 }

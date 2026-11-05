@@ -1090,6 +1090,15 @@
     "clock.month8": "Сентябрь",
     "clock.month9": "Октябрь",
     "clock.month10": "Ноябрь",
-    "clock.month11": "Декабрь"
+    "clock.month11": "Декабрь",
+    "app.lgHome2": "LG Home",
+    "app.opensLgSOwnHome": "Открывает собственный главный экран LG.",
+    "app.aHomeReplacementIsOn": "Включена замена Home",
+    "app.lgHomeWillNotComeTo": "LG Home не выйдет на передний план, если включён способ замены. Отключите все способы замены LG Home, прежде чем использовать это действие.",
+    "app.disableReplacementsFirst": "Сначала отключить замену",
+    "app.proceed": "Продолжить",
+    "app.switchTheLgHomeReplacement": "Отключите замену LG Home в Настройках, Система, затем снова назначьте кнопке это действие.",
+    "extrakeys.couldnTPutTheLg": "Не удалось поместить помощник LG Home на телевизор. Повторите попытку.",
+    "homekeycore.opensLgHome": "открывает LG Home"
   }
 }

@@ -21,6 +21,7 @@ export const REMAP_CONFIG = 'tld.my.customlauncher.remap';
 export type RemapAction =
 	| {t: 'app'; id: string}
 	| {t: 'mute'}
+	| {t: 'lghome'}   // only in "Map additional keys" (key hook); the key filter of the other method does not know it
 	| {t: 'none'};
 
 export interface RemapConfig {

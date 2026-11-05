@@ -31,7 +31,7 @@ If the separate *Input Hook* app is installed with its own settings, Hearth does
 
 ### Map additional keys (experimental)
 
-Give the other buttons on your remote, such as the **colour keys** and other dedicated buttons, a new job: open any app or input, open Hearth, mute, or do nothing. Press **Press a button to reassign it** and press the button you mean. The keys **Home, arrows, OK, Back, power, volume, channels and numbers** are never taken. After your first change Hearth asks whether the remote still works. Only when you say yes does it keep the change after a restart. The change is added in the TV's memory only, so a restart without keeping it undoes it.
+Give the other buttons on your remote, such as the **colour keys** and other dedicated buttons, a new job: open any app or input, open Hearth, mute, open **LG Home** (LG's own home screen), or do nothing. Press **Press a button to reassign it** and press the button you mean. The keys **Home, arrows, OK, Back, power, volume, channels and numbers** are never taken. After your first change Hearth asks whether the remote still works. Only when you say yes does it keep the change after a restart. The change is added in the TV's memory only, so a restart without keeping it undoes it.
 
 ![Map additional keys: the remote drawing](../screenshots/remote-extra-keys.jpg)
 

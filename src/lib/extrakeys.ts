@@ -9,6 +9,7 @@ import {failureText} from './failure';
 import {setEngineAtBoot, startEngine} from './homeengine';
 import {describeBind, isHearthBind, keyLabel, unbind, type Keybinds} from './homekeycore';
 import {actionToBind, readExtra, whyNot, writeExtra} from './extrakeyscore';
+import {ensureLgHomeScript} from './lghome';
 import {log} from './log';
 import type {RemapAction} from './remapcmd';
 import {t as tt} from '../i18n';
@@ -20,7 +21,16 @@ export function setExtraKey (code: number, action: RemapAction): Promise<Outcome
 	const why = whyNot(code);
 	if (why) return Promise.resolve({ok: false, text: why});
 	if (action.t === 'app' && action.id === APP_ID) return Promise.resolve({ok: false, text: tt('extrakeys.useMapHomeButtonTo')});
-	return readStatus().then((s) => (s.injected && s.ready ? null : startEngine())).then(() => readBinds()).then((read): Promise<Outcome> => {
+	// the LG Home job runs a small script: it is on the TV before a button points to it
+	if (action.t === 'lghome') {
+		return ensureLgHomeScript().then((ready): Promise<Outcome> => (ready ? applyExtraKey(code, action) : Promise.resolve({ok: false, text: tt('extrakeys.couldnTPutTheLg')})));
+	}
+	return applyExtraKey(code, action);
+}
+
+function applyExtraKey (code: number, action: RemapAction): Promise<Outcome> {
+	return readStatus().then((s) => (s.injected && s.ready ? null : startEngine())).then(() => readBinds())
+		.then((read): Promise<Outcome> => {
 		if (!read.ok) return Promise.resolve({ok: false, text: read.why});
 		const existing = read.binds[String(code)] || null;
 		if (isHearthBind(existing)) return Promise.resolve({ok: false, text: tt('extrakeys.thisButtonAlreadyOpensHearth')});

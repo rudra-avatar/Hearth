@@ -2,6 +2,7 @@
 // entry for a job, and which buttons may not be mapped. See extrakeys.ts for setting and removing them.
 
 import {isKeybind, isHomeCode, isProtected, keyLabel, recordedCode, validCode, type Keybind, type Keybinds} from './homekeycore';
+import {LGHOME_COMMAND} from './lghomecmd';
 import type {RemapAction} from './remapcmd';
 import {t as tt} from '../i18n';
 
@@ -44,6 +45,7 @@ export function extraCount (): number {
 export function actionToBind (action: RemapAction): Keybind {
 	if (action.t === 'app') return {action: 'launch', id: action.id};
 	if (action.t === 'mute') return {action: 'replace', keycode: 113};
+	if (action.t === 'lghome') return {action: 'exec', command: LGHOME_COMMAND};
 	return {action: 'ignore'};
 }
 

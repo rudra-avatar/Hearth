@@ -85,6 +85,11 @@ function samIsOn (info?: SystemInfo, config?: UserConfig): boolean {
 	return !!(config && config.samHome) || !!(info && info.samHome && (info.samHome.enabled || info.samHome.linked));
 }
 
+/** Is any way of replacing LG Home on (helper, SAM stand-in, Home app setting)? Used before a button is given the LG Home job. */
+export function homeReplacementOn (info?: SystemInfo, config?: UserConfig): boolean {
+	return homeAppIsOn(info, config) || helperIsOn(info, config) || samIsOn(info, config);
+}
+
 export function disabledReason (id: string, info?: SystemInfo, config?: UserConfig): string | null {
 	if (id === 'rows' && config && config.favourites && config.favourites.length > 0) return td('disabled.rows');
 	// the Home app setting and the helper + Home button are two ways of replacing LG Home: only one at a time (a row that is on stays usable, so it can be switched off)

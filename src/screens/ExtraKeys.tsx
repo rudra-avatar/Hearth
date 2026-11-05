@@ -8,6 +8,7 @@ import {beginListening, endListening, listening, pressedKeys} from '../lib/keyde
 import {isWebOS} from '../lib/luna';
 import {RemoteDrawing} from '../components/RemoteDrawing';
 import {REMOTE_NAMES, nextModel, remoteLayout, type RemoteModel} from '../lib/remotedraw';
+import {isLgHomeCommand} from '../lib/lghomecmd';
 import {sameAction, type RemapAction} from '../lib/remapcmd';
 import type {RemapTarget} from './RemoteButtons';
 import {t as tt} from '../i18n';
@@ -23,6 +24,10 @@ interface Props {
 	model: RemoteModel;
 	onModel: (m: RemoteModel) => void;
 	onOtherMethod: () => void;
+	/** a pop-up is open on top: this screen does not read keys meanwhile */
+	paused?: boolean;
+	/** called before the LG Home job is saved: runs `go` at once, or after the user agreed (a Home replacement is on) */
+	onLgHomeCheck: (go: () => void) => void;
 	onClose: () => void;
 	onToast: (text: string, kind?: 'info' | 'error') => void;
 }
@@ -50,10 +55,11 @@ function bindAction (bind: Keybind | undefined): RemapAction | null {
 	if (bind.action === 'launch') return {t: 'app', id: bind.id};
 	if (bind.action === 'replace' && bind.keycode === 113) return {t: 'mute'};
 	if (bind.action === 'ignore') return {t: 'none'};
+	if (bind.action === 'exec' && isLgHomeCommand(bind.command)) return {t: 'lghome'};
 	return null;
 }
 
-export function ExtraKeys ({targets, model, onModel, onOtherMethod, onClose, onToast}: Props) {
+export function ExtraKeys ({targets, model, onModel, onOtherMethod, paused, onLgHomeCheck, onClose, onToast}: Props) {
 	const [mode, setMode] = useState<Mode>('list');
 	const [index, setIndex] = useState(0);
 	const [listIndex, setListIndex] = useState(0);
@@ -109,6 +115,11 @@ export function ExtraKeys ({targets, model, onModel, onOtherMethod, onClose, onT
 	};
 
 	const assign = (action: RemapAction | null) => {
+		if (action && action.t === 'lghome') { onLgHomeCheck(() => save(action)); return; }
+		save(action);
+	};
+
+	const save = (action: RemapAction | null) => {
 		setBusy(action ? tt('extrakeys.saving') : tt('extrakeys.givingTheButtonBack'));
 		(action ? setExtraKey(chosen, action) : clearExtraKey(chosen)).then((r) => {
 			if (!alive.current) return;
@@ -168,7 +179,7 @@ export function ExtraKeys ({targets, model, onModel, onOtherMethod, onClose, onT
 		}
 		return true;
 	};
-	useKeys(handleKey, true);
+	useKeys(handleKey, !paused);
 
 	const start = clamp(at - Math.floor(VISIBLE_ROWS / 2), 0, Math.max(0, rows.length - VISIBLE_ROWS));
 	const visible = rows.slice(start, start + VISIBLE_ROWS);

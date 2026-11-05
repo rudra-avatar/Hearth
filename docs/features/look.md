@@ -21,7 +21,7 @@ How to make a theme: [Custom themes](../theme/theme-guide.md).
 ![Look: Icons group](../screenshots/settings-icons.jpg)
 
 - **Icon size, icon spacing, icon shape.**
-- **Icon style:** *Original* (the real picture), *Minimal*, *Dark mono*, *Soft mono*, *Accent mono*, *Gradient mono* (one-colour shapes) and *Tinted tile* (the real picture on a coloured tile). These are experimental.
+- **Icon style:** *Original* (the real picture), *Minimal*, *Dark mono*, *Soft mono*, *Accent mono*, *Gradient mono* (one-colour shapes), *Tinted tile* (the real picture on a coloured tile) and *Glyph* (just the shape, with no tile; the highlighted icon only grows, and *Icon tile: Dark* gives dark shapes and labels, *Light* gives light ones). These are experimental.
 - **Icon tile:** a *Dark* tile with a light shape, or a *Light* tile with a dark shape.
 - **Icon colour:** the colour of the shapes (follows the theme at first).
 - **Icon opacity:** lower numbers let the wallpaper show through.
@@ -30,7 +30,7 @@ How to make a theme: [Custom themes](../theme/theme-guide.md).
 
 ![Look: Home row group](../screenshots/settings-home-row.jpg)
 
-**Rows of apps** (one or two), **Row scroll speed** (how fast a held arrow runs), **When Home is pressed**, **Side margin** and **Bottom margin**, **Show input status**, and the switches for the **LG Home** and **System Settings** tiles.
+**Rows of apps** (one or two), **Row scroll speed** (how fast a held arrow runs), **When Home is pressed**, **Side margin** and **Bottom margin**, **Show input status**, the switches for the **LG Home** and **System Settings** tiles, and **Hide the Hearth Settings tile**. Before it hides the tile, Hearth makes you try the way back once: hold OK on any app and choose **Hearth Settings**. Once the tile is hidden, that is how you open the settings. Pressing Down five times on the Home screen (when there is no row below) shows the tile again until Hearth restarts.
 
 ## Labels (the app names)
 

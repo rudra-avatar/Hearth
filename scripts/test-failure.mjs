@@ -70,4 +70,15 @@ eq(p.optionsFor('system', f.DEFAULT_CONFIG).some((o) => o.id === 'tvApps'), true
 eq(typeof p.disabledReason('keepRelaunch', {root: 'yes'}, {...f.DEFAULT_CONFIG, keepReady: false}), 'string', 'P105: Reopen is greyed out while Keep Hearth ready is off');
 eq(p.disabledReason('keepRelaunch', {root: 'yes'}, {...f.DEFAULT_CONFIG, keepReady: true}), null, 'P105: Reopen is usable while Keep Hearth ready is on');
 eq(p.disabledReason('keepRelaunch', {root: 'yes'}, {...f.DEFAULT_CONFIG, keepReady: false, keepRelaunch: true}), null, 'P105: an Off-able Reopen row stays usable');
+// 2.0.3 R3: the helper and the SAM stand-in grey each other out; a row that is on stays usable
+const helperOn = {root: 'yes', homeHook: {running: true, linked: true}};
+const samOn = {root: 'yes', homeHook: {running: false, linked: false}, samHome: {enabled: true, mounted: true, web: true, linked: true, watching: true, restartUsed: false}};
+const none = {root: 'yes', homeHook: {running: false, linked: false}, samHome: {enabled: false, mounted: false, web: false, linked: false, watching: false, restartUsed: false}};
+eq(typeof p.disabledReason('samHome', helperOn, f.DEFAULT_CONFIG), 'string', 'R3: SAM is greyed out while the helper is on');
+eq(p.disabledReason('samHome', none, f.DEFAULT_CONFIG), null, 'R3: SAM is usable when nothing replaces LG Home');
+eq(p.disabledReason('samHome', samOn, {...f.DEFAULT_CONFIG, samHome: true}), null, 'R3: an on SAM row stays usable (to switch it off)');
+eq(typeof p.disabledReason('replaceHome', samOn, {...f.DEFAULT_CONFIG, samHome: true}), 'string', 'R3: the helper is greyed out while SAM is on');
+eq(p.disabledReason('replaceHome', helperOn, {...f.DEFAULT_CONFIG, replaceHome: true}), null, 'R3: an on helper row stays usable');
+eq(p.disabledReason('replaceHome', none, f.DEFAULT_CONFIG), null, 'R3: the helper is usable when SAM is off');
+eq(f.DEFAULT_CONFIG.samHome, false, 'R3: SAM is off by default (additive saved key)');
 process.exit(fail ? 1 : 0);

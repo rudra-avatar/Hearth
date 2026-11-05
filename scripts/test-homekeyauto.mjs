@@ -27,4 +27,13 @@ eq(c.detectKeys(lginput)[0].count, 2, 'lginput hook line: press and release both
 eq(codes('[INFO] lginput_uinput_send_button called: keyid=6, state=1 uinput_code=103\n' + lginput), [103, 773], 'lginput hook: newest last');
 eq(codes('key id => 773\n'), [773], 'older "id =>" line still read');
 eq(codes('keyid=774, state=1\n'), [774], 'a keyid line without uinput_code still read');
+// Z5: the Home guard (recorder entries while the key mapper listens)
+{
+	const g = c.addGuard({'398': {action: 'exec', command: c.OPEN_COMMAND}, '774': {action: 'launch', id: 'tld.my.customlauncher'}});
+	eq(g.codes, [773, 125], 'guard: only Home codes without an entry get a recorder');
+	eq(c.isGuardBind(g.binds['773']) && c.isGuardBind(g.binds['125']) && !c.isGuardBind(g.binds['774']), true, 'guard: recorder entries are recognised');
+	eq(Object.keys(c.stripGuard(g.binds)).sort(), ['398', '774'], 'guard: stripGuard leaves the other entries');
+	eq(c.guardScriptText(773).includes('773 >> ' + c.GUARD_HITS), true, 'guard: the script appends its code to the hits file');
+	eq(c.hearthCodes(c.stripGuard(g.binds)), [398, 774], 'guard: recorder entries are not Hearth mappings');
+}
 process.exit(fail ? 1 : 0);

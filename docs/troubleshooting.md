@@ -22,6 +22,7 @@ Then close and reopen Hearth. After updating Hearth, restart the TV or run the l
 
 ## Other problems
 
+- **The Settings tile is gone.** You hid it on purpose. Hold OK on any app and choose **Hearth Settings**, or press Down five times on the Home screen to show the tile until Hearth restarts. Then turn off **Hide the Hearth Settings tile** in Look -> Home row.
 - **Hold OK does nothing.** Turn the TV off and on again (unplug it for a minute). That fixed it for users. The cause is not known.
 - **The LG Home tile does not open on webOS 3.** Reported on one TV; the cause is not known.
 - **A picture will not show.** The message says why: over 8 MB, over 25 megapixels, or not a picture.

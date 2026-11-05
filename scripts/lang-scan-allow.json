@@ -166,5 +166,85 @@
  {
   "file": "lib/languages.ts",
   "text": "(machine translated)"
+ },
+ {
+  "file": "app.tsx",
+  "text": "state: theme {}, backdrop {}, wallpaper {}/{}s bg {}, helper {}, SAM {}, keep-ready {}, {}"
+ },
+ {
+  "file": "app.tsx",
+  "text": "widget off"
+ },
+ {
+  "file": "lib/storeguard.ts",
+  "text": "store: {} keys, {}k chars"
+ },
+ {
+  "file": "lib/storeguard.ts",
+  "text": "store top: {}"
+ },
+ {
+  "file": "lib/bootguardsh.ts",
+  "text": "write {} ({}/{})"
+ },
+ {
+  "file": "lib/bootguardsh.ts",
+  "text": "write {}"
+ },
+ {
+  "file": "lib/bootguardsh.ts",
+  "text": "create the folder"
+ },
+ {
+  "file": "lib/bootguardsh.ts",
+  "text": "make the script runnable"
+ },
+ {
+  "file": "lib/bootguardsh.ts",
+  "text": "chmod +x '{}{}'"
+ },
+ {
+  "file": "lib/bootguardsh.ts",
+  "text": "the marker"
+ },
+ {
+  "file": "lib/bootguardsh.ts",
+  "text": "move into place"
+ },
+ {
+  "file": "components/Row.tsx",
+  "text": "translate3d({}px, 0, 0)"
+ },
+ {
+  "file": "components/Row.tsx",
+  "text": "transform {}ms linear"
+ },
+ {
+  "file": "components/Row.tsx",
+  "text": "translate3d(0, 0, 0)"
+ },
+ {
+  "file": "lib/keydetect.ts",
+  "text": "unexpected output ({} characters, no end marker)"
+ },
+ {
+  "file": "lib/keydetect.ts",
+  "text": "no answer"
+ },
+ {
+  "file": "lib/keydetect.ts",
+  "text": "keys: {}"
+ },
+ {
+  "file": "lib/homekey.ts",
+  "text": "keys: Home guard on {}"
+ },
+ {
+  "file": "lib/homekey.ts",
+  "text": "keys: Home guard off"
+ },
+ {
+  "file": "screens/Updates.tsx",
+  "text": "(test: pretending {})"
  }
 ]

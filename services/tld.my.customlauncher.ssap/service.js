@@ -201,3 +201,80 @@ service.register('list', function (message) {
 		});
 	});
 });
+
+// ---- Probe tests 55-57 (Tests tab only; V probe 2.0.3): what can this helper do WITHOUT root? ----
+// evdev {watchMs, launch}: reads the TV's key devices (/dev/input) read-only and counts the key events seen for watchMs
+// (0 = only list the devices). With launch: the first Home key (codes 773, 774, 125) asks the TV to open Hearth
+// (public applicationManager/launch) and the time that took is answered. Nothing is written, grabbed or kept; the
+// service ends itself after a watch so no reader stays behind.
+var fs = require('fs');
+var HOME_CODES = [773, 774, 125];
+
+function readText (path) { try { return String(fs.readFileSync(path)).replace(/\s+$/, ''); } catch (e) { return ''; } }
+
+function listDevices () {
+	var names, out = [], i, p, fd, d;
+	try { names = fs.readdirSync('/dev/input'); } catch (e) { return {error: text(e), devices: []}; }
+	names = names.filter(function (n) { return /^event\d+$/.test(n); }).sort(function (a, b) { return Number(a.slice(5)) - Number(b.slice(5)); });
+	for (i = 0; i < names.length && i < 40; i++) {
+		p = '/dev/input/' + names[i];
+		d = {dev: names[i], name: readText('/sys/class/input/' + names[i] + '/device/name').slice(0, 40), readable: false};
+		try { fd = fs.openSync(p, 'r'); fs.closeSync(fd); d.readable = true; } catch (e) { d.error = String(e && e.code ? e.code : 'error'); }
+		out.push(d);
+	}
+	return {devices: out};
+}
+
+service.register('evdev', function (message) {
+	var p = message.payload || {}, watchMs = Math.max(0, Math.min(Number(p.watchMs) || 0, 60000)), wantLaunch = !!p.launch;
+	var info = listDevices(), res, pick = [], size = (process.arch === 'arm' || process.arch === 'ia32') ? 16 : 24;
+	var events = {}, t0 = Date.now(), done = false, launched = null, fds = [];
+	res = {returnValue: true, uid: typeof process.getuid === 'function' ? process.getuid() : -1, arch: process.arch, node: process.version, devices: info.devices};
+	if (info.error) res.error = info.error;
+	if (!watchMs) { message.respond(res); return; }
+	info.devices.forEach(function (d) { if (d.readable && /rcu|remote|key|lge|premium|ir/i.test(d.name) && pick.length < 3) pick.push(d); });
+	if (!pick.length) info.devices.forEach(function (d) { if (d.readable && pick.length < 2) pick.push(d); });
+	res.watched = pick.map(function (d) { return d.dev + ' ' + d.name; });
+	keeping(function (release) {
+		function finish () {
+			if (done) return;
+			done = true;
+			fds.forEach(function (f) { try { fs.closeSync(f); } catch (e) { /* ignore */ } });
+			release();
+			res.events = events;
+			if (launched) res.launch = launched;
+			res.watchedMs = Date.now() - t0;
+			message.respond(res);
+			setTimeout(function () { process.exit(0); }, 500);
+		}
+		function onKey (code, value) {
+			var e = events[code] || (events[code] = {down: 0, up: 0, rep: 0, firstMs: -1}), at = Date.now() - t0;
+			if (value === 1) { e.down++; if (e.firstMs < 0) e.firstMs = at; } else if (value === 0) e.up++; else e.rep++;
+			if (wantLaunch && !launched && value === 1 && HOME_CODES.indexOf(code) >= 0) {
+				launched = {code: code, pending: true};
+				try {
+					service.call('luna://com.webos.applicationManager/launch', {id: 'tld.my.customlauncher'}, function (m) {
+						var pl = (m && m.payload) || {};
+						launched = {code: code, ok: pl.returnValue === true, ms: Date.now() - t0 - at, error: pl.errorText ? String(pl.errorText).slice(0, 80) : undefined};
+					});
+				} catch (err) { launched = {code: code, ok: false, error: text(err)}; }
+			}
+		}
+		pick.forEach(function (d) {
+			fs.open('/dev/input/' + d.dev, 'r', function (err, fd) {
+				var buf = mk(size);
+				if (err) { res.error = text(err); return; }
+				fds.push(fd);
+				(function again () {
+					if (done) return;
+					fs.read(fd, buf, 0, size, null, function (e2, n) {
+						if (e2 || n < size || done) return;
+						if (buf.readUInt16LE(size - 8) === 1) onKey(buf.readUInt16LE(size - 6), buf.readInt32LE(size - 4));
+						again();
+					});
+				}());
+			});
+		});
+		setTimeout(finish, watchMs + (wantLaunch ? 1500 : 0));
+	});
+});

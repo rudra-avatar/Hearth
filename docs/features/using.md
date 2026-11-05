@@ -6,7 +6,7 @@
 |---|---|---|
 | Home row | Left / Right | Move along the row. At the end it goes round to the start |
 | Home row | OK | Open the app |
-| Home row | hold OK | The app's menu: move it, add to favourites, hide it, uninstall it |
+| Home row | hold OK | The app's menu: reorder the row, add to favourites, hide it, uninstall it |
 | Home | Back | The **Recent apps** panel (OK opens an app, hold OK closes it, Up is *Close all*) |
 | Settings | Left / Right on the tab bar | Change tab |
 | Settings | OK, or Left / Right | OK steps through choices; the arrows change numbers |
@@ -14,17 +14,20 @@
 
 The last tile of the row is **Hearth Settings**. Two more tiles, *LG Home* (opens LG's own home screen) and *System Settings* (the TV's own settings), are hidden at first. Switch them on in **Settings, Look, Home row**.
 
-![Hold OK on an app: move, favourites, hide, uninstall](../screenshots/app-menu.jpg)
+![Hold OK on an app: reorder, favourites, hide, uninstall](../screenshots/app-menu.jpg)
 
 ## Choose which apps show, and in what order
 
 Open **Settings, Apps & Sources**. You see every app and every input (HDMI 1, HDMI 2 ...). Press **OK** on one to show or hide it. The buttons above the grid:
 
-- **Re-order:** move things into the order you like. (Or hold OK on an app on the home row and choose *Move to start, left, right or end*.)
 - **Refresh list:** looks for apps you installed a minute ago.
 - **Favourites:** see below.
 - **Uninstall apps:** (Apps tab, rooted TV only.) Press it, then press **OK** on an app and confirm. The app is removed from the TV for good. Apps that belong to the TV, and Hearth itself, cannot be removed; Hearth tells you why. Press **Done** (or Back) when you finish.
-- **Order by last opened:** a switch. The apps you used last jump to the front. While it is on, moving things by hand is greyed out. Switch it off and your own order is back.
+- **Order by last opened:** a switch. The apps you used last jump to the front. While it is on, reordering by hand is not offered. Switch it off and your own order is back.
+
+## Put the apps in your own order
+
+On the Home screen hold **OK** on an app and choose **Reorder home row**. That app is picked up. Press **Left** or **Right** to move it, **OK** to put it down (press OK on another app to pick that one up), **Back** once to put the app down and **Back** again to leave. Favourites and the other apps each keep their own order. The order is saved a moment after your last move. If a pause hides the apps (Quiet mode) the mode ends and your order is kept. The entry is not offered while *Order by last opened* is on.
 
 ## Favourites: a short shelf
 

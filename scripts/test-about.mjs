@@ -56,6 +56,8 @@ const longPages = a.debugPages({about: 'x', rootDetail: '', appList: null, weath
 eq([longPages[1].right.lines.length, longPages[1].right.lines[1].slice(0, 2), longPages[1].right.lines[0] + longPages[1].right.lines[1].slice(2) === '12:00:00 ' + 'abcdefghij'.repeat(8)], [2, '  ', true], 'a long event (up to 98 characters since P94b) continues on a second row, nothing is cut');
 eq(a.reportText(pages).indexOf('Latest events\n') > 0, true, 'the report file holds the events column');
 eq(a.reportText(pages).indexOf('Debug 2 of 2') > 0 && a.reportText(pages).indexOf('built-in list') > 0, true, 'the report file has the pages as text');
+eq(a.reportText(pages, [], [], ['t1', 't2']).indexOf('Boot trace of the webOS 3 guard (oldest first)\nt1\nt2\n') > 0, true, 'S3c: the report file ends with the boot trace when there is one');
+eq(a.reportText(pages).indexOf('Boot trace') < 0, true, 'S3c: no boot trace section without a trace');
 const st = a.parseStats('---\nFilesystem 1K-blocks Used Available Use% Mounted on\n/dev/root 2097152 1048576 1048576 50% /\n/dev/root 2097152 1048576 1048576 50% /var\n/dev/sda1 8388608 4194304 4194304 50% /media/internal\n');
 eq([st.disks.length, st.disks[1].mount, st.disks[1].freeMB], [2, '/media/internal', 4096], 'storage figures are read, the same disk once');
 eq(a.parseStats('garbage'), {disks: []}, 'unreadable output gives no figures');

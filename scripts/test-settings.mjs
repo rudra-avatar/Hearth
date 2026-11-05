@@ -95,20 +95,20 @@ for (const tab of ['look', 'clock', 'wallpaper', 'system']) {
   eq(list.length >= 1 && list.length <= 30, true, `${tab} tab has ${list.length} options (a long list scrolls)`);
 }
 const look = p.optionsFor('look', c0);
-eq(look.map((o) => o.id).join(','), 'theme,iconScale,tileShape,iconStyle,iconGap,iconOpacity,rows,scrollSpeed,homeFocus,sideMargin,bottomMargin,inputStatus,showLgHome,showSystem,showLabels,labelColor,labelFont,labelSize,labelWeight,quietSec,quietDimSec,quietDimLevel,oledShift,recentsSize,resetLook', 'P35b: the Look tab lists its rows in group order');
+eq(look.map((o) => o.id).join(','), 'theme,iconScale,tileShape,iconStyle,iconGap,iconOpacity,rows,scrollSpeed,homeFocus,sideMargin,bottomMargin,inputStatus,showLgHome,showSystem,hideSettings,showLabels,labelColor,labelFont,labelSize,labelWeight,quietSec,quietDimSec,quietDimLevel,oledShift,recentsSize,resetLook', 'P35b: the Look tab lists its rows in group order');
 eq(p.applyPref(c0, 'rows', 'ok').rows, 2, 'Rows of apps: 1 -> 2');
 eq(p.applyPref(p.applyPref(c0, 'rows', 'ok'), 'rows', 'ok').rows, 1, 'and 2 -> 1');
 eq(p.applyPref(c0, 'showLabels', 'ok').showLabels, false, 'Show app names switches off');
 eq([p.applyPref(c0, 'iconStyle', 'ok').minimal, p.applyPref(c0, 'iconStyle', 'ok').iconStyle], [true, 'original'], 'P35c: Icon style Original -> Minimal sets the minimal flag');
-eq([p.applyPref(p.applyPref(c0, 'iconStyle', 'ok'), 'iconStyle', 'ok').iconStyle, p.applyPref(p.applyPref(c0, 'iconStyle', 'ok'), 'iconStyle', 'ok').minimal], ['mono', false], 'then Dark mono clears it');
+eq([p.applyPref(p.applyPref(c0, 'iconStyle', 'ok'), 'iconStyle', 'ok').iconStyle, p.applyPref(p.applyPref(c0, 'iconStyle', 'ok'), 'iconStyle', 'ok').minimal], ['glyph', false], 'then Glyph clears it (2.0.3 Y1: Glyph follows Minimal)');
 eq(p.optionsFor('look', {...c0, minimal: true}).find((o) => o.id === 'iconStyle').valueText, 'Minimal', 'a saved minimal setting reads as Minimal');
 eq(p.resetLook({...c0, minimal: true}).minimal, false, 'reset clears minimal');
 eq(p.resetLook({...c0, background: 'theme', wallpaper: {...c0.wallpaper, mode: 'image', path: '/x.jpg'}, theme: 'forest'}).background, 'photo-17', 'P108: reset puts the default photo (Photo: 1) back');
 eq(p.resetLook({...c0, wallpaper: {...c0.wallpaper, mode: 'folder', path: '/x'}, theme: 'forest'}).wallpaper.mode, 'gradient', 'P108: reset ends an own picture or slideshow');
 eq(p.resetLook({...c0, theme: 'forest'}).theme, 'black', 'P108: reset puts OLED black back');
 store[KEY] = JSON.stringify({defaultsV: 1, iconStyle: 'mono'}); eq(s.loadConfig().iconStyle, 'mono', 'the dark mono icon style is read back');
-for (const st of ['soft', 'accent', 'gradient', 'tinted']) { store[KEY] = JSON.stringify({defaultsV: 1, iconStyle: st}); eq(s.loadConfig().iconStyle, st, `P39c: ${st} mono is read back`); }
-{ let cc = c0; const seen = []; for (let k = 0; k < 6; k++) { seen.push(p.optionsFor('look', cc).find((o) => o.id === 'iconStyle').valueText); cc = p.applyPref(cc, 'iconStyle', 'ok'); } eq(seen, ['Original', 'Minimal', 'Dark mono', 'Soft mono', 'Gradient mono', 'Tinted tile'], 'P59b: in OLED black Icon style steps through six values (no Accent mono)'); eq(p.applyPref(cc, 'iconStyle', 'ok').iconStyle, 'original', 'and wraps to Original'); }
+for (const st of ['soft', 'accent', 'gradient', 'tinted', 'glyph']) { store[KEY] = JSON.stringify({defaultsV: 1, iconStyle: st}); eq(s.loadConfig().iconStyle, st, `P39c: ${st} mono is read back`); }
+{ let cc = c0; const seen = []; for (let k = 0; k < 7; k++) { seen.push(p.optionsFor('look', cc).find((o) => o.id === 'iconStyle').valueText); cc = p.applyPref(cc, 'iconStyle', 'ok'); } eq(seen, ['Original', 'Minimal', 'Glyph', 'Dark mono', 'Soft mono', 'Gradient mono', 'Tinted tile'], 'P59b: in OLED black Icon style steps through seven values (no Accent mono; Glyph added in Y1)'); eq(p.applyPref(cc, 'iconStyle', 'ok').iconStyle, 'original', 'and wraps to Original'); }
 { const teal = {...c0, theme: 'teal'}; let cc = teal; const seen = []; for (let k = 0; k < 7; k++) { seen.push(p.optionsFor('look', cc).find((o) => o.id === 'iconStyle').valueText); cc = p.applyPref(cc, 'iconStyle', 'ok'); } eq(seen.indexOf('Accent mono') !== -1, true, 'P59b: other themes still offer Accent mono'); }
 eq(p.optionsFor('look', {...c0, theme: 'black', iconStyle: 'accent'}).find((o) => o.id === 'iconStyle').valueText, 'Soft mono', 'P59b: a saved Accent mono reads as Soft mono in OLED black');
 eq(s.effectiveIconStyle('accent', 'black') + s.effectiveIconStyle('accent', 'teal'), 'softaccent', 'P59b: effectiveIconStyle');
@@ -118,7 +118,7 @@ store[KEY] = JSON.stringify({defaultsV: 1, iconLight: true}); eq(s.loadConfig().
 store[KEY] = JSON.stringify({defaultsV: 1, iconStyle: 'nope'}); eq([s.loadConfig().iconStyle, s.DEFAULT_CONFIG.iconStyle], ['original', 'original'], 'an unknown icon style falls back to original');
 store[KEY] = JSON.stringify({defaultsV: 1, minimal: true}); eq(s.loadConfig().minimal, true, 'the minimalist choice is read back');
 store[KEY] = JSON.stringify({defaultsV: 1, appEdits: {'a.b': {label: 'X'}, 'c.d': {icon: 'nope'}}}); eq(s.loadConfig().appEdits, {'a.b': {label: 'X'}}, 'app edits are read back and cleaned');
-eq(p.optionsFor('system', c0).map((o) => o.id).join(','), 'language,homeKey,remap,tvApps,noRootGuide,tvInput,replaceHome,powerOnApp,lgLogo,homeApp,preload,keepReady,keepRelaunch,showDebug', 'the System tab (P61b2: the Home button row moved to the Remote group): the TV app list first (shown only when not rooted), the helper script, the Home button, the power-on app, the LG logo, the experimental Home app row (P58c) and last the Debug tab switch (the TV-input row, 2.0.2, is one On/Off toggle)');
+eq(p.optionsFor('system', c0).map((o) => o.id).join(','), 'updates,language,homeKey,remap,tvApps,noRootGuide,tvInput,replaceHome,samHome,powerOnApp,lgLogo,homeApp,preload,keepReady,keepRelaunch,showDebug', 'the System tab (P61b2: the Home button row moved to the Remote group): the TV app list first (shown only when not rooted), the helper script, the Home button, the power-on app, the LG logo, the experimental Home app row (P58c) and last the Debug tab switch (the TV-input row, 2.0.2, is one On/Off toggle)');
 eq(p.optionsFor('system', c0, {homeApp: null, homeHook: null, tvInput: true}).find((o) => o.id === 'tvInput').valueText, 'On', 'the TV-input row reads On when the TV lists Hearth (2.0.2)');
 eq(p.optionsFor('system', c0, {homeApp: null, homeHook: null, tvInput: false}).find((o) => o.id === 'tvInput').valueText, 'Off', 'and Off when it is not listed');
 eq(p.optionsFor('system', c0).some((o) => o.id === 'tvInput'), true, 'and is shown while the TV has not been asked')
@@ -166,7 +166,7 @@ eq(!!homeAppRow({homeApp: 'com.webos.app.home', homeHook: {running: true, linked
 eq(!!p.optionsFor('system', c0, {homeApp: 'tld.my.customlauncher', homeHook: {running: false, linked: false}}).find((o) => o.id === 'replaceHome').disabled, true, 'and the helper row is greyed out while the Home app setting names Hearth');
 eq(!!homeAppRow({homeApp: 'tld.my.customlauncher', homeHook: {running: true, linked: true}}).disabled, false, 'a row that is on stays usable so it can be switched off');
 eq(p.ROOT_OPTIONS.indexOf('homeApp') !== -1, true, 'the Home app row needs root');
-eq(p.optionsFor('clock', c0).map((o) => o.id).filter((id) => !/^weather/.test(id)).join(','), 'widgetOn,clockFormat,showPeriod,showDate,clockSize,clockFont,clockWeight,clockTop,clockLeft,clockAlign,clockColor,clockShadow,clockOpacity', 'the Widget tab (P41f: Show widget first): Time rows, then Widget look with the font after the size, no backdrop');
+eq(p.optionsFor('clock', c0).map((o) => o.id).filter((id) => !/^weather/.test(id)).join(','), 'widgetOn,clockFormat,showPeriod,showDate,clockSize,clockFont,clockWeight,clockTop,clockLeft,clockAlign,clockColor,clockShadow,clockScrim,clockOpacity', 'the Widget tab (P41f: Show widget first): Time rows, then Widget look with the font after the size, with the backdrop row');
 const fonts = [];
 const ci = {...c0, clock: {...c0.clock, font: 'inter'}};   // the first font in the list (the default is Outfit since P41f)
 let cf = ci;
@@ -253,7 +253,7 @@ eq(p.resetLook({...c0, clock: {...c0.clock, color: 'black', opacity: 30}}).clock
   q.resetRootState();
   eq(ids().includes('keepReady') || ids().includes('group:system:Memory'), true, 'P83: root unknown: the root groups show');
   q.noteExec(new Error('Service does not exist'));
-  eq(ids(), 'language,tvApps,noRootGuide,showDebug', 'P83/T0/P92: root failed: language, the SSAP row, the no-root guide and the Debug switch, no group headers');
+  eq(ids(), 'updates,language,tvApps,noRootGuide,showDebug', 'P83/T0/P92: root failed: the update check, language, the SSAP row, the no-root guide and the Debug switch, no group headers');
   q.noteExec();
   eq(ids().includes('group:system:Memory'), true, 'P83: root works again: the groups return');
   q.resetRootState();
@@ -290,6 +290,10 @@ eq([sh(50, false), sh(30), sh(50), sh(90)].map((c) => p.optionsFor('clock', c).f
 eq([p.applyPref(sh(50, false), 'clockShadow', 'ok').clock.shadow, p.applyPref(sh(50, false), 'clockShadow', 'ok').clock.shadowStrength], [true, 30], 'Widget shadow Off -> Light');
 eq(p.optionsFor('clock', sh(100)).find((o) => o.id === 'clockShadow').valueText, 'Max', 'Widget shadow 100 reads as Max');
 eq(p.applyPref(sh(80), 'clockShadow', 'ok').clock.shadowStrength, 100, 'Widget shadow Strong -> Max');
+// 2.0.3 (R1): widget backdrop gradient, Off or 10-60 % in steps of 5; saved values without it read Off
+const sc = (v) => ({...c0, clock: {...c0.clock, scrim: v}});
+eq([0, 5, 50, 100].map((v) => p.optionsFor('clock', sc(v)).find((o) => o.id === 'clockScrim').valueText), ['Off', '5%', '50%', '100%'], 'Widget backdrop text');
+eq([0, 5, 95, 100].map((v) => p.applyPref(sc(v), 'clockScrim', 'ok').clock.scrim), [5, 10, 100, 0], 'Widget backdrop steps 0 -> 5 -> 10 ... 100 -> 0 (OK wraps)');
 eq(p.optionsFor('wallpaper', c0).find((o) => o.id === 'fadeStrength').valueText, 'Medium', 'the default bottom fade (30% over 50%) is Medium');
 eq([p.applyPref(c0, 'fadeStrength', 'ok').fadeStrength, p.applyPref(c0, 'fadeStrength', 'ok').fadeHeight], [55, 70], 'Bottom fade Medium -> Strong');
 eq(p.optionsFor('look', c0).find((o) => o.id === 'recentsSize').valueText, 'Medium', 'the default Recent apps panel (60 x 30) is Medium');

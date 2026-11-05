@@ -12,7 +12,7 @@ _No verified reports yet._
 
 ## Earlier reports (before the form)
 
-Collected by hand from Reddit and GitHub. All rooted unless it says otherwise.
+Collected by hand from Reddit and GitHub, plus form reports whose remarks matter. All rooted unless it says otherwise.
 
 | TV | webOS | Firmware | Hearth | Result and notes |
 | --- | --- | --- | --- | --- |
@@ -31,6 +31,10 @@ Collected by hand from Reddit and GitHub. All rooted unless it says otherwise.
 | 50UR8750PSA | 10.3.2 | 33.31.75 | 1.x | Works and runs smoothly. With the Magic Remote the row moved too fast to hit a tile |
 | Model not told | 10 | ? | 1.x | Works. With the helper alone LG Home flashed on Home; with the Input Hook guide the flash was gone |
 | LG G5 | 26 (11.2) | 43.21.77 | 2.0.0 test | Works with *Set Hearth as the TV's Home app*; Back out of an app returns to Hearth; cold start fast. *Map home button* did not work for this user, who mapped Home with another remapper |
+| OLED55C7V-Z (2017) | 3.9.3 | 06.10.65 | 1.2.0, 2.0.x | Works. *Add the launcher as a TV input* also works here. *Map home button* could not find the Home button's code before 2.1.0 (fixed, pull request #37); with Home mapped by hand it opens Hearth with no LG Home flash. Reported by chriskoperdraad-tech |
+| 55UH652T (2016) | 3.4.3 | 05.70.45 | 1.2.0 to 2.0.2 | Opens and runs. Making Hearth the TV input made the TV hang at start-up (three spinning dots) until the input was switched with the remote; keep that option off on this TV. *Map additional keys, the other method* cannot work on webOS 3.4 (no key filter list); issues #23 and #36 |
+| 55UH750V | 3.4 | 05.70.45 | 2.0.1 | Starts and shows the apps. Hearth as the TV input made the TV hang at start-up (three coloured dots) until several restarts; keep that option off on this TV (issue #43) |
+| 32LJ600B-SA (HD panel, 2017) | 3.9.3 | 06.10.60 | 2.0.2 | Starts and shows the apps, but the screen was drawn shrunk into the top-left corner. Fixed in 2.1.0 (issue #41) |
 | LG C1, C6, G6, OLED G5 | ? | ? | 1.x | Reported working (webOS version not told) |
 
 ## Send your report

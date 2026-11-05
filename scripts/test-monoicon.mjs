@@ -2,7 +2,7 @@
 import {build} from 'esbuild';
 const out = new URL('../node_modules/.cache-monoicon-test.mjs', import.meta.url).pathname;
 await build({entryPoints: [new URL('../src/lib/monoicon.ts', import.meta.url).pathname], bundle: true, format: 'esm', outfile: out, platform: 'node', logLevel: 'error'});
-const {monoPixels} = await import(out + '?' + Date.now());
+const {monoPixels, smoothAlpha} = await import(out + '?' + Date.now());
 let bad = 0;
 const check = (name, ok) => { console.log((ok ? 'ok   ' : 'FAIL ') + name); if (!ok) bad++; };
 const W = 32;
@@ -41,5 +41,10 @@ check('the logo body stays solid', at(d, 12, 12) >= 250);
 d = make((x, y) => (inLogo(x, y) ? [20, 20, 20, 255] : clear));   // a dark logo on transparency still shows fully
 monoPixels(d, W, W);
 check('a dark single-colour logo stays solid', at(d, 16, 16) === 255);
+// Z3: smoothing softens a hard edge, keeps solid and empty areas
+d = make((x, y) => (x < 16 ? [255, 255, 255, 255] : [255, 255, 255, 0]));
+smoothAlpha(d, W, W);
+check('smoothing keeps the inside solid and the outside empty', at(d, 4, 16) === 255 && at(d, 28, 16) === 0);
+check('smoothing gives the edge a middle value', at(d, 15, 16) > 128 && at(d, 15, 16) < 255 && at(d, 16, 16) > 0 && at(d, 16, 16) < 128);
 console.log(bad ? bad + ' failed' : 'all ok');
 process.exit(bad ? 1 : 0);

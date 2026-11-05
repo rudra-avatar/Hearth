@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "versions": [
+    {
+      "version": "2.1.0",
+      "date": "2026-11-05",
+      "summary": [
+        "Check for updates: Hearth can install a newer version itself.",
+        "Reorder the home row right on the Home screen; new Glyph icon style.",
+        "New languages: Russian and Brazilian Portuguese.",
+        "Many fixes for webOS 3 TVs and the Home button."
+      ],
+      "ipkUrl": "https://github.com/rudra-avatar/Hearth/releases/download/v2.1.0/tld.my.customlauncher_2.1.0_all.ipk",
+      "sha256": "d62ee9d31e756683dec235d08db58dce57f2db40a74dbe824c012541016226da",
+      "size": 19313484
+    },
+    {
+      "version": "2.0.2",
+      "date": "2026-11-03",
+      "summary": [
+        "New languages: Français and Polski.",
+        "Add Hearth as a TV input is back (one On/Off row).",
+        "New Uninstall apps button; wallpaper Fit or Fill; screen saver Dim 10 to 80 %."
+      ]
+    },
+    {
+      "version": "2.0.1",
+      "date": "2026-11-01",
+      "summary": [
+        "Fix: a bundled photo you chose in 1.2.0 stays the same picture after updating."
+      ]
+    },
+    {
+      "version": "2.0.0",
+      "date": "2026-10-31",
+      "summary": [
+        "New Settings layout, many more looks and themes, a screen saver.",
+        "A Home button that needs no other app, languages, a full app list without root."
+      ]
+    }
+  ]
+}

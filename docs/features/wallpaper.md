@@ -4,7 +4,7 @@ The wallpaper is the picture behind everything. Open **Settings, Wallpaper**.
 
 - **Wallpaper:** OK opens a picker. Choose plain black (or the theme's colour), one of the **25 photos** that come with Hearth, a **slideshow** of those photos, or your **own picture** or **folder**.
 - **Picture size:** *Fill the screen* crops the picture so it covers the whole screen (as before). *Fit* shows the whole picture; where its shape is different from the screen, the plain background shows at the sides or at the top and bottom. Photos are never turned.
-- **Change picture every:** from 10 seconds to 1 hour (10, 20, 30 seconds, 1 minute and longer).
+- **Change picture every:** from 10 seconds to 1 hour (10, 20, 30 seconds, 1 minute and longer), or **Each visit**: a new picture when Hearth starts again and when you come back to Hearth after at least 1 minute away.
 - **Shuffle:** random order, or A to Z.
 - **Wallpaper opacity:** lower numbers make the picture softer.
 - **Bottom fade:** darkens the bottom of the picture so the icons stay easy to read.

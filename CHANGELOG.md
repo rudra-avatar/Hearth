@@ -1,5 +1,55 @@
 # Changelog
 
+## 2.1.0
+
+A larger update: Hearth can now check for newer versions and install them itself, the home row can be re-ordered right on the Home screen, there is a new icon style, two more languages, and many fixes for webOS 3 TVs.
+
+### Languages
+
+- New: **Russian** (*Русский*, machine translated, shown with the *(machine translated)* mark) and **Português (Brasil)**, written and checked by assanches (issue #38), without the mark.
+- Every language that comes with Hearth now has every text (French, Polish and Portuguese had a few gaps; they were filled by machine and are not yet checked by their authors, so corrections are welcome).
+
+### Updates
+
+- **Check for updates** is the first row of Settings, System. It looks only when you press OK and lists the newer versions with a short summary each.
+- On a rooted TV, OK on the list asks *Install Hearth ...?* and installs the newest version, then shows the result. If that does not work, or the TV is not rooted, it opens the Homebrew Channel instead.
+
+### Home screen
+
+- **Reorder home row** moves apps right on the Home screen: hold OK on an app, choose *Reorder home row*, then OK picks an app up, the arrow keys move it, OK puts it down, Back exits. Favourites and the other apps keep their own order. This replaces the *Re-order* button in Settings and the four *Move* entries of the app menu.
+- **Hide the Hearth Settings tile** (Look, Home row): removes the tile from the row. Hold OK on any app and choose *Hearth Settings* to open Settings; five presses of Down also bring the tile back until Hearth restarts.
+- New icon style **Glyph**: just the shape, no tile. The focused icon only grows. *Icon tile: Dark* gives dark shapes and labels, *Light* gives light ones. Icons are drawn with smoother edges (they are made once again after the update).
+- With the *Minimal* icon style the focused app grows a little more.
+- *Row scroll speed*: there is a new **Fast** level and the old *Fast* is now called **Max**. Your saved choice keeps working as before.
+
+### Widget and wallpaper
+
+- **Widget backdrop** (Widget, Widget look): a soft dark or light glow behind the clock, date and weather so they read on bright pictures. Off, or 5 to 100. New installs start at 25; if you updated it stays Off until you turn it on.
+- The wallpaper interval has a new level, **Each visit**: a new picture after a restart and after you were away for a minute or more.
+
+### Settings
+
+- The Settings background is a little more see-through.
+- The colours of the picker screens (Recent apps, key drawings, pop-ups) are calmer.
+- If Hearth cannot save your settings because the TV's storage is full, it now frees what it can rebuild, says so, and never writes an old copy over your newer choices.
+- *Replace LG Home with SAM (experimental)* is back in System, TV start: a black stand-in is mounted in LG Home's place so the TV opens Hearth through it. It and the helper switch each other off (greyed out while the other is on).
+
+### Remote and Home button
+
+- **Map home button** now keeps listening when you press Home, shows the *Home button mapped* pop-up every time a button is mapped (also when it fails, with the reason), and while it listens the Home button no longer leaves Hearth. Detection of pressed buttons was rewritten.
+- On webOS 3, *Map home button* picks the right button number from the key hook's log (it used a table slot, so the mapped Home button never fired). Thanks to chriskoperdraad-tech (pull request #37), who also tested and researched on a webOS 3.9 TV (issue #23).
+- In *Map additional keys*, *Use the other method* now says plainly on a TV that cannot use it (webOS 3: no key filter list) and points to the first method; *Press a button* shows why it failed. A drawing of the 2016 Magic Remote was added. Thanks to Obednal97 (pull request #39, issue #36).
+
+### webOS 3 TVs
+
+- Fix for webOS 3 sets with an HD panel (such as the 32LJ600B): the screen was drawn shrunk into the top-left corner. Hearth no longer asks the TV for a fixed screen size. Reported by ggranata3 (issue #41). Reinstall the app to get it (the Homebrew Channel update does that).
+- *Add Hearth as a TV input* and *When the TV turns on, open...* now warn on webOS 3 that some sets hang at start-up with them. On these TVs Hearth also keeps a small safeguard that takes the input or the power-on app out again if the TV does not reach Hearth after two start-ups (experimental; not yet tested on a TV that hangs). Reports: issues #23 and #43.
+
+### Smaller changes
+
+- The Debug tab's report file holds the whole session, not only the last lines.
+- Many fixes and tests behind the scenes.
+
 ## 2.0.2
 
 ### Languages

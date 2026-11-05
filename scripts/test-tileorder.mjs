@@ -40,4 +40,22 @@ const u = t.orderUpdate(['h1', 'b', 'a'], ['a', 'b'], ['h1'], ['a', 'b', 'hidden
 eq(u, {tileOrder: ['h1', 'b', 'a'], appIds: ['b', 'a', 'hiddenApp'], sourceIds: ['h1', 'h9']}, 'saving the order updates the app and input orders and keeps entries that are not on the row');
 eq(t.orderUpdate(['a'], ['a'], [], null, []).appIds, null, 'old app settings (not converted yet) are left alone');
 eq(t.orderUpdate(['h2', 'h1'], [], ['h1', 'h2'], [], ['h1', 'h2']).sourceIds, ['h2', 'h1'], 'inputs follow the new order');
+
+// 2.0.3 T2 move mode: one step left or right inside the tile's own row, no looping
+const k4 = ['a', 'b', 'c', 'd'];
+eq(t.stepKeys(k4, [], 'b', 'right'), ['a', 'c', 'b', 'd'], 'step right (no favourites)');
+eq(t.stepKeys(k4, [], 'b', 'left'), ['b', 'a', 'c', 'd'], 'step left (no favourites)');
+eq(t.stepKeys(k4, [], 'a', 'left') === k4, true, 'left at the start: the very same list (nothing to save)');
+eq(t.stepKeys(k4, [], 'd', 'right') === k4, true, 'right at the end: the very same list (no looping)');
+eq(t.stepKeys(k4, [], 'zzz', 'right') === k4, true, 'an unknown key does nothing');
+eq(t.stepKeys(['a', 'b', 'c', 'd', 'e'], ['b', 'd'], 'b', 'right'), ['a', 'd', 'c', 'b', 'e'], 'favourites move among the favourites only (the other slots stay)');
+eq(t.stepKeys(['a', 'b', 'c', 'd', 'e'], ['b', 'd'], 'a', 'right'), ['c', 'b', 'a', 'd', 'e'], 'the other tiles move among themselves, favourites stay put');
+const fav = ['a', 'b', 'c', 'd', 'e'];
+eq(t.stepKeys(fav, ['b', 'd'], 'd', 'right') === fav, true, 'last favourite: no move right');
+eq(t.stepKeys(fav, ['b', 'd'], 'e', 'right') === fav, true, 'last of the others: no move right');
+let walk = ['a', 'b', 'c'];
+walk = t.stepKeys(walk, [], 'a', 'right');
+walk = t.stepKeys(walk, [], 'a', 'right');
+eq(walk, ['b', 'c', 'a'], 'two steps in a row build on each other');
+eq(t.orderTiles(['a', 'b', 'c'], id, walk), ['b', 'c', 'a'], 'the saved order shows the same on the row');
 process.exit(fail ? 1 : 0);

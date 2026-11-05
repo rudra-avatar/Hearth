@@ -1,5 +1,8 @@
 # Step 2: Root the TV (you may skip this)
 
+!!! tip "A very good step-by-step rooting guide"
+    Before you start, have a look at this brilliant guide by the community: <https://tv.slada.sk/guides/rooting-guide>. It explains rooting in detail, with pictures.
+
 Rooting gets you the "big key" for your TV. With it Hearth can open when you press **Home**, start when you switch the TV on, show a screen saver and much more. Without it Hearth still works, only with less magic.
 
 !!! danger "Do not update the TV's software first"

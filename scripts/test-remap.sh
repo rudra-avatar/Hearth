@@ -77,5 +77,32 @@ check "an empty chain gets just the filter" "$(run on; cat "$T/list")" "applied
 echo 'garbage' > "$T/list"
 check "an unreadable chain is not touched" "$(run on)" "failed"
 
+# issue #36: a TV whose configd has no key filter list at all (webOS 3.4: the chain is built into surface-manager)
+cat > "$T/luna-none.sh" <<LUNA
+#!/bin/sh
+case "\$3" in
+  *getConfigs*) echo '{"subscribed":false,"configs":{},"missingConfigs":["com.webos.surfacemanager.keyFilters"],"returnValue":true}' ;;
+  *setConfigs*) echo "\$4" >> '$T/sets-none'; echo '{"returnValue":true}' ;;
+esac
+LUNA
+cat > "$T/luna-empty.sh" <<LUNA
+#!/bin/sh
+case "\$3" in
+  *getConfigs*) echo '{"configs":{},"returnValue":true}' ;;
+  *setConfigs*) echo "\$4" >> '$T/sets-none'; echo '{"returnValue":true}' ;;
+esac
+LUNA
+cat > "$T/luna-down.sh" <<LUNA
+#!/bin/sh
+echo '{"returnValue":false,"errorText":"Service does not exist"}'
+LUNA
+chmod +x "$T/luna-none.sh" "$T/luna-empty.sh" "$T/luna-down.sh"
+runwith () { l="$1"; shift; SNAPDIR="$T/snap" LUNA="$T/$l" REMAP="$T/remap" LAUNCHER="$T/launcher" LINK="$T/initd/47-launcher-remap" LOG="$T/log" sh "$S/apply.sh" "$@"; }
+check "no key filter list (named missing): unsupported" "$(runwith luna-none.sh on)" "unsupported"
+check "no key filter list (not in the reply): unsupported" "$(runwith luna-empty.sh reload)" "unsupported"
+check "and nothing is written to configd" "$([ -f "$T/sets-none" ] && echo written || echo none)" "none"
+check "off still works on such a TV" "$(runwith luna-none.sh off)" "removed"
+check "configd not answering is a failure, not unsupported" "$(runwith luna-down.sh on)" "failed"
+
 rm -rf "$T"
 exit $fail

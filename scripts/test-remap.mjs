@@ -48,6 +48,7 @@ eq(r.REMAP_LINK, '/var/lib/webosbrew/init.d/47-launcher-remap', 'the boot link s
 eq(r.captureCommand(true).indexOf("apply.sh' capture") > 0 && r.captureCommand(false).indexOf("apply.sh' nocapture") > 0, true, 'capture goes through the apply script');
 eq(r.REMOVE_COMMAND.indexOf(`rm -f '${r.REMAP_LINK}'`) > 0 && r.REMOVE_COMMAND.indexOf('apply.sh\' off') > 0 && r.REMOVE_COMMAND.indexOf(`rm -rf '${r.REMAP_DIR}'`) > 0, true, 'remove takes the filter out and deletes the link and the files');
 eq([r.parseRemapResult('applied\n[exit 0]'), r.parseRemapResult('removed'), r.parseRemapResult('x\nfiles-missing'), r.parseRemapResult('')].join(), 'applied,removed,files-missing,failed', 'result words');
+eq(r.parseRemapResult('unsupported\n[exit 5]'), 'unsupported', 'issue #36: a TV with no key filter list is its own result, not a plain failure');
 
 // ----- the key filter -----
 const src = readFileSync(new URL('../src/remap/keyfilter.js', import.meta.url), 'utf8');

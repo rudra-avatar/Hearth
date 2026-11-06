@@ -69,7 +69,7 @@ export interface SystemInfo {
 /** The options that run shell commands, so they can't work without root. */
 /** System rows that stay while root has failed (P83). */
 export const NO_ROOT_ROWS = ['updates', 'language', 'languageRemove', 'tvApps', 'noRootGuide', 'showDebug'];
-export const ROOT_OPTIONS = ['remap', 'replaceHome', 'samHome', 'homeApp', 'homeKey', 'preload', 'keepReady', 'keepRelaunch', 'tvInput', 'powerOnApp', 'lgLogo', 'noUpdate', 'screensaver', 'screensaverPictures', 'screensaverInterval', 'screensaverShuffle', 'screensaverCare', 'screensaverFit', 'screensaverDim', 'screensaverPowerOff', 'screensaverShow'];
+export const ROOT_OPTIONS = ['remap', 'replaceHome', 'samHome', 'homeApp', 'homeKey', 'preload', 'keepReady', 'keepRelaunch', 'tvInput', 'powerOnApp', 'lgLogo', 'noUpdate', 'screensaver', 'screensaverPictures', 'screensaverInterval', 'screensaverShuffle', 'screensaverCare', 'screensaverFit', 'screensaverDim', 'screensaverPowerOff', 'screensaverShow', 'showStats'];
 
 
 /** Why a row is greyed out, or null when it is usable. */
@@ -429,6 +429,8 @@ const BASE_PREFS: PrefDef[] = [
 		(c) => c.clock.showDate, (c, v) => ({...c, clock: {...c.clock, showDate: v}})),
 	toggle('showPeriod', 'clock',
 		(c) => c.clock.showPeriod, (c, v) => ({...c, clock: {...c.clock, showPeriod: v}})),
+	toggle('showStats', 'clock',
+		(c) => c.clock.showStats, (c, v) => ({...c, clock: {...c.clock, showStats: v}})),
 
 	// ----- Wallpaper -----
 	{
@@ -596,6 +598,7 @@ const LAYOUT: [PrefTab, string, string[]][] = [
 	['clock', 'Time and date', ['clockFormat', 'showPeriod', 'showDate']],
 	['clock', 'Widget look', ['clockSize', 'clockFont', 'clockWeight', 'clockTop', 'clockLeft', 'clockAlign', 'clockColor', 'clockShadow', 'clockScrim', 'clockOpacity']],
 	['clock', 'Weather', ['weatherOn', 'weatherUnit', 'weatherCity', 'weatherCityName', 'weatherRange']],
+	['clock', 'TV load', ['showStats']],
 	['wallpaper', '', ['wallpaper', 'wallpaperFit', 'interval', 'shuffle', 'wallpaperOpacity', 'fadeStrength']],   // P66b: few rows, no groups (was Background and Picture)
 	['saver', '', ['screensaver', 'screensaverPictures', 'screensaverInterval', 'screensaverShuffle', 'screensaverFit', 'screensaverCare', 'screensaverDim', 'screensaverPowerOff', 'screensaverShow']],
 	['system', '', ['updates', 'language', 'languageRemove']],

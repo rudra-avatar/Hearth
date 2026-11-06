@@ -185,9 +185,9 @@ html, body {
 /* Widget alignment: the clock's position is its centre (default), its left edge or its right edge */
 .clock--left { text-align: left; transform: none; }
 .clock--right { text-align: right; transform: translateX(-100%); }
-.clock--left .clock__weather { justify-content: flex-start; }
-.clock--right .clock__weather { justify-content: flex-end; }
-.clock--dark .clock__time, .clock--dark .clock__period, .clock--dark .clock__date, .clock--dark .clock__weather { text-shadow: none; }
+.clock--left .clock__weather, .clock--left .clock__stats { justify-content: flex-start; }
+.clock--right .clock__weather, .clock--right .clock__stats { justify-content: flex-end; }
+.clock--dark .clock__time, .clock--dark .clock__period, .clock--dark .clock__date, .clock--dark .clock__weather, .clock--dark .clock__stats { text-shadow: none; }
 .clock__time {
 	line-height: 1;
 	text-shadow: var(--clock-shadow);
@@ -215,6 +215,23 @@ html, body {
 	opacity: 0.75;
 	text-shadow: var(--clock-shadow);
 }
+/* TV load line: the same quiet weight and ink as the weather line, a touch fainter; figures keep their width so the
+   line does not jiggle as the numbers change every few seconds */
+.clock__stats {
+	display: flex;
+	flex-direction: row;
+	align-items: baseline;
+	justify-content: center;
+	font-weight: 300;
+	letter-spacing: 0.02em;
+	opacity: 0.6;
+	text-shadow: var(--clock-shadow);
+	font-variant-numeric: tabular-nums;
+}
+.clock__stat { display: inline-flex; align-items: baseline; }
+.clock__stat-sep { margin: 0 0.7em; opacity: 0.7; }
+.clock__stat-label { margin-right: 0.4em; opacity: 0.65; letter-spacing: 0.08em; font-size: 0.82em; text-transform: uppercase; }
+.clock__stat-value { white-space: pre; }
 .clock__weather-icon {
 	flex: 0 0 auto;
 	width: 1.5em; height: 1.5em;

@@ -4,6 +4,7 @@ import {layoutSize, layoutX} from '../lib/fitscale';
 import type {TimeFormat} from '../lib/clock';
 import type {ClockConfig} from '../lib/storage';
 import type {WeatherView} from '../lib/weather';
+import type {StatsView} from '../lib/tvstats';
 
 const STRIP_W = 1000;      // the widget is drawn at full size in a strip this wide, then scaled to the free space
 const STRIP_H = 400;
@@ -16,7 +17,7 @@ const MIN_W = 160;         // narrower than this: no preview
  *  Only the widget is shown (no screen, no frame): the real Clock is drawn at full size in a strip and scaled so the strip
  *  fills the free space right of the option list (measured from the list itself, so it never overlaps the rows).
  *  The size and position settings are not shown: the widget sits left, centre or right of the strip, following the alignment. */
-export function WidgetPreview ({now, format, config, weather}: {now: Date; format: TimeFormat; config: ClockConfig; weather: WeatherView | null}) {
+export function WidgetPreview ({now, format, config, weather, stats}: {now: Date; format: TimeFormat; config: ClockConfig; weather: WeatherView | null; stats?: StatsView | null}) {
 	const [free, setFree] = useState<{left: number; width: number} | null>(null);
 	useEffect(() => {
 		const measure = () => {
@@ -38,7 +39,7 @@ export function WidgetPreview ({now, format, config, weather}: {now: Date; forma
 	return (
 		<div class="widget-preview" style={{left: `${free.left}px`, width: `${free.width}px`, height: `${Math.round(STRIP_H * scale)}px`}} aria-hidden="true">
 			<div class="widget-preview__strip" style={{width: `${STRIP_W}px`, height: `${STRIP_H}px`, transform: t, WebkitTransform: t}}>
-				<Clock now={now} format={format} config={shown} weather={weather} />
+				<Clock now={now} format={format} config={shown} weather={weather} stats={stats} />
 			</div>
 		</div>
 	);

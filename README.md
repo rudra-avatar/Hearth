@@ -625,6 +625,7 @@ More in the [Troubleshooting guide](https://rudra-avatar.github.io/Hearth/troubl
 - **Photos:** the 25 bundled photos are public-domain photos supplied by the maintainer, resized to 1920x1080.
 - **[Night Stock Videos by Vecteezy](https://www.vecteezy.com/free-videos/night):** the short fireplace clip used by the built-in video screen saver.
 - Weather data: [Open-Meteo](https://open-meteo.com) (free for non-commercial use, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)).
+- Apple TV Aerials: the list and the way to fetch Apple's aerial videos follow the [Aerial](https://github.com/AerialScreensaver/Aerial) screen saver for macOS (MIT); Hearth's code is its own. The videos and previews are Apple's and are not shipped with Hearth: they are downloaded from Apple's servers only when the user chooses them.
 - Bundled third-party material, with its licences, is listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - **Developed with Claude (Anthropic).** Claude wrote and tested most of the code and the machine-made translations; the maintainer directed it and tried it on real LG TVs. (A credit, not an endorsement by Anthropic.)
 

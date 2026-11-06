@@ -856,6 +856,18 @@ html, body {
 .widget-preview { position: absolute; top: 540px; z-index: 5; pointer-events: none; }
 .widget-preview__strip { position: absolute; left: 0; top: 0; -webkit-transform-origin: 0 0; transform-origin: 0 0; }
 
+/* ---------- Apple TV Aerials: the list on the left, the focused video's preview on the right ---------- */
+.aerial { display: flex; flex-direction: row; width: 1300px; margin-top: 24px; }
+.aerial .picker.aerial__list { flex: 0 0 720px; width: 720px; margin-top: 0; margin-right: 28px; }
+.aerial__panel { flex: 1 1 auto; padding: 24px; border-radius: 20px; background: var(--color-picker-tile); box-sizing: border-box; min-height: 560px; }
+.aerial__frame { position: relative; width: 100%; padding-top: 64.4%; border-radius: 14px; overflow: hidden; background: rgba(0, 0, 0, 0.35); }
+.aerial__img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; }
+.aerial__wait { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; font-size: 20px; color: var(--color-text-muted); }
+.aerial__name { margin-top: 20px; font-size: 30px; color: var(--color-text-primary); }
+.aerial__sub { margin-top: 6px; font-size: var(--font-option-description); color: var(--color-text-muted); }
+.aerial__state { margin-top: 14px; font-size: 21px; line-height: 1.4; color: var(--color-text-secondary); }
+.aerial__sizes { margin-top: 10px; font-size: 19px; color: var(--color-text-muted); }
+
 /* ---------- Check for updates (R2-a): version list on the left, summary on the right ---------- */
 .upd { display: flex; flex-direction: row; width: 1300px; margin-top: 24px; }
 .upd__list { flex: 0 0 480px; margin-right: 28px; }

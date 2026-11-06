@@ -19,6 +19,7 @@ import {TILE_SHAPE_IDS, tileShapeText} from './tileshape';
 import {CLOCK_COLOR_IDS, LABEL_COLOR_IDS, iconColorValues, iconColorEffective, iconColorText, colorInfo, labelColorText, withoutInk, type ClockColor} from './clockcolor';
 import {baseName} from './wallpaper';
 import {SAVER_FIT_VALUES, fitText, SAVER_INTERVAL_VALUES, SAVER_POWEROFF_VALUES, powerOffText, SAVER_PHOTOS, SAVER_VIDEO, saverIsSlideshow} from './saverconfig';
+import {AERIAL_VIDEOS} from './aerial';
 import {WEATHER_ENABLED} from '../config/features';
 import type {TempUnit} from './weather';
 import {lastFailure, rootState, type RootState} from './failure';
@@ -69,7 +70,7 @@ export interface SystemInfo {
 /** The options that run shell commands, so they can't work without root. */
 /** System rows that stay while root has failed (P83). */
 export const NO_ROOT_ROWS = ['updates', 'language', 'languageRemove', 'tvApps', 'noRootGuide', 'showDebug'];
-export const ROOT_OPTIONS = ['remap', 'replaceHome', 'samHome', 'homeApp', 'homeKey', 'preload', 'keepReady', 'keepRelaunch', 'tvInput', 'powerOnApp', 'lgLogo', 'noUpdate', 'screensaver', 'screensaverPictures', 'screensaverInterval', 'screensaverShuffle', 'screensaverCare', 'screensaverFit', 'screensaverDim', 'screensaverPowerOff', 'screensaverShow'];
+export const ROOT_OPTIONS = ['remap', 'replaceHome', 'samHome', 'homeApp', 'homeKey', 'preload', 'keepReady', 'keepRelaunch', 'tvInput', 'powerOnApp', 'lgLogo', 'noUpdate', 'screensaver', 'screensaverPictures', 'screensaverInterval', 'screensaverShuffle', 'screensaverCare', 'screensaverFit', 'screensaverDim', 'screensaverPowerOff', 'screensaverShow', 'aerials'];
 
 
 /** Why a row is greyed out, or null when it is usable. */
@@ -546,6 +547,12 @@ const BASE_PREFS: PrefDef[] = [
 		text: (c) => (c.screensaverSource === SAVER_PHOTOS ? td('pref.saverPhotos') : c.screensaverSource === SAVER_VIDEO ? td('pref.saverVideo') : c.screensaverSource ? (c.screensaverSource.slice(c.screensaverSource.lastIndexOf('/') + 1) || c.screensaverSource) + (c.screensaverRecursive ? td('pref.withSubfolders') : '') : td('picker.sameAsTheWallpaper')),
 		visible: (c) => c.screensaver
 	},
+	{
+		// Apple TV Aerials: OK opens the screen that downloads Apple's aerial videos for the saver (and their stills for the wallpaper)
+		id: 'aerials', tab: 'system', kind: 'action',
+		text: (c) => (c.screensaverSource === AERIAL_VIDEOS || /\/hearth-aerials$/.test(c.screensaverSource) ? td('pref.aerialsInUse') : td('pref.aerialsOpen')),
+		visible: (c) => c.screensaver
+	},
 	{...choice('screensaverInterval', 'system',
 		SAVER_INTERVAL_VALUES, (c) => c.screensaverInterval, (c, v) => ({...c, screensaverInterval: v}), intervalText), visible: (c) => c.screensaver && saverIsSlideshow(c)},
 	{...toggle('screensaverShuffle', 'system',
@@ -597,7 +604,7 @@ const LAYOUT: [PrefTab, string, string[]][] = [
 	['clock', 'Widget look', ['clockSize', 'clockFont', 'clockWeight', 'clockTop', 'clockLeft', 'clockAlign', 'clockColor', 'clockShadow', 'clockScrim', 'clockOpacity']],
 	['clock', 'Weather', ['weatherOn', 'weatherUnit', 'weatherCity', 'weatherCityName', 'weatherRange']],
 	['wallpaper', '', ['wallpaper', 'wallpaperFit', 'interval', 'shuffle', 'wallpaperOpacity', 'fadeStrength']],   // P66b: few rows, no groups (was Background and Picture)
-	['saver', '', ['screensaver', 'screensaverPictures', 'screensaverInterval', 'screensaverShuffle', 'screensaverFit', 'screensaverCare', 'screensaverDim', 'screensaverPowerOff', 'screensaverShow']],
+	['saver', '', ['screensaver', 'screensaverPictures', 'aerials', 'screensaverInterval', 'screensaverShuffle', 'screensaverFit', 'screensaverCare', 'screensaverDim', 'screensaverPowerOff', 'screensaverShow']],
 	['system', '', ['updates', 'language', 'languageRemove']],
 	['system', 'Remote control', ['homeKey', 'remap']],
 	['system', 'TV start', ['tvApps', 'noRootGuide', 'tvInput', 'replaceHome', 'samHome', 'powerOnApp', 'lgLogo', 'noUpdate', 'homeApp']],

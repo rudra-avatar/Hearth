@@ -46,6 +46,8 @@ import {setEngineAtBoot} from './lib/homeengine';
 import {readBinds, syncKeepBind} from './lib/homekey';
 import {Notice, type NoticeButton} from './components/Notice';
 import {Preload} from './screens/Preload';
+import {Aerials} from './screens/Aerials';
+import {AERIAL_FRAMES, AERIAL_VIDEOS} from './lib/aerial';
 import {homeAppMessage, readHomeApp, restoreHomeApp, setHearthAsHome} from './lib/homeapp';
 import {clearPowerOnApp, powerOnMessage, readPowerOn, restartTv, setPowerOnApp} from './lib/poweron';
 import {needsRestart, powerOnName} from './lib/poweroncmd';
@@ -99,7 +101,7 @@ import {fetchWeather} from './lib/weathernet';
 import {FRESH_MS, isFresh, readWeatherCache, usableCached, weatherView, writeWeatherCache, type City, type WeatherData} from './lib/weather';
 import {CONNECT_APPS_NOTE} from './config/connectapps';
 
-type Screen = 'home' | 'settings' | 'picker' | 'saverpicker' | 'cities' | 'source' | 'iconpicker' | 'homekey' | 'preload' | 'poweron' | 'remote' | 'extrakeys' | 'themes' | 'languages' | 'updates';
+type Screen = 'home' | 'settings' | 'picker' | 'saverpicker' | 'cities' | 'source' | 'iconpicker' | 'homekey' | 'preload' | 'aerials' | 'poweron' | 'remote' | 'extrakeys' | 'themes' | 'languages' | 'updates';
 
 const TAB = {apps: 'apps', sources: 'sources', appsSources: 'appsources', look: 'look', clock: 'clock', wallpaper: 'wallpaper', saver: 'saver', system: 'system', debug: 'debug', tests: 'tests'} as const;
 const MISC = {lgHome: 'lg-home', settings: 'settings', system: 'system-settings'} as const;
@@ -1166,6 +1168,7 @@ export function App () {
 			else if (optionId === 'homeKey') askRemoteWarning(() => setScreen('homekey'));
 			else if (optionId === 'remap') askRemoteWarning(() => setScreen('extrakeys'));
 			else if (optionId === 'preload') setScreen('preload');
+			else if (optionId === 'aerials') setScreen('aerials');
 			else if (optionId === 'updates') setScreen('updates');
 			else if (optionId === 'powerOnApp') {
 				if (systemInfo.powerOn && systemInfo.powerOn.foreign) showToast(powerOnMessage('foreign'), 'error');
@@ -1660,6 +1663,12 @@ export function App () {
 			)}
 			{screen === 'picker' && <Picker onChoose={onChooseWallpaper} onClose={() => setScreen('settings')} />}
 			{screen === 'preload' && <Preload apps={apps} onClose={() => setScreen('settings')} onChanged={(n) => setConfig((c) => { if (c.preloadOff === n) return c; const next = {...c, preloadOff: n}; saveConfig(next); return next; })} onToast={showToast} />}
+			{screen === 'aerials' && <Aerials
+				onClose={() => setScreen('settings')}
+				onUseSaver={(folder) => { setConfig((c) => { const next = {...c, screensaver: true, screensaverSource: folder || AERIAL_VIDEOS, screensaverShuffle: true, screensaverRecursive: false}; saveConfig(next); return next; }); showToast(tt('aerial.saverSet')); }}
+				onUseWallpaper={() => { setConfig((c) => { const next = {...c, wallpaper: {...c.wallpaper, mode: 'folder' as const, path: AERIAL_FRAMES, shuffle: true, recursive: false}}; saveConfig(next); return next; }); showToast(tt('aerial.wallpaperSet')); }}
+				onToast={showToast}
+			/>}
 			{screen === 'remote' && <RemoteButtons remap={config.remap} targets={remapTargets} captured={captured} busy={remapBusy} onSwitch={onRemapSwitch} onAssign={onRemapAssign} onCapture={onRemapCapture} onClose={() => setScreen('extrakeys')} />}
 			{screen === 'updates' && <Updates debug={config.showDebug} paused={!!notice} notify={setNotice} closeNotice={() => setNotice(null)} onClose={() => setScreen('settings')} />}
 			{screen === 'extrakeys' && <ExtraKeys targets={remapTargets} model={config.remoteModel} onModel={onRemoteModel} onOtherMethod={() => setScreen('remote')} paused={!!notice} onLgHomeCheck={askLgHome} onClose={() => setScreen('settings')} onToast={showToast} />}

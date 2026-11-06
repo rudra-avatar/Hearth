@@ -486,6 +486,9 @@ html, body {
 	font-size: var(--font-tile-label);
 	color: var(--color-text-muted);
 }
+.settings__hint--help {
+	color: var(--color-text-primary);
+}
 .settings__tabs {
 	display: flex;
 	flex-direction: row;
@@ -860,4 +863,7 @@ html, body {
 .upd__title { font-size: 30px; color: var(--color-text-primary); }
 .upd__sub { margin: 6px 0 22px; font-size: var(--font-option-description); color: var(--color-text-muted); }
 .upd__line { position: relative; padding-left: 28px; margin-bottom: 14px; font-size: 24px; line-height: 1.35; color: var(--color-text-primary); }
+.upd__bar { margin: 28px 0 14px; width: 700px; height: 14px; border-radius: 7px; background: var(--color-picker-tile); overflow: hidden; }
+.upd__fill { height: 100%; border-radius: 7px; background: var(--color-text-primary); transition: width 0.4s linear; }
+.upd__step { font-size: var(--font-option-description); color: var(--color-text-muted); }
 .upd__line::before { content: ''; position: absolute; left: 4px; top: 0.55em; width: 9px; height: 9px; border-radius: 50%; background: var(--color-text-secondary); }

@@ -1,14 +1,29 @@
 # System
 
-**Settings, System** holds the things that talk to the TV itself. Most of them need a **rooted** TV. On a TV that is not rooted they are grey and say why, and only the language row, the app-list row, the no-root guide and the Debug switch stay. See [Without root](no-root.md).
+**Settings, System** holds the things that talk to the TV itself. Most of them need a **rooted** TV. On a TV that is not rooted they are grey and say why, and only the update row, the language row, the app-list row, the no-root guide and the Debug switch stay. See [Without root](no-root.md).
 
 ![System tab, Remote control group](../screenshots/settings-system.jpg)
 
 ## Check for updates
 
-The first row. Press **OK** to look for a newer Hearth. Hearth looks only when you press OK, never by itself. The screen lists the versions newer than yours, newest first, with a short summary on the right (Up and Down choose a version). If yours is the newest it says so.
+The first row. It tells you if a newer Hearth exists and, on a rooted TV, can install it for you. Hearth looks **only when you press OK**, never by itself, and it needs the TV to be online.
 
-On a **rooted** TV, press **OK** on the list and Hearth asks *Install Hearth ...?*. Choose **Install** and Hearth installs the newest version, then shows the result. Make a settings backup first if you like. If the install does not work, a button opens the **Homebrew Channel**, where you can update by hand. On a TV that is **not rooted**, OK opens the Homebrew Channel for you.
+**Looking.** Press **OK** on the row. Hearth asks the internet for a small list of Hearth versions. This screen shows every version newer than yours, newest first. Press **Up** and **Down** to choose a version; on the right you read a short summary of what changed in it. If yours is already the newest, the screen says *Hearth is up to date*. If the TV cannot reach the internet, it says *Could not check*; press **OK** to try again.
+
+**Installing (rooted TV).** Choose the version you want and press **OK**. Hearth asks *Install Hearth ...?*. Choose **Install**. Hearth then:
+
+1. downloads the file (a bar shows the percent),
+2. checks the file against a fingerprint (a long code that proves the file is the real one and nothing broke on the way),
+3. installs it over your old Hearth,
+4. shows the result.
+
+The bar is only a guide. The first part, the download, is a real percent. The installing part has no real percent, so the bar moves in steps. Please wait and do not turn the TV off. Your settings, apps and favourites stay. The screen may close for a moment while Hearth is replaced; if Hearth does not come back by itself, open it again from the app list. If you like, make a settings backup first.
+
+**If it does not work.** Hearth changes nothing and shows a button that opens the **Homebrew Channel**, where you can update by hand. A version with no direct download does the same.
+
+**TV without root.** A TV that is **not rooted** cannot install by itself. **OK** opens the Homebrew Channel for you, where you update Hearth.
+
+**Debug tab on.** The **Left** and **Right** arrows pretend that you have an older version. This is only a test for the list.
 
 ## Hearth language
 
@@ -31,9 +46,11 @@ If the separate *Input Hook* app is installed with its own settings, Hearth does
 
 ### Map additional keys (experimental)
 
-Give the other buttons on your remote, such as the **colour keys** and other dedicated buttons, a new job: open any app or input, open Hearth, mute, open **LG Home** (LG's own home screen), or do nothing. Press **Press a button to reassign it** and press the button you mean. The keys **Home, arrows, OK, Back, power, volume, channels and numbers** are never taken. After your first change Hearth asks whether the remote still works. Only when you say yes does it keep the change after a restart. The change is added in the TV's memory only, so a restart without keeping it undoes it.
+Give the other buttons on your remote, such as the **colour keys** and other dedicated buttons, a new job: open any app or input, open Hearth, mute, open **LG Home** (LG's own home screen), or do nothing. On a webOS 3 TV, LG Home has to be opened with the Home key: if Hearth does not know yet which part of the TV takes that key, it opens and asks you to press the Home button once, and remembers the answer. Press **Press a button to reassign it** and press the button you mean. The keys **Home, arrows, OK, Back, power, volume, channels and numbers** are never taken. The changes stay after a restart of the TV. If the remote ever stops answering, restart the TV first; if that does not help, follow the repair steps in the [Troubleshooting guide](../troubleshooting.md#the-remote-stops-answering). The same hint is on every remote-button screen.
 
 ![Map additional keys: the remote drawing](../screenshots/remote-extra-keys.jpg)
+
+Before the first button screen opens, Hearth shows a short warning. If the remote ever stops answering after you map buttons, restart the TV first. If that does not help, follow the steps in [The remote stops answering](../troubleshooting.md#the-remote-stops-answering).
 
 ## TV start
 

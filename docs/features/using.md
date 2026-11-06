@@ -55,11 +55,11 @@ Press **Back** on the home row to see the apps you used lately. **OK** opens one
 
 ## When you press Home
 
-**Settings, Look, Home row, When Home is pressed** decides where the highlight starts: on the **first app**, or on the app you **opened last** (that is the starting choice). Right after you switch the TV on, the highlight always starts on the first app until you open something. Press Home twice and it jumps to the first app.
+**Settings, Look, Home row, When Home is pressed** decides where the highlight starts: on the **first app**, or on the app you **opened last** (that is the starting choice). Right after you switch the TV on, the highlight always starts on the first app until you open something.
 
 ## Quiet mode and OLED care
 
-- **Quiet mode** hides the apps after a pause, so only the clock stays. Any key brings them back. Choose the pause (Off, or 10 to 60 seconds) in **Settings, Look, Quiet mode**. At first it is 20 seconds.
+- **Quiet mode** hides the apps after a pause, so only the clock stays. Any key brings them back. With a Magic Remote, a moving or pressed pointer only wakes the apps: it highlights and clicks nothing until the pointer has rested for a moment. Choose the pause (Off, or 10 to 60 seconds) in **Settings, Look, Quiet mode**. At first it is 20 seconds.
 - **Dim the screen after** makes the whole picture darker some seconds later. **Dim strength** says how much (10 to 80 percent). This is a dark layer, the TV's backlight is not touched.
 - **OLED shift** moves the clock and the apps a tiny bit every minute, so a still picture does not burn into an OLED screen. It is on at first.
 

@@ -10,6 +10,7 @@ Not rooted? Hearth still works. You open it yourself from the TV's app list.
 - Favourites, order, hiding apps, your own names and the built-in icons.
 - Languages that come with Hearth.
 - Opening apps.
+- **Check for updates** (Settings, System, first row). It shows if a newer Hearth exists; OK then opens the Homebrew Channel, where you update Hearth by hand.
 
 ## What needs root (grey, with the reason)
 

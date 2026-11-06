@@ -37,7 +37,7 @@ import {keepKnownIcons, sameApps} from './lib/appcache';
 import type {TimeFormat} from './lib/clock';
 import {listInputs, MOCK_INPUTS, readCecDevices, withDeviceNames, type CecDevice, type InputSource} from './lib/inputs';
 import {launchApp, launchLgHome, launchSystemSettings} from './lib/launch';
-import {sendHomeKey} from './lib/lghome';
+import {lgHomeLearnRequested, openLgHomeByKey} from './lib/lghome';
 import {exportThemeBase} from './lib/themeexport';
 import {isWebOS} from './lib/luna';
 import {listening, resumeListening} from './lib/keydetect';
@@ -83,7 +83,7 @@ import {useTimeFormat} from './hooks/useTimeFormat';
 import {AppMenu} from './components/AppMenu';
 import {extendOrder, hiddenAfterUpgrade, toggleHidden, visibleApps} from './lib/apporder';
 import {RemoteButtons, type RemapTarget} from './screens/RemoteButtons';
-import {capturedButton, checkRemap, installRemap, keepRemap, remapMessage, remapState, removeRemap, saveRemap, setCapture, unkeepRemap} from './lib/remap';
+import {capturedButton, checkRemap, installRemap, keepRemap, remapMessage, remapState, removeRemap, saveRemap, setCapture} from './lib/remap';
 import {buttonLabel, setButton, type RemapAction, type RemapConfig} from './lib/remapcmd';
 import {noteRecent, orderByRecent, readRecent, writeRecent} from './lib/recency';
 import {addTvInput, removeTvInput, TV_INPUT_LOG} from './lib/tvinput';
@@ -147,7 +147,6 @@ export function App () {
 	const recentRef = useRef<string[] | null>(null);                  // the opened tiles, newest first (Settings -> Apps -> Order by last opened); read when first needed
 	const noteOpened = useCallback((key: string) => {
 		if (lastOpened.current !== key) { lastOpened.current = key; writeLastOpened(key); }
-		openedSince.current = true;
 		bootFirst.current = false;          // H3a: until an app is opened after the TV started, the first app stays the highlight
 		markOpened();                       // H3a: /tmp/hearth-opened, once per page start
 		log(`home: opened tile noted ${key}`);
@@ -155,20 +154,27 @@ export function App () {
 		recentRef.current = next;
 		writeRecent(next);          // the row itself reorders when Hearth next comes to the front (see orderedTiles)
 	}, []);
-	// Home pressed while the home screen is already showing (nothing else open): the highlight goes to the first app, not to the last opened one again.
 	const [settingsTab, setSettingsTab] = useState('');            // the Settings tab showing (Widget tab: live preview, P76)
 	useEffect(() => { if (screen === 'home' && settingsTab) setSettingsTab(''); }, [screen]);        // Settings opens on its first tab again
 	const previewNow = useClock(screen !== 'settings' || settingsTab !== TAB.clock);
-	const homeShowing = useRef(false);
-	const homeFirst = useRef(false);
-	const openedSince = useRef(false);                        // P76: an app or input was opened from Hearth since Home was last shown
-	const homeSeen = useRef(!document.hidden);                // P76: Hearth has shown its home screen at least once
 	const [remapBusy, setRemapBusy] = useState(false);                                       // the button map is being put on the TV (P61)
 	const [captured, setCaptured] = useState<{name: string; seq: number} | null>(null);     // "Press a button": the button the TV reported
 	const captureOn = useRef(false);
 	const remapChecked = useRef(0);
-	const keepAsked = useRef(false);
-	const lastWakeAt = useRef(0);
+	const remoteWarned = useRef(false);
+	/** R6: once per session, before a remote-button screen opens: what to do if the remote stops answering. */
+	const askRemoteWarning = useCallback((go: () => void) => {
+		if (remoteWarned.current) { go(); return; }
+		setNotice({
+			title: tt('app.beforeYouMapButtons'),
+			text: tt('app.mappingButtonsChangesHow'),
+			buttons: [
+				{label: tt('app.proceed'), run: () => { remoteWarned.current = true; setNotice(null); go(); }},
+				{label: tt('appmenu.cancel'), tone: 'light', run: () => setNotice(null)}
+			],
+			onBack: () => setNotice(null)
+		});
+	}, []);
 	const replaceRef = useRef(config.replaceHome || config.samHome);
 	const [allInputs, setInputs] = useState<InputSource[]>([]);
 	// the launcher itself may be in the TV's input list (see Options): it is not offered as a source
@@ -282,6 +288,18 @@ export function App () {
 		setToast({text, kind});
 		toastTimer.current = window.setTimeout(() => setToast(null), TIMING.toastMs);
 	}, []);
+
+	// Phase 3a: the LG Home button job found no key device and opened Hearth with a request to learn it (lghome.ts); also read once at page start
+	const lgLearning = useRef(false);
+	const lgLearnRef = useRef<() => void>(() => undefined);
+	lgLearnRef.current = () => {
+		if (lgLearning.current) return;
+		lgLearning.current = true;
+		openLgHomeByKey(() => showToast(tt('app.pressHomeOnYour')))
+			.then((r) => { if (r === 'learned') showToast(tt('app.homeKeyLearned')); else if (r !== 'sent') showToast(tt('app.couldnTOpenLg'), 'error'); })
+			.then(() => { lgLearning.current = false; }, () => { lgLearning.current = false; });
+	};
+	useEffect(() => { if (lgHomeLearnRequested(undefined, true)) lgLearnRef.current(); }, []);
 
 	// I2: a save that fails even after freeing caches tells the user once per start; the Debug report gets the store sizes (Debug tab on only, after the 30 s tier)
 	useEffect(() => { setSaveFailHandler(() => showToast(tt('app.settingsNotSaved'), 'error')); return () => setSaveFailHandler(null); }, [showToast]);
@@ -480,10 +498,7 @@ export function App () {
 		const sync = (why: string) => {
 			const hidden = document.hidden;
 			if (wasHidden.current && !hidden) {
-				// P76: Home pressed again while nothing was opened from Hearth since it was last shown = the second press: first app
-				homeFirst.current = homeSeen.current && !openedSince.current;
-				homeSeen.current = true; openedSince.current = false;
-				lastWakeAt.current = Date.now(); setWakes((n) => n + 1);
+				setWakes((n) => n + 1);
 			}
 			if (wasHidden.current !== hidden) noteLife(hidden);
 			wasHidden.current = hidden;
@@ -503,6 +518,7 @@ export function App () {
 		// Home pressed while the launcher is already in front: the TV relaunches it without hiding it first.
 		let lastRelaunchNote = 0;
 		const onRelaunch = (ev?: Event) => {
+			if (lgHomeLearnRequested(ev && (ev as CustomEvent).detail)) lgLearnRef.current();    // the LG Home button job found no key device (lghome.ts)
 			if (askedRecently()) { log('keep: relaunch event from the keepAlive request ignored'); return; }
 			// "Press a button" in Reassign remote buttons: the TV's key filter opened Hearth again to say which button it was
 			const detail = ev && (ev as CustomEvent).detail;
@@ -513,8 +529,6 @@ export function App () {
 				log(`remap: relaunch while waiting: event ${(shown || 'none').slice(0, 80)}, button ${pressed || 'none'}`);
 			}
 			if (pressed && captureOn.current) { setCaptured((c) => ({name: pressed, seq: (c ? c.seq : 0) + 1})); return; }
-			homeFirst.current = homeShowing.current && Date.now() - lastWakeAt.current > 1500;          // a relaunch right after a wake is the same press
-			openedSince.current = false;
 			setScreen(keepKeyMapper); setMenu(null); setRecents(false); setWakes((n) => n + 1);
 			// a burst of presses makes one note and one touch set per 2.5 s
 			const now = Date.now();
@@ -1041,7 +1055,7 @@ export function App () {
 		if (item.key === MISC.system) { launchSystemSettings().catch(() => showToast(tt('app.couldnTOpenThe'), 'error')); return; }
 		if (item.key === MISC.lgHome) {
 			// webOS 3 has no LG Home app: when the launch is refused, the Home key is sent to the TV instead (lghome.ts; needs root)
-			const open = () => launchLgHome().catch(() => sendHomeKey().then((why) => { if (why) showToast(tt('app.couldnTOpenLg'), 'error'); }));
+			const open = () => launchLgHome().catch(() => openLgHomeByKey(() => showToast(tt('app.pressHomeOnYour'))).then((r) => { if (r === 'learned') showToast(tt('app.homeKeyLearned')); else if (r !== 'sent') showToast(tt('app.couldnTOpenLg'), 'error'); }));
 			// With the helper on, the real LG Home is let through first (the helper takes over again once LG Home is left)
 			if (config.replaceHome) stockHome().then(() => window.setTimeout(open, 1200));
 			else if (config.samHome) stockSam().then(() => window.setTimeout(open, 1200));
@@ -1147,8 +1161,8 @@ export function App () {
 				if (t) applied.t = null;
 				deleteTheme(slug).then(() => { setConfig((c) => { const next = t ? removeThemeParts(c, t) : {...c, themeSel: ''}; saveConfig(next); return next; }); setThemeRev((n) => n + 1); showToast(tt('app.themeDeleted')); });
 			}
-			else if (optionId === 'homeKey') setScreen('homekey');
-			else if (optionId === 'remap') setScreen('extrakeys');
+			else if (optionId === 'homeKey') askRemoteWarning(() => setScreen('homekey'));
+			else if (optionId === 'remap') askRemoteWarning(() => setScreen('extrakeys'));
 			else if (optionId === 'preload') setScreen('preload');
 			else if (optionId === 'updates') setScreen('updates');
 			else if (optionId === 'powerOnApp') {
@@ -1242,7 +1256,7 @@ export function App () {
 							title: tt('app.replaceLgHomeAnyway'),
 							text: tt('app.hearthWillOpenInstead'),
 							buttons: [
-								{label: tt('app.bindHomeKeyTo'), detail: tt('app.nothingIsReplacedNow'), tone: 'light', run: () => { setNotice(null); setScreen('homekey'); }},
+								{label: tt('app.bindHomeKeyTo'), detail: tt('app.nothingIsReplacedNow'), tone: 'light', run: () => { setNotice(null); askRemoteWarning(() => setScreen('homekey')); }},
 								{label: tt('app.replaceLgHomeWithout'), detail: tt('app.lgHomeMayFlash'), tone: 'danger', run: proceed}
 							],
 							onBack: () => setNotice(null)
@@ -1500,20 +1514,6 @@ export function App () {
 		});
 	}, [systemInfo, config, showToast]);
 
-	/** After the first time the buttons are on: ask whether the remote still works before they are also set at every TV start. */
-	const askKeepRemap = useCallback(() => {
-		if (keepAsked.current) return;
-		keepAsked.current = true;
-		setNotice({
-			title: tt('app.doesTheRemoteStill'),
-			text: tt('app.theReassignedButtonsAre'),
-			buttons: [
-				{label: tt('app.keepAfterRestarts'), run: () => { setNotice(null); keepRemap().then((r) => { if (r === 'applied') { setConfig((c) => { const next = {...c, remapKept: true}; saveConfig(next); return next; }); showToast(tt('app.keptTheButtonsAlso')); } else showToast(remapMessage(r), 'error'); }); }},
-				{label: tt('app.onlyNow'), run: () => setNotice(null)}
-			]
-		});
-	}, [showToast]);
-
 	/** Puts `next` on the TV: the filter is added (or taken out) when the switch changes, otherwise only the map is sent. */
 	const applyRemap = useCallback((next: RemapConfig, message?: string) => {
 		const was = config.remap;
@@ -1525,22 +1525,10 @@ export function App () {
 			const ok = result === 'applied' || result === 'removed';
 			if (ok) { patchConfig((c) => ({remap: next, remapKept: next.on ? c.remapKept : false})); remapChecked.current = Date.now(); }
 			showToast(ok && message ? message : remapMessage(result, detail), ok ? 'info' : 'error');
-			if (ok && next.on && !config.remapKept && Object.keys(next.keys).length > 0) askKeepRemap();
+			// the buttons are kept after a restart by default (no question): the boot link is added after the first successful change
+			if (ok && next.on && !config.remapKept && Object.keys(next.keys).length > 0) keepRemap().then((r) => { if (r === 'applied') patchConfig(() => ({remapKept: true})); else log(`remap: boot link not added: ${r}`); });
 		});
-	}, [config, showToast, askKeepRemap]);
-
-	/** P61e: Keep after restarts, as a switch on the Remote screen (adds or removes the boot link only). */
-	const onRemapKeep = useCallback(() => {
-		if (!config.remap.on) return;
-		setRemapBusy(true);
-		(config.remapKept ? unkeepRemap() : keepRemap()).then((r) => {
-			setRemapBusy(false);
-			if (r !== 'applied') { showToast(remapMessage(r), 'error'); return; }
-			const kept = !config.remapKept;
-			setConfig((c) => { const next = {...c, remapKept: kept}; saveConfig(next); return next; });
-			showToast(kept ? tt('app.keptTheButtonsAlso2') : tt('app.notKeptARestart'));
-		});
-	}, [config.remap.on, config.remapKept, showToast]);
+	}, [config, showToast]);
 
 	// P61e: the setting says On but, without Keep, a restart of the TV removed the filter. Read the real state (read only, never
 	// re-applies: nothing may come back after a restart without the user's Keep) and show Off if the TV has no filter.
@@ -1621,7 +1609,6 @@ export function App () {
 		return () => { window.clearTimeout(timer); document.removeEventListener('visibilitychange', arm); };
 	}, [config.remap.on, config.remapKept, showToast]);                      // eslint-disable-line react-hooks/exhaustive-deps
 
-	homeShowing.current = screen === 'home' && !menu && !recents;
 	const menuBlocked = menuVerdict && !menuVerdict.ok ? menuVerdict.reason : null;
 	keysRef.current = orderedTiles.map((t) => t.key);
 
@@ -1630,7 +1617,7 @@ export function App () {
 			{wallpaperOn && photoShow && <PhotoShow fit={config.wallpaper.fit === 'fit'} intervalSec={config.wallpaper.intervalSec} shuffle={config.wallpaper.shuffle} paused={asleep} />}
 			{wallpaperOn && !photoShow && <Wallpaper config={config.wallpaper} opacity={config.wallpaperOpacity} onProblem={(text) => showToast(text, 'error')} />}
 			{/* Home stays mounted under the other screens so it keeps its focus position. */}
-			<Home items={homeItems} favourites={config.favourites} timeFormat={timeFormat} appearance={appearance} active={screen === 'home' && !menu && !recents && !notice} paused={asleep} onActivate={onActivate} onLongPress={onLongPress} onDeadDown={config.hideSettings && !tileBack ? showTileAgain : undefined} onBack={openRecents} wake={wakes} homeKey={config.homeFocus === 'last' && !homeFirst.current && !bootFirst.current ? lastOpened.current : null} focus={focus} weather={weatherLine} moveMode={moveMode} tileKeys={keysRef.current} onMovePick={onMovePick} onMoveStep={onMoveStep} onMoveExit={onMoveExit} />
+			<Home items={homeItems} favourites={config.favourites} timeFormat={timeFormat} appearance={appearance} active={screen === 'home' && !menu && !recents && !notice} paused={asleep} onActivate={onActivate} onLongPress={onLongPress} onDeadDown={config.hideSettings && !tileBack ? showTileAgain : undefined} onBack={openRecents} wake={wakes} homeKey={config.homeFocus === 'last' && !bootFirst.current ? lastOpened.current : null} focus={focus} weather={weatherLine} moveMode={moveMode} tileKeys={keysRef.current} onMovePick={onMovePick} onMoveStep={onMoveStep} onMoveExit={onMoveExit} />
 			{recents && screen === 'home' && <Recents icons={recentIcons} edits={config.appEdits} inputs={allInputs} sourceEdits={config.sourceEdits} width={config.recentsW} height={config.recentsH} onClose={closeRecents} onOpen={noteOpened} onToast={showToast} />}
 			{/* Settings stays mounted under the picker so it keeps its tab. */}
 			{screen === 'settings' && settingsTab === TAB.clock && appearance.clock.show && !config.showDebug && <WidgetPreview now={previewNow} format={timeFormat} config={appearance.clock} weather={weatherLine} />}
@@ -1663,7 +1650,7 @@ export function App () {
 			)}
 			{screen === 'picker' && <Picker onChoose={onChooseWallpaper} onClose={() => setScreen('settings')} />}
 			{screen === 'preload' && <Preload apps={apps} onClose={() => setScreen('settings')} onChanged={(n) => setConfig((c) => { if (c.preloadOff === n) return c; const next = {...c, preloadOff: n}; saveConfig(next); return next; })} onToast={showToast} />}
-			{screen === 'remote' && <RemoteButtons remap={config.remap} kept={config.remapKept} targets={remapTargets} captured={captured} busy={remapBusy} onSwitch={onRemapSwitch} onKeep={onRemapKeep} onAssign={onRemapAssign} onCapture={onRemapCapture} onClose={() => setScreen('extrakeys')} />}
+			{screen === 'remote' && <RemoteButtons remap={config.remap} targets={remapTargets} captured={captured} busy={remapBusy} onSwitch={onRemapSwitch} onAssign={onRemapAssign} onCapture={onRemapCapture} onClose={() => setScreen('extrakeys')} />}
 			{screen === 'updates' && <Updates debug={config.showDebug} paused={!!notice} notify={setNotice} closeNotice={() => setNotice(null)} onClose={() => setScreen('settings')} />}
 			{screen === 'extrakeys' && <ExtraKeys targets={remapTargets} model={config.remoteModel} onModel={onRemoteModel} onOtherMethod={() => setScreen('remote')} paused={!!notice} onLgHomeCheck={askLgHome} onClose={() => setScreen('settings')} onToast={showToast} />}
 			{screen === 'themes' && <Picker forTheme onChoose={() => undefined} onClose={() => setScreen('settings')} onTheme={(path) => loadThemeZip(path, apps.map((a) => a.id)).then((outcome: LoadOutcome) => {

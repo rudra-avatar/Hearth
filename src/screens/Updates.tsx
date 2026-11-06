@@ -6,13 +6,14 @@ import {HEARTH_VERSION} from '../config/version';
 import {SYSTEM_APP} from '../config/constants';
 import {rootState} from '../lib/failure';
 import {canInstall, installUpdate} from '../lib/install';
+import type {InstallProgress} from '../lib/installprogress';
 import {launchApp} from '../lib/launch';
 import type {NoticeButton} from '../components/Notice';
 import {t as tt} from '../i18n';
 
 // R2-a: "Check for updates". Opens from the first System row, asks GitHub for the update list once (on open, and on OK
 // when nothing newer was found or the check failed), and shows every version above the one in use with its summary.
-// R2-b: OK on the list installs the newest version (rooted TV, direct install after a question); otherwise, or when the
+// R2-b: OK on the list installs the highlighted version (2.1.4; before, always the newest) (rooted TV, direct install after a question); otherwise, or when the
 // install fails, a pop-up points to the Homebrew Channel. With the Debug tab on, ← → pretend to be an older version (test of the list).
 
 interface Props {
@@ -34,6 +35,8 @@ export function Updates ({onClose, debug, paused, notify, closeNotice}: Props) {
 	const [index, setIndex] = useState(0);
 	const [pretend, setPretend] = useState(0);
 	const [round, setRound] = useState(0);
+	const [target, setTarget] = useState('');
+	const [progress, setProgress] = useState<InstallProgress>({step: 'start', percent: 0, download: 0});
 
 	useEffect(() => {
 		let cancelled = false;
@@ -77,8 +80,10 @@ export function Updates ({onClose, debug, paused, notify, closeNotice}: Props) {
 	};
 
 	const runInstall = (entry: UpdateEntry): void => {
+		setTarget(entry.version);
+		setProgress({step: 'start', percent: 0, download: 0});
 		setState('installing');
-		installUpdate(entry).then((r) => {
+		installUpdate(entry, setProgress).then((r) => {
 			setState('done');
 			if (r.ok) notify({title: tt('updates.doneTitle', {version: entry.version}), text: tt('updates.doneText'), buttons: [{label: tt('app.ok'), tone: 'light', run: closeNotice}], onBack: closeNotice});
 			else brew(tt('updates.failTitle'), tt('updates.failText'));
@@ -93,7 +98,7 @@ export function Updates ({onClose, debug, paused, notify, closeNotice}: Props) {
 		else if (key === 'enter') {
 			if (state === 'checking') return true;
 			if (!list.length) setRound((n) => n + 1);
-			else askInstall(list[0]);
+			else askInstall(shown);
 		}
 		else if (debug && (key === 'left' || key === 'right')) { setPretend((n) => (n + (key === 'right' ? 1 : PRETEND.length - 1)) % PRETEND.length); setIndex(0); }
 		return true;
@@ -112,7 +117,13 @@ export function Updates ({onClose, debug, paused, notify, closeNotice}: Props) {
 				<h1 class="settings__title">{tt('updates.title')}</h1>
 				<p class="settings__hint">{hint}</p>
 				{state === 'checking' && <div class="picker__status">{tt('updates.checking')}</div>}
-				{state === 'installing' && <div class="picker__status">{tt('updates.installing', {version: list[0] ? list[0].version : ''})}</div>}
+				{state === 'installing' && (
+					<div class="picker__status">
+						<div>{tt('updates.installing', {version: target})}</div>
+						<div class="upd__bar"><div class="upd__fill" style={{width: `${progress.percent}%`}} /></div>
+						<div class="upd__step">{progress.step === 'download' ? tt('updates.stepDownload', {percent: progress.download}) : tt(progress.step === 'check' ? 'updates.stepCheck' : progress.step === 'install' ? 'updates.stepInstall' : progress.step === 'finish' ? 'updates.stepFinish' : 'updates.stepStart')} · {progress.percent}%</div>
+					</div>
+				)}
 				{state === 'failed' && (
 					<div class="picker__note">
 						<div class="picker__note-title">{tt('updates.failed')}</div>

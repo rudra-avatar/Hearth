@@ -1,5 +1,29 @@
 # Changelog
 
+## 2.1.4
+
+A release about the remote: the LG Home key, the Home press, quiet mode and a safer way to map buttons.
+
+### Changes
+
+- **Remote buttons stay after a restart.** The question *Does the remote still work?* and the row *Keep after restarts* are gone. Buttons you reassign are kept after a restart of the TV by default.
+- **Help is always at hand.** Every remote-button screen (*Map home button*, *Map additional keys* and *Reassign remote buttons*) shows a short hint: if the remote stops answering, restart the TV, and if that does not help, follow the repair steps in the Troubleshooting guide.
+- **One warning before you map buttons.** Once per start of Hearth, a pop-up *Before you map buttons* explains what to do if the remote stops answering, before *Map home button* or *Map additional keys* opens.
+- **Repair steps.** The README and the Troubleshooting guide have a section *The remote stops answering*: a few lines to type over SSH that take Hearth's button changes out of the TV.
+- **Check for updates** now shows a progress bar while Hearth downloads and installs a new version.
+- **Quiet mode and the Magic Remote.** When the apps are hidden, a pointer that moves or presses only wakes them. Nothing is highlighted or opened until the pointer has rested for a moment. Thanks to Obednal97 for the idea (pull request #46).
+- **Guides.** The README and the guides describe *Check for updates* step by step, the new hints and the LG Home key.
+
+### Fixes
+
+- **LG Home on webOS 3 TVs** (rooted). Hearth now sends the Home key to one device only, with no retry (trying a second device could close LG Home again). If Hearth does not know the right device yet, it opens and asks you to press the Home button once, and remembers it. Thanks to James18232 for the logs and the debugging (issue #36).
+- **The highlight no longer jumps to the first app by itself.** Before, pressing Home a second time (or the TV starting Hearth again) could send the highlight to the first app. Now the highlight always follows *When Home is pressed*.
+- **Check for updates** installs the version you chose in the list. Before, it always installed the newest one.
+
+### Texts
+
+- New texts in French, Polish and Brazilian Portuguese were machine translated, and the new hint is machine translated in every language. Corrections are welcome.
+
 ## 2.1.3
 
 A small fix for the LG Home button on webOS 3 TVs.

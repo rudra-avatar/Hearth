@@ -59,7 +59,7 @@ It is a normal webOS app (app ID `tld.my.customlauncher`). On a rooted TV it can
 - **The Home button opens Hearth** (rooted). Hearth bundles the Input Hook key hook and starts it itself, so you need no other app; a helper script covers leaving apps with Back.
 - **Remote buttons** (rooted, experimental). Give the colour buttons and other dedicated buttons of your remote a new job.
 - **Languages.** Hearth's menus can be switched to French, Polish and Brazilian Portuguese (checked by native speakers), to Indonesian, Spanish, German, Arabic or Russian (machine translated, waiting for native speakers) or to your own language file. See [Language files](https://rudra-avatar.github.io/Hearth/language_packs/).
-- **Updates.** *Settings, System, Check for updates* lists newer versions and, on a rooted TV, installs the newest one for you (the Homebrew Channel remains the other way).
+- **Updates.** *Settings, System, Check for updates* lists the newer versions with a short summary of each. On a rooted TV you choose a version and Hearth downloads, checks and installs it, with a progress bar (the Homebrew Channel remains the other way). It looks only when you press OK.
 - **Made to be fast.** The home screen is drawn from saved data first; everything else (app list, weather, helper checks) happens a few seconds later in the background. While another app is in front, Hearth lets go of its wallpaper and stops its clock.
 - **Clear messages.** When something cannot work on your TV, Hearth says what and why instead of failing silently, and greys out the options that need a rooted TV.
 
@@ -174,7 +174,7 @@ New to this? The [Beginners guide](https://rudra-avatar.github.io/Hearth/BEGINNE
    `https://raw.githubusercontent.com/rudra-avatar/Hearth/main/repo/apps.json`
 
 3. Go back to the app list, open **Hearth** and choose **Install**.
-4. **Updating:** when a new version is released, open the Homebrew Channel, open Hearth and it shows the new version (for example "2.0.1 (installed: 2.0.0)") with an **Update** button.
+4. **Updating:** when a new version is released, open the Homebrew Channel, open Hearth and it shows the new version (for example "2.0.1 (installed: 2.0.0)") with an **Update** button. On a rooted TV you can also update inside Hearth: *Settings, System, Check for updates*.
 
 **Typing with the TV remote is slow. Easier ways to enter the address:**
 
@@ -580,6 +580,18 @@ More in the [Troubleshooting guide](https://rudra-avatar.github.io/Hearth/troubl
 - **The Home button does not open Hearth:** the key code differs between remotes; run the guide in *Map home button*. If the Input Hook app has its own bindings, Hearth's rows are greyed out with a reason.
 - **Hold OK does nothing** on an app: users report that **turning the TV off and on again** (unplug it for a minute) fixes it. The cause is not known yet.
 - **Root options greyed out with "the TV refused the command", or elevation (root) problems:** update the Homebrew Channel to **0.8.0-rc1** ([release page](https://github.com/throwaway96/webos-homebrew-channel/releases/tag/v0.8.0-rc1)) and open it once. On webOS 11 also do the permission step above.
+- **The remote stops answering after you map buttons:** restart the TV (unplug it for 30 seconds). If that does not help, connect to the TV over SSH as `root` and remove Hearth's start-up links, then restart the TV again:
+  ```
+  sh /media/developer/launcher-remap/apply.sh off
+  rm -f /var/lib/webosbrew/init.d/47-launcher-remap /var/lib/webosbrew/init.d/48-launcher-homehook /var/lib/webosbrew/init.d/49-launcher-homekey
+  ```
+  - If the first line says it cannot find the file, you never used *Reassigned buttons*: go on with the second line.
+  - **Only if you also use the Input Hook app** and the remote still does not work, type these two lines as well (they delete its start-up link and its saved button settings, which also removes Hearth's Home button mapping), then restart the TV:
+    ```
+    rm -f /var/lib/webosbrew/init.d/inputhook
+    rm -f /home/root/.config/lginputhook/keybinds.json
+    ```
+  - When the remote works again, turn **Settings, System, Remote control, Reassigned buttons** Off, so Hearth does not put the changes back when it opens. Step-by-step: [Troubleshooting guide](https://rudra-avatar.github.io/Hearth/troubleshooting/#the-remote-stops-answering).
 - **The Home button does nothing after uninstalling Hearth:** right after uninstalling it can stay dead until the TV restarts. Restart the TV (unplug it for 30 seconds); the clean-up then finishes and the Home button works again (confirmed by a user).
 - **Odd layout after changing sizes:** Settings, Look, **Reset Hearth visual settings to default**.
 
@@ -591,7 +603,8 @@ More in the [Troubleshooting guide](https://rudra-avatar.github.io/Hearth/troubl
 - **chriskoperdraad-tech**, pull requests #2, #3 and #37: webOS 3.x (Chromium 38) support (the Home-bar watcher lines are theirs; the ES5 build and the custom-property fallback are Hearth's own code) and the fix that lets *Map home button* find the Home button's code on webOS 3 (#37). Also the testing and research on a webOS 3.9 TV that shaped Hearth's webOS 3 support (issue #23).
 - **ganondorft**, pull request #6: the webOS 11 permission fix and the Windows line-ending fix.
 - **iulyax27**, pull requests #8 and #10: icon batches, the Input Hook guide, and the ideas for quiet mode, OLED shift and *When Home is pressed*.
-- **Obednal97**, pull requests #16 to #22, #25 and #39: input status (#16), the Settings scroll fix (#17), *Set Hearth as the TV's Home app* (#18), remote button reassigning and the remote drawings (#19, #22), *When Home is pressed* (#20), icon refresh after app updates (#21), *When the TV turns on, open...* with the TV's start-up table method (#25), and the clear message and the 2016 Magic Remote drawing for TVs that cannot use the other remote method (#39, issue #36). Hearth's code is adapted from theirs.
+- **Obednal97**, pull requests #16 to #22, #25 and #39: input status (#16), the Settings scroll fix (#17), *Set Hearth as the TV's Home app* (#18), remote button reassigning and the remote drawings (#19, #22), *When Home is pressed* (#20), icon refresh after app updates (#21), *When the TV turns on, open...* with the TV's start-up table method (#25), and the clear message and the 2016 Magic Remote drawing for TVs that cannot use the other remote method (#39, issue #36), and the idea that a waking pointer must not click anything in quiet mode (#46). Hearth's code is adapted from theirs.
+- **James18232**, issue #36: the debugging on a webOS 3.4.3 TV that found how the LG Home tile and button job can work there (sending the Home key) and which remote device takes it.
 - **simbasjungles**, free-my-tv pull request #285: the fix for the "1008" error that newer LG firmware gives a web page's connection to the TV's remote-control service (SSAP): a small packaged service connects with the right origin. Hearth's helper service `tld.my.customlauncher.ssap` follows that idea and is written in Hearth's own code; it is what makes the app list work without root on webOS 11.2.
 - **Recent apps panel, icon shapes and bottom fade:** community contribution, author not named. The idea and the TV services to call came from it; Hearth's code is its own.
 

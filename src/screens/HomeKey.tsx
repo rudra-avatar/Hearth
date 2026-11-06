@@ -309,6 +309,7 @@ export function HomeKey ({onClose: closeScreen, model, onModel, onChanged, onToa
 			<div class="settings">
 				<h1 class="settings__title">{tt('homekey.homeButton')}</h1>
 				<p class="settings__hint">{pending !== null ? tt('homekey.okChoosesBackGoesBack') : tt('homekey.moveOkChoosesBackReturns')}</p>
+				<p class="settings__hint settings__hint--help">{tt('remotebuttons.remoteStopsAnswering')}</p>
 				<div class="picker__note">
 					<div class="picker__note-title">{noteTitle}</div>
 					<div class="picker__note-para">{noteLines.map((line) => <div key={line} class="picker__note-line">{line}</div>)}</div>

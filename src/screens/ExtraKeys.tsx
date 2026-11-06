@@ -199,6 +199,7 @@ export function ExtraKeys ({targets, model, onModel, onOtherMethod, paused, onLg
 			<div class="settings">
 				<h1 class="settings__title">{title}</h1>
 				<p class="settings__hint">{hint}</p>
+				<p class="settings__hint settings__hint--help">{tt('remotebuttons.remoteStopsAnswering')}</p>
 				{note && <div class="picker__path">{note}</div>}
 				<div class="picker">
 					{visible.map((row, n) => {

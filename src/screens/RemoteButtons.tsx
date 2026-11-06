@@ -16,7 +16,6 @@ export interface RemapTarget {
 interface Props {
 	remap: RemapConfig;
 	/** the buttons are also set at every TV start (boot link exists) */
-	kept: boolean;
 	/** everything a button can do, in the order the list shows it (the TV's own action first) */
 	targets: RemapTarget[];
 	/** the button Hearth was told about after "Press a button" (seq changes with each press) */
@@ -24,7 +23,6 @@ interface Props {
 	/** the master switch is being changed, or a change is being saved */
 	busy: boolean;
 	onSwitch: () => void;
-	onKeep: () => void;
 	onAssign: (name: string, action: RemapAction | null) => void;
 	/** start or stop waiting for a button press */
 	onCapture: (waiting: boolean) => Promise<boolean>;
@@ -33,7 +31,7 @@ interface Props {
 
 interface Row {
 	key: string;
-	kind: 'switch' | 'keep' | 'capture' | 'button' | 'target' | 'info';
+	kind: 'switch' | 'capture' | 'button' | 'target' | 'info';
 	label: string;
 	detail?: string;
 	name?: string;
@@ -57,7 +55,7 @@ export function actionText (action: RemapAction | undefined, targets: RemapTarge
 
 /** Settings → Options → "Reassign remote buttons". The list of buttons and what each does; OK on one chooses a new
  *  job for it. "Press a button" lets the remote itself say which button is meant. */
-export function RemoteButtons ({remap, kept, targets, captured, busy, onSwitch, onKeep, onAssign, onCapture, onClose}: Props) {
+export function RemoteButtons ({remap, targets, captured, busy, onSwitch, onAssign, onCapture, onClose}: Props) {
 	const [mode, setMode] = useState<Mode>('list');
 	const [index, setIndex] = useState(0);
 	const [listIndex, setListIndex] = useState(0);
@@ -106,7 +104,6 @@ export function RemoteButtons ({remap, kept, targets, captured, busy, onSwitch, 
 	if (mode === 'list') {
 		rows.push({key: 'switch', kind: 'switch', label: tt('remotebuttons.reassigned', {state: remap.on ? tt('common.on') : tt('common.off')}),
 			detail: busy ? tt('remotebuttons.oneMoment') : remap.on ? tt('remotebuttons.theButtonsBelowDo') : tt('remotebuttons.everyButtonDoesWhat')});
-		rows.push({key: 'keep', kind: 'keep', label: tt('remotebuttons.keepState', {state: kept ? tt('common.on') : tt('common.off')}), detail: !remap.on ? tt('remotebuttons.turnReassignedButtonsOn') : kept ? tt('remotebuttons.theButtonsWorkAgain') : tt('remotebuttons.aRestartOfThe')});
 		rows.push({key: 'capture', kind: 'capture', label: tt('remotebuttons.pressAButtonTo'), detail: tt('remotebuttons.theSurestWayRemotes')});
 		listedButtons(remap).forEach((name) => rows.push({key: name, kind: 'button', name, label: buttonLabel(name), detail: actionText(remap.keys[name], targets)}));
 	} else if (mode === 'waiting') {
@@ -120,7 +117,6 @@ export function RemoteButtons ({remap, kept, targets, captured, busy, onSwitch, 
 		const row = rows[i];
 		if (!row || busy) return;
 		if (row.kind === 'switch') onSwitch();
-		else if (row.kind === 'keep') onKeep();
 		else if (row.kind === 'capture') { setListIndex(i); setMode('waiting'); setIndex(0); setListening(false); onCapture(true).then((ok) => { if (ok) setListening(true); else { setMode('list'); setIndex(i); } }); }
 		else if (row.kind === 'button' && row.name) choose(row.name);
 		else if (row.kind === 'target' && row.target && chosen) {
@@ -163,6 +159,7 @@ export function RemoteButtons ({remap, kept, targets, captured, busy, onSwitch, 
 			<div class="settings">
 				<h1 class="settings__title">{title}</h1>
 				<p class="settings__hint">{hint}</p>
+				<p class="settings__hint settings__hint--help">{tt('remotebuttons.remoteStopsAnswering')}</p>
 				<div class="picker__path">{path}</div>
 				<div class="picker">
 					{visible.map((row, n) => {
@@ -175,7 +172,7 @@ export function RemoteButtons ({remap, kept, targets, captured, busy, onSwitch, 
 								onMouseEnter={() => setIndex(i)}
 								onClick={() => { setIndex(i); activate(i); }}
 							>
-								<PickerIcon kind={row.kind === 'switch' ? 'power' : row.kind === 'keep' ? 'pin' : row.kind === 'capture' || row.kind === 'info' ? 'search' : row.kind === 'button' ? 'remote' : row.current ? 'pin' : 'app'} />
+								<PickerIcon kind={row.kind === 'switch' ? 'power' : row.kind === 'capture' || row.kind === 'info' ? 'search' : row.kind === 'button' ? 'remote' : row.current ? 'pin' : 'app'} />
 								<div class="picker__text">
 									<div class="picker__label">{row.label}{row.current ? ' (now)' : ''}</div>
 									{row.detail && <div class="picker__detail">{row.detail}</div>}

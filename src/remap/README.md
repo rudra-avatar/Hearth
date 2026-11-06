@@ -26,7 +26,7 @@ that setting changes, without a restart.
   configd's `setConfigs` and **`"volatile": true`**, so they live in memory only: nothing on the TV's storage is
   changed, and configd forgets them at a restart (and if it reconfigures, for example after a change of country;
   Hearth puts them back the next time it comes to the front).
-- A link in `/var/lib/webosbrew/init.d` (`47-launcher-remap`) runs `apply.sh boot` at each start. **Hearth adds it only after you chose "Keep after restarts"** in the question that follows the first change ("Does the remote still work?"); until then a restart of the TV undoes everything.
+- A link in `/var/lib/webosbrew/init.d` (`47-launcher-remap`) runs `apply.sh boot` at each start. **Hearth adds it after the first successful button change** (no question; since 2.1.4 the buttons are kept after restarts by default); "Press a button" alone, with no button changed, adds no link. Turning *Reassigned buttons* Off removes it.
 - "Press a button to reassign it": while Hearth is in front and has asked for it, the filter takes the next button
   press (not the protected ones) and opens Hearth again with `{"hearthRemapKey": "<button>"}`, so Hearth learns which
   button it was. It gives up after a minute.

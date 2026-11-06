@@ -45,7 +45,7 @@ You need this only for way C and for fixing problems. Most people never need it.
 
 ## Updating Hearth
 
-With way A, open the Homebrew Channel, open Hearth and press **Update** when it shows a new version. With way B, install the new file the same way. Your apps, their order, names and favourites are kept. **When you move from 1.x to 2.0.0, the look settings go back to the new defaults once**. Open **Settings, Look, Restore my settings from before the update** to bring your old ones back.
+With way A, open the Homebrew Channel, open Hearth and press **Update** when it shows a new version. On a rooted TV you can also do it inside Hearth: **Settings, System, Check for updates**, choose a version, press **OK**, then **Install** (a bar shows the progress). With way B, install the new file the same way. Your apps, their order, names and favourites are kept. **When you move from 1.x to 2.0.0, the look settings go back to the new defaults once**. Open **Settings, Look, Restore my settings from before the update** to bring your old ones back.
 
 ## Next
 

@@ -16,7 +16,8 @@ const bin = join(dir, 'bin'); const dev = join(dir, 'dev'); mkdirSync(bin); mkdi
 const script = join(dir, 'lghome.sh');
 writeFileSync(script, c.LGHOME_SCRIPT_TEXT);
 // fake luna-send: answers from the file `lunaanswer`
-writeFileSync(join(bin, 'luna-send'), `#!/bin/sh\ncat "${dir}/lunaanswer"\n`); chmodSync(join(bin, 'luna-send'), 0o755);
+writeFileSync(join(bin, 'luna-send'), `#!/bin/sh\necho "$@" >> "${dir}/lunalog"\ncase "$*" in *tld.my.customlauncher*) cat "${dir}/lunahearth" ;; *) cat "${dir}/lunaanswer" ;; esac\n`);
+writeFileSync(join(dir, 'lunahearth'), '{"returnValue": false}\n'); chmodSync(join(bin, 'luna-send'), 0o755);
 const procFor = (words, bits) => {
 	// the KEY line: words from the highest down; bit 773 is word (773/bits) from the right, bit (773%bits)
 	const n = Math.floor(773 / bits), bit = 773 % bits;
@@ -39,8 +40,8 @@ const procJames = () => [
 const run = (args, env) => {
 	try { return {out: execFileSync('sh', [script, ...args], {env: {...process.env, PATH: `${process.env.PATH}:${bin}`, HEARTH_LOG: join(dir, 'log'), HEARTH_PROC: join(dir, 'proc'), HEARTH_DEVDIR: dev, HEARTH_DEVFILE: join(dir, 'lghome.dev'), HEARTH_MSG: join(dir, 'messages'), HEARTH_SLEEP: join(bin, 'fakesleep'), ...env}}).toString(), code: 0}; } catch (e) { return {out: String(e.stdout || ''), code: e.status}; }
 };
-// fake sleep: the TV "shows Home" (logs NL_HOME_SHOWN) when the device named in FAKE_OK has received bytes
-writeFileSync(join(bin, 'fakesleep'), '#!/bin/sh\nif [ -n "$FAKE_OK" ] && [ -s "$HEARTH_DEVDIR/$FAKE_OK" ]; then echo NL_HOME_SHOWN >> "$HEARTH_MSG"; fi\n'); chmodSync(join(bin, 'fakesleep'), 0o755);
+// fake sleep (0.3 s, so the background readers of `learn` have written before the next poll; without it the test raced): the TV "shows Home" (logs NL_HOME_SHOWN) when the device named in FAKE_OK has received bytes
+writeFileSync(join(bin, 'fakesleep'), '#!/bin/sh\nsleep 0.3\nif [ -n "$FAKE_OK" ] && [ -s "$HEARTH_DEVDIR/$FAKE_OK" ]; then echo NL_HOME_SHOWN >> "$HEARTH_MSG"; fi\n'); chmodSync(join(bin, 'fakesleep'), 0o755);
 const reset = (trusted) => { for (const n of ['event0', 'event1', 'event2', 'event3']) writeFileSync(join(dev, n), ''); writeFileSync(join(dir, 'messages'), trusted ? 'NL_HOME_SHOWN earlier\n' : ''); rmSync(join(dir, 'lghome.dev'), {force: true}); };
 const bytes = (n) => readFileSync(join(dev, n));
 const sizes = () => ['event0', 'event1', 'event2', 'event3'].map((n) => bytes(n).length);
@@ -50,36 +51,83 @@ writeFileSync(join(dir, 'lunaanswer'), '{"returnValue": true}\n'); reset(true); 
 let r = run([], {HEARTH_BITS: '32'});
 eq([r.code, /lghome=ok launch/.test(r.out), sizes()], [0, true, [0, 0, 0, 0]], 'webOS 4+: launched, no key written');
 
-// 2) webOS 3, the TV never logged NL_HOME_SHOWN (effect cannot be seen): one key, to the remote-named device (event1), not to event3
+// 2) webOS 3: one key, to the remote-named device (event1), not to event3
 writeFileSync(join(dir, 'lunaanswer'), '{"returnValue": false, "errorText": "Application does not exist"}\n'); reset(false);
 r = run([], {HEARTH_BITS: '32'});
-eq([r.code, /lghome=ok key event1 \(tried event1\)/.test(r.out)], [0, true], 'webOS 3, effect not visible: key written to the remote-named device only');
+eq([r.code, /lghome=ok key event1/.test(r.out)], [0, true], 'webOS 3: key written to the remote-named device only');
 eq(sizes(), [0, 64, 0, 0], '32-bit: four 16-byte events in event1 only');
 const b = bytes('event1');
 eq([b[8], b[9], b[10], b[11], b[12]], [1, 0, 5, 3, 1], 'press: type 1, code 0x0305 (773), value 1');
 eq([b[24], b[25], b[26], b[27], b[28], b[29]], [0, 0, 0, 0, 0, 0], 'sync event after the press');
 eq([b[40], b[41], b[42], b[43], b[44]], [1, 0, 5, 3, 0], 'release: value 0');
 
-// 2b) the TV logs NL_HOME_SHOWN and the remote-named device works: one key only
-reset(true); r = run([], {HEARTH_BITS: '32', FAKE_OK: 'event1'});
-eq([r.code, /lghome=ok key event1/.test(r.out), sizes()], [0, true, [0, 64, 0, 0]], 'effect seen on the first device: the next one gets nothing');
-
-// 2c) fallback: the first device does nothing, the second one works (an older TV where the other rule was right)
-reset(true); r = run([], {HEARTH_BITS: '32', FAKE_OK: 'event3'});
-eq([r.code, /lghome=ok key event3 \(tried event1 event3\)/.test(r.out), sizes()], [0, true, [0, 64, 0, 64]], 'no effect on the first device: the next candidate is tried');
-
-// 2d) nothing reacts: both candidates tried, an honest "unconfirmed" line, still exit 0
+// 2b) one key to ONE device per press, never a retry on the next one (2.1.4, James18232: a second key closed LG Home again)
 reset(true); r = run([], {HEARTH_BITS: '32', FAKE_OK: 'none'});
-eq([r.code, /lghome=ok key event1 \(unconfirmed, tried event1 event3\)/.test(r.out), c.lgHomeOk(r.out)], [0, true, true], 'no device shows a response: reported as unconfirmed with the list');
+eq([r.code, /lghome=ok key event1\s*$/.test(r.out.trim()), /tried/.test(r.out), sizes()], [0, true, false, [0, 64, 0, 0]], 'one device, one key, no retry');
 
 // 2e) James18232's TV: event0 (other) and event3 (M-RCU); the M-RCU device goes first
-writeFileSync(join(dir, 'proc'), procJames()); reset(true); r = run([], {HEARTH_BITS: '32', FAKE_OK: 'event3'});
-eq([r.code, /lghome=ok key event3 \(tried event3\)/.test(r.out), sizes()], [0, true, [0, 0, 0, 64]], 'M-RCU device first: event0 gets nothing');
+writeFileSync(join(dir, 'proc'), procJames()); reset(true); r = run([], {HEARTH_BITS: '32'});
+eq([r.code, /lghome=ok key event3/.test(r.out), sizes()], [0, true, [0, 0, 0, 64]], 'M-RCU device first: event0 gets nothing');
 
-// 2f) the hand-written device file replaces the list and skips the response check
+// 2f) the device file (hand-written or learned) replaces the list
 writeFileSync(join(dir, 'proc'), proc(32)); reset(true); writeFileSync(join(dir, 'lghome.dev'), 'event2\n');
-r = run([], {HEARTH_BITS: '32', FAKE_OK: 'none'});
-eq([r.code, /lghome=ok key event2 \(tried event2\)/.test(r.out), sizes()], [0, true, [0, 0, 64, 0]], 'lghome.dev: only that device, one key');
+r = run([], {HEARTH_BITS: '32'});
+eq([r.code, /lghome=ok key event2/.test(r.out), sizes()], [0, true, [0, 0, 64, 0]], 'lghome.dev: only that device, one key');
+
+// 2g) learn: a real 773 press (type 1, code 0x0305, value 1) was written to event3 only; the device is stored
+const press = (bits) => { const T = Buffer.alloc(bits === 64 ? 16 : 8); return Buffer.concat([T, Buffer.from([1, 0, 5, 3, 1, 0, 0, 0])]); };
+const learnEnv = (extra) => ({HEARTH_BITS: '32', HEARTH_TMP: join(dir, 'learn'), ...extra});
+writeFileSync(join(dir, 'proc'), proc(32)); reset(true);
+// the readers are `timeout N cat DEV > TMP/DEV`: the fake timeout just runs cat on the fake device file
+writeFileSync(join(bin, 'timeout'), '#!/bin/sh\nshift\nexec "$@"\n'); chmodSync(join(bin, 'timeout'), 0o755);
+writeFileSync(join(dev, 'event3'), press(32));
+r = run(['learn', '3'], learnEnv());
+eq([r.code, c.lgHomeLearned(r.out), readFileSync(join(dir, 'lghome.dev'), 'utf8').trim()], [0, 'event3', 'event3'], 'learn: the device that heard 773 is stored');
+// the next press uses it, one key
+for (const n of ['event0', 'event1', 'event2']) writeFileSync(join(dev, n), '');
+writeFileSync(join(dev, 'event3'), '');
+r = run([], {HEARTH_BITS: '32'});
+eq([r.code, sizes()], [0, [0, 0, 0, 64]], 'after learning: the press goes to the learned device');
+
+// 2h) learn with nothing pressed: fails, stores nothing, leaves no temp folder
+rmSync(join(dir, 'lghome.dev'), {force: true}); reset(true);
+r = run(['learn', '2'], learnEnv());
+eq([r.code, /lghome=fail nothing heard/.test(r.out), c.lgHomeLearned(r.out)], [1, true, ''], 'learn: nothing heard is reported');
+let stored = ''; try { stored = readFileSync(join(dir, 'lghome.dev'), 'utf8'); } catch (e) { stored = 'none'; }
+eq(stored, 'none', 'learn: nothing stored when nothing was heard');
+
+// 2i) learn: a key other than 773 (volume up 115) on event1 is not taken
+const other = Buffer.concat([Buffer.alloc(8), Buffer.from([1, 0, 115, 0, 1, 0, 0, 0])]);
+reset(true); writeFileSync(join(dev, 'event1'), other);
+r = run(['learn', '2'], learnEnv());
+eq([r.code, c.lgHomeLearned(r.out)], [1, ''], 'learn: another key is not taken for Home');
+
+// 2j) learn with a stored device ignores it and listens to all candidates
+reset(true); writeFileSync(join(dir, 'lghome.dev'), 'event2\n'); writeFileSync(join(dev, 'event1'), press(32));
+r = run(['learn', '2'], learnEnv());
+eq([c.lgHomeLearned(r.out), readFileSync(join(dir, 'lghome.dev'), 'utf8').trim()], ['event1', 'event1'], 'learn: replaces the stored device when it hears another one');
+rmSync(join(dir, 'lghome.dev'), {force: true});
+
+// 2k) phase 3a: the launch is refused, no lghome.dev, and Hearth can be opened: the script asks Hearth to learn, no key is written
+writeFileSync(join(dir, 'lunahearth'), '{"returnValue": true}\n'); writeFileSync(join(dir, 'lunalog'), ''); reset(true); rmSync(join(dir, 'lghome.dev'), {force: true});
+r = run([], {HEARTH_BITS: '32'});
+const ll = readFileSync(join(dir, 'lunalog'), 'utf8');
+eq([r.code, /lghome=ok learn-prompt/.test(r.out), sizes(), ll.indexOf('"params":{"hearthLgHomeLearn":true}') !== -1], [0, true, [0, 0, 0, 0], true], 'no device file: Hearth is opened with the learn request, no key');
+// 2l) a device file exists: no prompt, one key
+writeFileSync(join(dir, 'lunalog'), ''); reset(true); writeFileSync(join(dir, 'lghome.dev'), 'event2\n');
+r = run([], {HEARTH_BITS: '32'});
+eq([/lghome=ok key event2/.test(r.out), sizes(), readFileSync(join(dir, 'lunalog'), 'utf8').indexOf('hearthLgHomeLearn')], [true, [0, 0, 64, 0], -1], 'device file: no learn request, one key');
+// 2m) LG Home launches (webOS 4+): neither prompt nor key
+writeFileSync(join(dir, 'lunaanswer'), '{"returnValue": true}\n'); rmSync(join(dir, 'lghome.dev'), {force: true}); writeFileSync(join(dir, 'lunalog'), ''); reset(true);
+r = run([], {HEARTH_BITS: '32'});
+eq([/lghome=ok launch/.test(r.out), sizes(), readFileSync(join(dir, 'lunalog'), 'utf8').indexOf('hearthLgHomeLearn')], [true, [0, 0, 0, 0], -1], 'webOS 4+: launched, no learn request');
+writeFileSync(join(dir, 'lunaanswer'), '{"returnValue": false, "errorText": "Application does not exist"}\n');
+// 2n) Hearth cannot be opened either: falls back to one key to the first candidate
+writeFileSync(join(dir, 'lunahearth'), '{"returnValue": false}\n'); reset(true);
+r = run([], {HEARTH_BITS: '32'});
+eq([/lghome=ok key event1/.test(r.out), sizes()], [true, [0, 64, 0, 0]], 'Hearth not opened: one key to the first candidate');
+// the launch parameter parser
+eq([c.isLgHomeLearnRequest({hearthLgHomeLearn: true}), c.isLgHomeLearnRequest('{"hearthLgHomeLearn":true}'), c.isLgHomeLearnRequest({}), c.isLgHomeLearnRequest('x'), c.isLgHomeLearnRequest(undefined), c.isLgHomeLearnRequest({hearthLgHomeLearn: 'true'})], [true, true, false, false, false, false], 'learn request parser');
 
 // 3) 64-bit: 24-byte events
 reset(false); writeFileSync(join(dir, 'proc'), proc(64));
@@ -104,7 +152,7 @@ r = run([], {HEARTH_BITS: '32'});
 eq([r.code, /lghome=fail no key device/.test(r.out), sizes()], [1, true, [0, 0, 0, 0]], 'no key device with 773: fails, writes nothing');
 
 // 7) the hand-written device file wins (lghome.dev is read from LGHOME_DEVICE_FILE: tested through the text only)
-eq(c.LGHOME_SCRIPT_TEXT.indexOf(c.LGHOME_DEVICE_FILE) !== -1, true, 'the script reads the manual device file');
+eq(c.LGHOME_SCRIPT_TEXT.indexOf(c.LGHOME_DEVICE_FILE) !== -1, true, 'the script reads the device file');
 eq([c.lgHomeOk('lghome=ok key event3'), c.lgHomeOk('lghome=fail x'), c.isLgHomeCommand(c.LGHOME_COMMAND), c.isLgHomeCommand('sh /x')], [true, false, true, false], 'parsers');
 eq(c.ensureScriptCommand(['echo a']).indexOf(c.LGHOME_MARK) !== -1, true, 'ensure command checks the version mark');
 rmSync(dir, {recursive: true, force: true});

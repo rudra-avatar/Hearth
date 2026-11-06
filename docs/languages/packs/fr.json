@@ -1098,6 +1098,16 @@
     "homekeycore.opensLgHome": "ouvre LG Home",
     "app.pressHomeOnYour": "Appuyez une fois sur le bouton Home de votre télécommande.",
     "app.homeKeyLearned": "Touche Home apprise.",
-    "remotebuttons.remoteStopsAnswering": "La télécommande ne répond plus ? Redémarrez le téléviseur. Si cela ne suffit pas, consultez « The remote stops answering » dans le guide de dépannage."
+    "remotebuttons.remoteStopsAnswering": "La télécommande ne répond plus ? Redémarrez le téléviseur. Si cela ne suffit pas, consultez « The remote stops answering » dans le guide de dépannage.",
+    "pref.noUpdate.label": "Bloquer la fenêtre de mise à jour LG (expérimental)",
+    "pref.noUpdate.desc": "Arrête le programme de mise à jour LG à chaque démarrage. La fenêtre peut s'afficher brièvement avant d'être masquée.",
+    "disabled.noUpdate": "Cette TV n'a pas de fichier de mise à jour LG à bloquer.",
+    "app.noUpdateOn": "Fenêtre de mise à jour LG bloquée. La mise à jour logicielle des Réglages ne fonctionnera pas tant que c'est activé.",
+    "app.noUpdateOff": "Les mises à jour LG sont de nouveau autorisées.",
+    "app.noUpdateWorking": "Modification...",
+    "app.noUpdateNotTv": "Cela ne fonctionne que sur la TV.",
+    "app.noUpdateNoConfirm": "La TV n'a pas confirmé la modification.",
+    "app.noUpdateChanging": "modifier le blocage des mises à jour LG",
+    "app.noUpdateStep": "Bloquer la fenêtre de mise à jour LG : {name}"
   }
 }

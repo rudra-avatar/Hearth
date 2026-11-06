@@ -257,7 +257,7 @@ To remove Hearth, turn off *Replace LG Home with SAM* or *Replace LG Home (helpe
   - *Check for updates*
   - *Hearth language*
   - *Remote control*: Map home button, Map additional keys
-  - *TV start*: app list without root, no-root guide, Replace LG Home, When the TV turns on open..., LG logo, Home app
+  - *TV start*: app list without root, no-root guide, Replace LG Home, When the TV turns on open..., Block LG update pop-up (experimental), LG logo, Home app
   - *Memory*: LG preloaded apps, Keep Hearth ready, Reopen
   - *Show the Debug tab*: adds the Debug and Tests tabs, for reporting a problem
 
@@ -604,6 +604,7 @@ More in the [Troubleshooting guide](https://rudra-avatar.github.io/Hearth/troubl
 - **ganondorft**, pull request #6: the webOS 11 permission fix and the Windows line-ending fix.
 - **iulyax27**, pull requests #8 and #10: icon batches, the Input Hook guide, and the ideas for quiet mode, OLED shift and *When Home is pressed*.
 - **Obednal97**, pull requests #16 to #22, #25 and #39: input status (#16), the Settings scroll fix (#17), *Set Hearth as the TV's Home app* (#18), remote button reassigning and the remote drawings (#19, #22), *When Home is pressed* (#20), icon refresh after app updates (#21), *When the TV turns on, open...* with the TV's start-up table method (#25), and the clear message and the 2016 Magic Remote drawing for TVs that cannot use the other remote method (#39, issue #36), and the idea that a waking pointer must not click anything in quiet mode (#46). Hearth's code is adapted from theirs.
+- **itsempty77**, issue #47: the report and photos of Hearth drawn too large on a 1280x720 TV, which led to the screen fit in 2.1.5.
 - **James18232**, issue #36: the debugging on a webOS 3.4.3 TV that found how the LG Home tile and button job can work there (sending the Home key) and which remote device takes it.
 - **simbasjungles**, free-my-tv pull request #285: the fix for the "1008" error that newer LG firmware gives a web page's connection to the TV's remote-control service (SSAP): a small packaged service connects with the right origin. Hearth's helper service `tld.my.customlauncher.ssap` follows that idea and is written in Hearth's own code; it is what makes the app list work without root on webOS 11.2.
 - **Recent apps panel, icon shapes and bottom fade:** community contribution, author not named. The idea and the TV services to call came from it; Hearth's code is its own.

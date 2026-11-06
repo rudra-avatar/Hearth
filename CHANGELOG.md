@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.1.5
+
+A release for TVs with a smaller screen, and a switch against LG's update pop-up.
+
+### Changes
+
+- **Block LG update pop-up.** A new switch in Settings > System > TV start. When it is on, LG's updater is covered at every start so its update pop-up stays away. The pop-up may still show briefly after a restart before it is hidden. While the switch is on, *Software update* in the TV's own settings will not work; switch it off to update. Needs a rooted TV. It is marked experimental: it uses a trick from a user forum that has not been tested widely.
+
+### Fixes
+
+- **Hearth fits TVs with a smaller screen (HD sets).** On some TVs the picture area is smaller than 1920x1080 (for example 1280x720) and Hearth was drawn too large, so the ends of the home row and the right side of Settings were cut off. Hearth now measures the window once at start and, only when it is smaller than 1920x1080, shrinks the whole screen to fit. Nothing is saved, and a Full HD TV looks exactly as before. The Debug page shows `Screen: 1280x720 (scaled to 67%)` when it is active. It is not used on webOS 3 TVs. Thanks to itsempty77 for the report and the photos (issue #47).
+
+### Texts
+
+- The new texts of *Block LG update pop-up* were machine translated into every bundled language. Corrections are welcome.
+
 ## 2.1.4
 
 A release about the remote: the LG Home key, the Home press, quiet mode and a safer way to map buttons.

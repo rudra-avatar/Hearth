@@ -1098,6 +1098,16 @@
     "homekeycore.opensLgHome": "abre o LG Home",
     "app.pressHomeOnYour": "Pressione o botão Home do controle uma vez.",
     "app.homeKeyLearned": "Tecla Home aprendida.",
-    "remotebuttons.remoteStopsAnswering": "O controle parou de responder? Reinicie a TV. Se não ajudar, veja “The remote stops answering” no guia de solução de problemas."
+    "remotebuttons.remoteStopsAnswering": "O controle parou de responder? Reinicie a TV. Se não ajudar, veja “The remote stops answering” no guia de solução de problemas.",
+    "pref.noUpdate.label": "Bloquear aviso de atualização da LG (experimental)",
+    "pref.noUpdate.desc": "Para o atualizador da LG a cada inicialização. O aviso pode aparecer brevemente antes de ser ocultado.",
+    "disabled.noUpdate": "Esta TV não tem arquivo de atualização da LG para bloquear.",
+    "app.noUpdateOn": "Aviso de atualização da LG bloqueado. A atualização de software nas Configurações não funcionará enquanto isto estiver ativado.",
+    "app.noUpdateOff": "As atualizações da LG foram permitidas novamente.",
+    "app.noUpdateWorking": "Alterando...",
+    "app.noUpdateNotTv": "Isto só funciona na TV.",
+    "app.noUpdateNoConfirm": "A TV não confirmou a alteração.",
+    "app.noUpdateChanging": "alterar o bloqueio de atualização da LG",
+    "app.noUpdateStep": "Bloquear aviso de atualização da LG: {name}"
   }
 }

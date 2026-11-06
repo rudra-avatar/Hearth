@@ -1098,6 +1098,16 @@
     "app.switchTheLgHomeReplacement": "Отключите замену LG Home в Настройках, Система, затем снова назначьте кнопке это действие.",
     "extrakeys.couldnTPutTheLg": "Не удалось поместить помощник LG Home на телевизор. Повторите попытку.",
     "homekeycore.opensLgHome": "открывает LG Home",
-    "remotebuttons.remoteStopsAnswering": "Пульт перестал отвечать? Перезагрузите телевизор. Если не помогло, см. «The remote stops answering» в руководстве по устранению неполадок."
+    "remotebuttons.remoteStopsAnswering": "Пульт перестал отвечать? Перезагрузите телевизор. Если не помогло, см. «The remote stops answering» в руководстве по устранению неполадок.",
+    "pref.noUpdate.label": "Блокировать окно обновления LG (экспериментально)",
+    "pref.noUpdate.desc": "Останавливает программу обновления LG при каждом запуске. Окно может ненадолго появиться, прежде чем будет скрыто.",
+    "disabled.noUpdate": "На этом телевизоре нет файла обновления LG для блокировки.",
+    "app.noUpdateOn": "Окно обновления LG заблокировано. Обновление ПО в Настройках не будет работать, пока это включено.",
+    "app.noUpdateOff": "Обновления LG снова разрешены.",
+    "app.noUpdateWorking": "Изменение...",
+    "app.noUpdateNotTv": "Это работает только на телевизоре.",
+    "app.noUpdateNoConfirm": "Телевизор не подтвердил изменение.",
+    "app.noUpdateChanging": "изменить блокировку обновлений LG",
+    "app.noUpdateStep": "Блокировать окно обновления LG: {name}"
   }
 }

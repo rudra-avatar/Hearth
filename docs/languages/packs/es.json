@@ -1098,6 +1098,16 @@
     "app.switchTheLgHomeReplacement": "Desactiva el reemplazo de LG Home en Ajustes, Sistema, y luego vuelve a asignar esta función al botón.",
     "extrakeys.couldnTPutTheLg": "No se pudo colocar el ayudante de LG Home en el televisor. Inténtalo de nuevo.",
     "homekeycore.opensLgHome": "abre LG Home",
-    "remotebuttons.remoteStopsAnswering": "¿El mando ha dejado de responder? Reinicia el televisor. Si no ayuda, consulta «The remote stops answering» en la guía de solución de problemas."
+    "remotebuttons.remoteStopsAnswering": "¿El mando ha dejado de responder? Reinicia el televisor. Si no ayuda, consulta «The remote stops answering» en la guía de solución de problemas.",
+    "pref.noUpdate.label": "Bloquear aviso de actualización de LG (experimental)",
+    "pref.noUpdate.desc": "Detiene el actualizador de LG en cada inicio. El aviso puede mostrarse brevemente antes de ocultarse.",
+    "disabled.noUpdate": "Este televisor no tiene archivo de actualización de LG que bloquear.",
+    "app.noUpdateOn": "Aviso de actualización de LG bloqueado. La actualización de software en Ajustes no funcionará mientras esto esté activado.",
+    "app.noUpdateOff": "Las actualizaciones de LG vuelven a estar permitidas.",
+    "app.noUpdateWorking": "Cambiando...",
+    "app.noUpdateNotTv": "Esto solo funciona en el televisor.",
+    "app.noUpdateNoConfirm": "El televisor no confirmó el cambio.",
+    "app.noUpdateChanging": "cambiar el bloqueo de actualizaciones de LG",
+    "app.noUpdateStep": "Bloquear aviso de actualización de LG: {name}"
   }
 }

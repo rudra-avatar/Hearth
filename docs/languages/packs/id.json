@@ -1098,6 +1098,16 @@
     "app.switchTheLgHomeReplacement": "Matikan pengganti LG Home di Pengaturan, Sistem, lalu berikan tugas ini ke tombol lagi.",
     "extrakeys.couldnTPutTheLg": "Pembantu LG Home tidak dapat dipasang di TV. Coba lagi.",
     "homekeycore.opensLgHome": "membuka LG Home",
-    "remotebuttons.remoteStopsAnswering": "Remote berhenti merespons? Mulai ulang TV. Jika belum membantu, lihat “The remote stops answering” di panduan pemecahan masalah."
+    "remotebuttons.remoteStopsAnswering": "Remote berhenti merespons? Mulai ulang TV. Jika belum membantu, lihat “The remote stops answering” di panduan pemecahan masalah.",
+    "pref.noUpdate.label": "Blokir pop-up pembaruan LG (eksperimental)",
+    "pref.noUpdate.desc": "Menghentikan pembaru LG setiap kali mulai. Pop-up mungkin tampil sebentar sebelum disembunyikan.",
+    "disabled.noUpdate": "TV ini tidak punya file pembaru LG untuk diblokir.",
+    "app.noUpdateOn": "Pop-up pembaruan LG diblokir. Pembaruan perangkat lunak di Pengaturan tidak akan berfungsi selama ini aktif.",
+    "app.noUpdateOff": "Pembaruan LG diizinkan lagi.",
+    "app.noUpdateWorking": "Mengubah...",
+    "app.noUpdateNotTv": "Ini hanya berfungsi di TV.",
+    "app.noUpdateNoConfirm": "TV tidak mengonfirmasi perubahan.",
+    "app.noUpdateChanging": "mengubah pemblokiran pembaruan LG",
+    "app.noUpdateStep": "Blokir pop-up pembaruan LG: {name}"
   }
 }

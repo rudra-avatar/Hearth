@@ -1,5 +1,6 @@
 import {useEffect, useLayoutEffect, useRef, useState} from 'preact/hooks';
 import {LAYOUT} from '../theme/tokens';
+import {layoutSize, layoutY} from '../lib/fitscale';
 
 export interface OptionItem {
 	id: string;
@@ -51,8 +52,8 @@ export function OptionList ({options, focused, selected, onSelect, onActivate, w
 		const measure = () => {
 			const view = viewRef.current;
 			if (!view) return;
-			const screenHeight = Math.min(window.innerHeight || LAYOUT.screenHeight, LAYOUT.screenHeight);
-			const room = Math.round(screenHeight - view.getBoundingClientRect().top - BOTTOM_SPACE);
+			const screenHeight = Math.min(layoutSize().h || LAYOUT.screenHeight, LAYOUT.screenHeight);
+			const room = Math.round(screenHeight - layoutY(view.getBoundingClientRect().top) - BOTTOM_SPACE);
 			if (room >= 120) setHeight((h) => (h === room ? h : room));
 		};
 		measure();

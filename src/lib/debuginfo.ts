@@ -3,6 +3,7 @@
 
 import type {UserConfig} from './storage';
 import type {SystemStats} from './system';
+import {appliedFit} from './fitscale';
 
 export interface DebugSnapshot {
 	about: string;
@@ -42,7 +43,7 @@ export function debugPages (s: DebugSnapshot): DebugPage[] {
 	const chrome = /Chrome\/([0-9.]+)/.exec(s.userAgent);
 	const state = [
 		s.rootDetail ? 'Root detail: ' + s.rootDetail : '',
-		`Web view: ${chrome ? 'Chrome ' + chrome[1] : 'unknown'}   Screen: ${typeof window !== 'undefined' ? window.innerWidth + '×' + window.innerHeight : '?'}`,
+		`Web view: ${chrome ? 'Chrome ' + chrome[1] : 'unknown'}   Screen: ${typeof window !== 'undefined' ? window.innerWidth + '×' + window.innerHeight : '?'}${appliedFit() ? ' (scaled to ' + Math.round(appliedFit()!.scale * 100) + '%)' : ''}`,
 		s.appList ? `App list: ${s.appList.count} apps from the ${s.appList.source === 'homebrew' ? 'live Homebrew list' : s.appList.source === 'tv' ? "TV's remote-control service (experimental)" : 'built-in list'} (${s.appList.ago})` : 'App list: not read yet',
 		`Weather: ${s.weather}`,
 		'',

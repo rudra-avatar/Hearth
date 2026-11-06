@@ -10,10 +10,14 @@ import globalCss from './theme/global.css?raw';
 import {LEGACY, startLegacyVars} from './lib/cssvars';
 import {mark} from './lib/perfmarks';
 import {earlyStart} from './lib/earlystart';
+import {applyFit} from './lib/fitscale';
+import {log} from './lib/log';
 
 mark('script started');
 
 if (LEGACY) startLegacyVars(globalCss);       // Chromium 38: custom properties are emulated from the stylesheet source
+// #47: window smaller than 1920x1080 (HD sets): scale the layout once, before the first draw; webOS 3 (legacy bundle) is left as it is
+if (!LEGACY) { const fit = applyFit(window.innerWidth, window.innerHeight, document.getElementById('root')); if (fit) log(`fit: window ${window.innerWidth}x${window.innerHeight}, scaled to ${Math.round(fit.scale * 100)}%`); }
 const startConfig = loadConfig();
 applyTokens(startConfig.theme);       // theme first, so there is no flash of the wrong colours
 applyBackground(startConfig.background, THEMES[startConfig.theme], startConfig.wallpaper.mode === 'gradient');

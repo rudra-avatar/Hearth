@@ -258,5 +258,9 @@
  {
   "file": "lib/lghome.ts",
   "text": "the shell did not answer"
+ },
+ {
+  "file": "lib/fitscale.ts",
+  "text": "px) scale("
  }
 ]

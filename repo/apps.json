@@ -14,18 +14,18 @@
       "fullDescriptionUrl": "https://raw.githubusercontent.com/rudra-avatar/Hearth/main/repo/description.html",
       "manifest": {
         "id": "tld.my.customlauncher",
-        "version": "2.1.4",
+        "version": "2.1.5",
         "type": "web",
         "title": "Hearth for WebOS",
         "appDescription": "A fast, calm home screen for LG webOS TVs: clock, weather, your apps and inputs, wallpaper or slideshow.",
         "iconUri": "https://raw.githubusercontent.com/rudra-avatar/Hearth/main/public/largeIcon.png",
         "sourceUrl": "https://github.com/rudra-avatar/Hearth",
         "rootRequired": "optional",
-        "ipkUrl": "https://github.com/rudra-avatar/Hearth/releases/download/v2.1.4/tld.my.customlauncher_2.1.4_all.ipk",
+        "ipkUrl": "https://github.com/rudra-avatar/Hearth/releases/download/v2.1.5/tld.my.customlauncher_2.1.5_all.ipk",
         "ipkHash": {
-          "sha256": "97533e4ab216b954fe03cb0be952e89203f6c1396b3c72b51d9d5d8e9504513e"
+          "sha256": "4029a8964cad9f037c5d7f939456b4d832a87da32f1c337218dd52ced7b5544b"
         },
-        "ipkSize": 19322646
+        "ipkSize": 19326070
       }
     }
   ]

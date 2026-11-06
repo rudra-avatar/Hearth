@@ -1098,6 +1098,16 @@
     "app.switchTheLgHomeReplacement": "أوقف استبدال LG Home من الإعدادات، النظام، ثم أعطِ الزر هذه المهمة مرة أخرى.",
     "extrakeys.couldnTPutTheLg": "تعذّر وضع مساعد LG Home على التلفزيون. حاول مرة أخرى.",
     "homekeycore.opensLgHome": "يفتح LG Home",
-    "remotebuttons.remoteStopsAnswering": "توقف جهاز التحكم عن الاستجابة؟ أعد تشغيل التلفزيون. إذا لم يُجدِ ذلك، راجع «The remote stops answering» في دليل استكشاف الأخطاء."
+    "remotebuttons.remoteStopsAnswering": "توقف جهاز التحكم عن الاستجابة؟ أعد تشغيل التلفزيون. إذا لم يُجدِ ذلك، راجع «The remote stops answering» في دليل استكشاف الأخطاء.",
+    "pref.noUpdate.label": "حظر نافذة تحديث LG (تجريبي)",
+    "pref.noUpdate.desc": "يوقف محدّث LG عند كل تشغيل. قد تظهر النافذة لحظة قبل إخفائها.",
+    "disabled.noUpdate": "لا يحتوي هذا التلفاز على ملف تحديث LG لحظره.",
+    "app.noUpdateOn": "تم حظر نافذة تحديث LG. لن يعمل تحديث البرنامج في الإعدادات ما دام هذا الخيار مفعّلًا.",
+    "app.noUpdateOff": "تحديثات LG مسموحة مرة أخرى.",
+    "app.noUpdateWorking": "جارٍ التغيير...",
+    "app.noUpdateNotTv": "يعمل هذا على التلفاز فقط.",
+    "app.noUpdateNoConfirm": "لم يؤكد التلفاز التغيير.",
+    "app.noUpdateChanging": "تغيير حظر تحديثات LG",
+    "app.noUpdateStep": "حظر نافذة تحديث LG: {name}"
   }
 }

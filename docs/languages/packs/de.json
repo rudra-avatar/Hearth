@@ -1098,6 +1098,16 @@
     "app.switchTheLgHomeReplacement": "Schalte den LG-Home-Ersatz unter Einstellungen, System aus und weise der Taste diese Aufgabe dann erneut zu.",
     "extrakeys.couldnTPutTheLg": "Der LG-Home-Helfer konnte nicht auf dem Fernseher abgelegt werden. Versuche es erneut.",
     "homekeycore.opensLgHome": "öffnet LG Home",
-    "remotebuttons.remoteStopsAnswering": "Fernbedienung reagiert nicht mehr? Starte den Fernseher neu. Hilft das nicht, siehe „The remote stops answering“ in der Anleitung zur Fehlerbehebung."
+    "remotebuttons.remoteStopsAnswering": "Fernbedienung reagiert nicht mehr? Starte den Fernseher neu. Hilft das nicht, siehe „The remote stops answering“ in der Anleitung zur Fehlerbehebung.",
+    "pref.noUpdate.label": "LG-Update-Hinweis blockieren (experimentell)",
+    "pref.noUpdate.desc": "Stoppt den LG-Updater bei jedem Start. Der Hinweis kann kurz erscheinen, bevor er ausgeblendet wird.",
+    "disabled.noUpdate": "Dieser Fernseher hat keine LG-Updater-Datei, die blockiert werden kann.",
+    "app.noUpdateOn": "LG-Update-Hinweis blockiert. Die Softwareaktualisierung in den Einstellungen funktioniert nicht, solange dies aktiv ist.",
+    "app.noUpdateOff": "LG-Updates sind wieder erlaubt.",
+    "app.noUpdateWorking": "Wird geändert...",
+    "app.noUpdateNotTv": "Das funktioniert nur am Fernseher.",
+    "app.noUpdateNoConfirm": "Der Fernseher hat die Änderung nicht bestätigt.",
+    "app.noUpdateChanging": "die LG-Update-Sperre ändern",
+    "app.noUpdateStep": "LG-Update-Hinweis blockieren: {name}"
   }
 }

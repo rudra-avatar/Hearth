@@ -1098,6 +1098,16 @@
     "homekeycore.opensLgHome": "otwiera LG Home",
     "app.pressHomeOnYour": "Naciśnij raz przycisk Home na pilocie.",
     "app.homeKeyLearned": "Klawisz Home zapamiętany.",
-    "remotebuttons.remoteStopsAnswering": "Pilot przestał reagować? Uruchom telewizor ponownie. Jeśli to nie pomoże, zajrzyj do „The remote stops answering” w przewodniku rozwiązywania problemów."
+    "remotebuttons.remoteStopsAnswering": "Pilot przestał reagować? Uruchom telewizor ponownie. Jeśli to nie pomoże, zajrzyj do „The remote stops answering” w przewodniku rozwiązywania problemów.",
+    "pref.noUpdate.label": "Blokuj okno aktualizacji LG (eksperymentalne)",
+    "pref.noUpdate.desc": "Zatrzymuje program aktualizacji LG przy każdym uruchomieniu. Okno może krótko się pojawić, zanim zostanie ukryte.",
+    "disabled.noUpdate": "Ten telewizor nie ma pliku aktualizacji LG do zablokowania.",
+    "app.noUpdateOn": "Okno aktualizacji LG zablokowane. Aktualizacja oprogramowania w Ustawieniach nie będzie działać, dopóki ta opcja jest włączona.",
+    "app.noUpdateOff": "Aktualizacje LG są znowu dozwolone.",
+    "app.noUpdateWorking": "Zmienianie...",
+    "app.noUpdateNotTv": "To działa tylko na telewizorze.",
+    "app.noUpdateNoConfirm": "Telewizor nie potwierdził zmiany.",
+    "app.noUpdateChanging": "zmienić blokadę aktualizacji LG",
+    "app.noUpdateStep": "Blokuj okno aktualizacji LG: {name}"
   }
 }

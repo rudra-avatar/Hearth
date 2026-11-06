@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'preact/hooks';
 import {Clock} from './Clock';
+import {layoutSize, layoutX} from '../lib/fitscale';
 import type {TimeFormat} from '../lib/clock';
 import type {ClockConfig} from '../lib/storage';
 import type {WeatherView} from '../lib/weather';
@@ -20,9 +21,9 @@ export function WidgetPreview ({now, format, config, weather}: {now: Date; forma
 	useEffect(() => {
 		const measure = () => {
 			const list = document.querySelector('.options');
-			const right = list ? list.getBoundingClientRect().right : 1465;
+			const right = list ? layoutX(list.getBoundingClientRect().right) : 1465;
 			const left = Math.round(right + GAP);
-			const width = Math.floor(window.innerWidth - EDGE - left);
+			const width = Math.floor(layoutSize().w - EDGE - left);
 			setFree((was) => (was && was.left === left && was.width === width ? was : {left, width}));
 		};
 		measure();

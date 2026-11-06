@@ -49,6 +49,8 @@ export interface SystemInfo {
 	powerOn?: PowerOnStatus | null;
 	/** names of the chosen and the loaded power-on apps for the row (the app list knows them, not the TV) */
 	powerOnNames?: {chosen?: string; loaded?: string};
+	/** 2.1.5: Block LG update pop-up is linked for every start (null/undefined while unknown); present: the TV has LG's updater file */
+	noUpdate?: {linked: boolean; covered: boolean; present: boolean} | null;
 	/** the TV's "show the LG logo at start" setting (null while unknown) */
 	logo?: LogoState | null;
 	/** can this TV run commands through the Homebrew Channel (rooted)? */
@@ -67,7 +69,7 @@ export interface SystemInfo {
 /** The options that run shell commands, so they can't work without root. */
 /** System rows that stay while root has failed (P83). */
 export const NO_ROOT_ROWS = ['updates', 'language', 'languageRemove', 'tvApps', 'noRootGuide', 'showDebug'];
-export const ROOT_OPTIONS = ['remap', 'replaceHome', 'samHome', 'homeApp', 'homeKey', 'preload', 'keepReady', 'keepRelaunch', 'tvInput', 'powerOnApp', 'lgLogo', 'screensaver', 'screensaverPictures', 'screensaverInterval', 'screensaverShuffle', 'screensaverCare', 'screensaverFit', 'screensaverDim', 'screensaverPowerOff', 'screensaverShow'];
+export const ROOT_OPTIONS = ['remap', 'replaceHome', 'samHome', 'homeApp', 'homeKey', 'preload', 'keepReady', 'keepRelaunch', 'tvInput', 'powerOnApp', 'lgLogo', 'noUpdate', 'screensaver', 'screensaverPictures', 'screensaverInterval', 'screensaverShuffle', 'screensaverCare', 'screensaverFit', 'screensaverDim', 'screensaverPowerOff', 'screensaverShow'];
 
 
 /** Why a row is greyed out, or null when it is usable. */
@@ -114,6 +116,7 @@ export function disabledReason (id: string, info?: SystemInfo, config?: UserConf
 	// Reopen needs Keep Hearth ready (a row that is on stays usable, so it can be switched off)
 	if (id === 'keepRelaunch' && config && !config.keepReady && !config.keepRelaunch) return td('disabled.keepRelaunch');
 	if (id === 'lgLogo' && info && info.logo === 'unsupported') return td('disabled.lgLogo');
+	if (id === 'noUpdate' && info && info.noUpdate && !info.noUpdate.present && !info.noUpdate.linked) return td('disabled.noUpdate');
 	if (!info || info.root !== 'no' || ROOT_OPTIONS.indexOf(id) === -1) return null;
 	const kind = lastFailure();
 	const why = td(kind === 'denied' ? 'disabled.rootDenied' : 'disabled.rootDown');
@@ -531,6 +534,10 @@ const BASE_PREFS: PrefDef[] = [
 		text: (_c, info) => (!info || info.logo === null || info.logo === undefined || info.logo === 'unsupported' ? td('common.unknown') : info.logo === 'on' ? td('common.on') : td('common.off'))
 	},
 	{
+		id: 'noUpdate', tab: 'system', kind: 'action',
+		text: (_c, info) => (info && info.noUpdate && info.noUpdate.linked ? td('common.on') : td('common.off'))
+	},
+	{
 		id: 'screensaver', tab: 'system', kind: 'action',
 		text: (c) => (c.screensaver ? td('common.on') : td('common.off'))
 	},
@@ -593,7 +600,7 @@ const LAYOUT: [PrefTab, string, string[]][] = [
 	['saver', '', ['screensaver', 'screensaverPictures', 'screensaverInterval', 'screensaverShuffle', 'screensaverFit', 'screensaverCare', 'screensaverDim', 'screensaverPowerOff', 'screensaverShow']],
 	['system', '', ['updates', 'language', 'languageRemove']],
 	['system', 'Remote control', ['homeKey', 'remap']],
-	['system', 'TV start', ['tvApps', 'noRootGuide', 'tvInput', 'replaceHome', 'samHome', 'powerOnApp', 'lgLogo', 'homeApp']],
+	['system', 'TV start', ['tvApps', 'noRootGuide', 'tvInput', 'replaceHome', 'samHome', 'powerOnApp', 'lgLogo', 'noUpdate', 'homeApp']],
 	['system', 'Memory', ['preload', 'keepReady', 'keepRelaunch']],
 	['system', '', ['showDebug']]
 ];

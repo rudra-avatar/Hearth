@@ -2,6 +2,17 @@
   "format": 1,
   "versions": [
     {
+      "version": "2.1.5",
+      "date": "2026-11-06",
+      "summary": [
+        "Fits TVs with a smaller screen (for example 1280x720): nothing is cut off any more.",
+        "New switch Block LG update pop-up (rooted, experimental) in Settings, System, TV start."
+      ],
+      "ipkUrl": "https://github.com/rudra-avatar/Hearth/releases/download/v2.1.5/tld.my.customlauncher_2.1.5_all.ipk",
+      "sha256": "4029a8964cad9f037c5d7f939456b4d832a87da32f1c337218dd52ced7b5544b",
+      "size": 19326070
+    },
+    {
       "version": "2.1.4",
       "date": "2026-11-06",
       "summary": [

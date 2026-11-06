@@ -1,0 +1,31 @@
+// Tests for src/lib/fitscale.ts (screen fit, issue #47).   Run: npm test
+import {build} from 'esbuild';
+const out = new URL('../node_modules/.cache-fitscale-test.mjs', import.meta.url).pathname;
+await build({entryPoints: [new URL('../src/lib/fitscale.ts', import.meta.url).pathname], bundle: true, format: 'esm', outfile: out, platform: 'node', logLevel: 'error'});
+const f = await import(out);
+let fail = 0;
+const eq = (a, b, m) => { const ok = JSON.stringify(a) === JSON.stringify(b); if (!ok) { fail++; console.log('FAIL', m, JSON.stringify(a), '!=', JSON.stringify(b)); } else console.log('ok  ', m); };
+const near = (a, b, m) => eq(Math.abs(a - b) < 1e-6, true, m + ' (' + a + ' ~ ' + b + ')');
+eq(f.fitFor(1920, 1080), null, '1920x1080: left alone');
+eq(f.fitFor(3840, 2160), null, '4K window: left alone (no scale up)');
+eq(f.fitFor(1920, 1200), null, 'wider/taller window, width exact: left alone');
+eq(f.fitFor(0, 0), null, 'zero size: null');
+eq(f.fitFor(NaN, 720), null, 'NaN: null');
+eq(f.fitFor(100, 100), null, 'not believable (tiny): null');
+const a = f.fitFor(1280, 720); near(a.scale, 2 / 3, '1280x720 scale'); near(a.x, 0, '1280x720 x'); near(a.y, 0, '1280x720 y');
+const b = f.fitFor(1366, 768); near(b.scale, 768 / 1080, '1366x768 scale (height rules)'); near(b.x, (1366 - 1920 * 768 / 1080) / 2, '1366x768 x centred'); near(b.y, 0, '1366x768 y');
+const c = f.fitFor(1600, 1080); near(c.scale, 1600 / 1920, '1600x1080 scale (width rules)'); near(c.y, (1080 - 1080 * 1600 / 1920) / 2, '1600x1080 y centred');
+// DOM write on a fake element
+const el = {style: {}};
+const r = f.applyFit(1280, 720, el);
+eq([el.style.width, el.style.height, el.style.transformOrigin], ['1920px', '1080px', '0 0'], 'root size and origin');
+eq(el.style.transform, 'translate(0.00px,0.00px) scale(0.6667)', 'root transform string');
+eq(f.appliedFit() === r && r !== null, true, 'appliedFit remembers the start result');
+const el2 = {style: {}}; eq(f.applyFit(1920, 1080, el2), null, 'no change at 1920x1080'); eq(el2.style, {}, 'root untouched at 1920x1080'); eq(f.appliedFit(), null, 'appliedFit null when not scaled');
+eq(f.applyFit(1280, 720, null), null, 'no root: null');
+f.applyFit(1280, 720, {style: {}});
+near(f.layoutX(0), 0, 'layoutX at left edge'); near(f.layoutX(1280), 1920, 'layoutX at right edge'); near(f.layoutY(720), 1080, 'layoutY at bottom edge'); near(f.layoutY(360), 540, 'layoutY middle');
+eq(f.layoutSize(), {w: 1920, h: 1080}, 'layout size when scaled');
+f.applyFit(1366, 768, {style: {}}); near(f.layoutX(f.fitFor(1366, 768).x), 0, 'layoutX of the centred left edge');
+f.applyFit(1920, 1080, {style: {}}); eq([f.layoutX(500), f.layoutY(300)], [500, 300], 'not scaled: unchanged');
+console.log(fail ? fail + ' FAILED' : 'all ok'); process.exit(fail ? 1 : 0);

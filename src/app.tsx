@@ -51,6 +51,7 @@ import {clearPowerOnApp, powerOnMessage, readPowerOn, restartTv, setPowerOnApp} 
 import {needsRestart, powerOnName} from './lib/poweroncmd';
 import {applyPreload} from './lib/preload';
 import {applyKeepReady, readKeepList, readKeepStatus} from './lib/keepready';
+import {applyNoUpdate, readNoUpdate} from './lib/noupdate';
 import {KEEP_WARNING, keepMessage, keepProblemText, statusMatches} from './lib/keepreadycmd';
 import {askKeepAlive, askedRecently} from './lib/keepalive';
 import {hidePointerOnForeground, startPointerGuard} from './lib/pointer';
@@ -620,7 +621,8 @@ export function App () {
 					if (root === 'no') { setSystemInfo({homeApp: null, homeHook: null, logo: null, powerOn: null, root, rootDetail}); return undefined; }
 					return Promise.all([getHookStatus(), getLogo(), readPowerOn(), readHomeApp(), readInputHookInUse(), root === 'yes' ? readHomebrewVersion() : Promise.resolve(undefined), getSamStatus()]).then(([homeHook, logo, powerOn, homeApp, inputHook, homebrew, samHome]) => {
 						if (!live) return;
-						setSystemInfo((previous) => ({homeApp, homeHook, samHome, logo, powerOn, root, rootDetail, inputHook, keepList: previous.keepList, samBusy: previous.samBusy}));
+						setSystemInfo((previous) => ({homeApp, homeHook, samHome, logo, powerOn, root, rootDetail, inputHook, keepList: previous.keepList, noUpdate: previous.noUpdate, samBusy: previous.samBusy}));
+						readNoUpdate().then((noUpdate) => { if (live && noUpdate) setSystemInfo((previous) => ({...previous, noUpdate})); });     // 2.1.5: apart, so the other rows never wait for it
 						readKeepList().then((keepList) => { if (live && keepList !== null) setSystemInfo((previous) => ({...previous, keepList})); });     // K2: apart, so the other rows never wait for it
 						if (homebrew) setVersions((p) => ({...p, homebrew}));
 						log(`settings: status reads done +${since()} ms`);
@@ -1330,6 +1332,14 @@ export function App () {
 					});
 				}
 				else changeInput();
+			}
+			else if (optionId === 'noUpdate') {
+				const wantOn = !(systemInfo.noUpdate && systemInfo.noUpdate.linked);
+				showToast(tt('app.noUpdateWorking'));
+				applyNoUpdate(wantOn).then((why) => readNoUpdate().then((noUpdate) => {
+					if (noUpdate) setSystemInfo((previous) => ({...previous, noUpdate}));
+					showToast(why ? why : wantOn ? tt('app.noUpdateOn') : tt('app.noUpdateOff'), why ? 'error' : 'info');
+				}));
 			}
 			else if (optionId === 'lgLogo') {
 				const wantOn = systemInfo.logo !== 'on';

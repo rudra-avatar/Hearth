@@ -14,3 +14,5 @@ The widget is the group of time, date and weather at the top of the home screen.
 ## About the weather and privacy
 
 The weather comes from [Open-Meteo](https://open-meteo.com), a free service with no account. Hearth sends only the place's map position (and the words you type in the city search). It asks a few seconds after Hearth appears and then every 30 minutes while Hearth is in front. The last answer is kept, so the home screen never waits for the internet. An answer older than 6 hours is not shown. It needs the TV to be online.
+
+Some networks block the address of Open-Meteo's main forecast server (`api.open-meteo.com`) while the rest of Open-Meteo stays reachable. When the main server does not answer, Hearth asks two other Open-Meteo servers that give the same forecast (`historical-forecast-api.open-meteo.com`, then `previous-runs-api.open-meteo.com`) and remembers the one that answered, so the next refresh asks it first. Only Open-Meteo is ever asked, and it is sent the same map position.

@@ -45,8 +45,14 @@ export function validCoords (lat: unknown, lon: unknown): boolean {
 	return typeof lat === 'number' && typeof lon === 'number' && isFinite(lat) && isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
 }
 
-export function forecastUrl (lat: number, lon: number): string {
-	return 'https://api.open-meteo.com/v1/forecast?latitude=' + coord(lat) + '&longitude=' + coord(lon)
+/** Open-Meteo hosts that answer /v1/forecast in the same format. The first is the official one; the others run on
+ *  different servers and are used when it cannot be reached (some networks block the address of api.open-meteo.com
+ *  while the rest of Open-Meteo stays reachable). */
+export const FORECAST_HOSTS = ['api.open-meteo.com', 'historical-forecast-api.open-meteo.com', 'previous-runs-api.open-meteo.com'] as const;
+export type ForecastHost = typeof FORECAST_HOSTS[number];
+
+export function forecastUrl (lat: number, lon: number, host: ForecastHost = FORECAST_HOSTS[0]): string {
+	return 'https://' + host + '/v1/forecast?latitude=' + coord(lat) + '&longitude=' + coord(lon)
 		+ '&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min&forecast_days=1&timezone=auto';
 }
 

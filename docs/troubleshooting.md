@@ -52,7 +52,7 @@ rm -f /home/root/.config/lginputhook/keybinds.json
 - **The LG Home tile does not open on webOS 3.** Reported on one TV; the cause is not known.
 - **A picture will not show.** The message says why: over 8 MB, over 25 megapixels, or not a picture.
 - **The USB stick is missing in the picker.** Plug it in, then open the picker again.
-- **No weather.** Check the TV's internet. Hearth tries again by itself.
+- **No weather.** Check the TV's internet. Hearth tries again by itself. If your network blocks Open-Meteo's main server, Hearth switches to another Open-Meteo server by itself; the first time this can take about 10 seconds longer.
 - **The layout looks odd after changing sizes.** Settings, Look, **Reset Hearth visual settings to default**.
 - **After updating to 2.0.0 my look changed.** That happens once on purpose. Settings, Look, **Restore my settings from before the update** brings it back.
 - **No full app list without root.** Turn **LG Connect Apps** on, then use the app-list row in Settings, System and press OK on the TV when it asks. See [Without root](features/no-root.md). It may not work on every TV.

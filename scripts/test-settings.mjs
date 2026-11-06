@@ -166,7 +166,7 @@ eq(!!homeAppRow({homeApp: 'com.webos.app.home', homeHook: {running: true, linked
 eq(!!p.optionsFor('system', c0, {homeApp: 'tld.my.customlauncher', homeHook: {running: false, linked: false}}).find((o) => o.id === 'replaceHome').disabled, true, 'and the helper row is greyed out while the Home app setting names Hearth');
 eq(!!homeAppRow({homeApp: 'tld.my.customlauncher', homeHook: {running: true, linked: true}}).disabled, false, 'a row that is on stays usable so it can be switched off');
 eq(p.ROOT_OPTIONS.indexOf('homeApp') !== -1, true, 'the Home app row needs root');
-eq(p.optionsFor('clock', c0).map((o) => o.id).filter((id) => !/^weather/.test(id)).join(','), 'widgetOn,clockFormat,showPeriod,showDate,clockSize,clockFont,clockWeight,clockTop,clockLeft,clockAlign,clockColor,clockShadow,clockScrim,clockOpacity', 'the Widget tab (P41f: Show widget first): Time rows, then Widget look with the font after the size, with the backdrop row');
+eq(p.optionsFor('clock', c0).map((o) => o.id).filter((id) => !/^weather/.test(id)).join(','), 'widgetOn,clockFormat,showPeriod,showDate,clockSize,clockFont,clockWeight,clockTop,clockLeft,clockAlign,clockColor,clockShadow,clockScrim,clockOpacity,showStats', 'the Widget tab (P41f: Show widget first): Time rows, then Widget look with the font after the size, with the backdrop row, then TV load');
 const fonts = [];
 const ci = {...c0, clock: {...c0.clock, font: 'inter'}};   // the first font in the list (the default is Outfit since P41f)
 let cf = ci;

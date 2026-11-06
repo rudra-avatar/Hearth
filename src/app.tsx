@@ -96,6 +96,7 @@ import {APP_ID, TIMING, WALLPAPER} from './config/constants';
 import {LEGACY, PROBE_ENABLED, WEATHER_ENABLED} from './config/features';
 import {PROBE_TESTS, RUN_ALL_ID, bad as probeBad, probeOptions, runAll, withLimit, type ProbeState} from './lib/probe';
 import {fetchWeather} from './lib/weathernet';
+import {readSample, statsView, STATS_INTERVAL_MS, type StatsSample} from './lib/tvstats';
 import {FRESH_MS, isFresh, readWeatherCache, usableCached, weatherView, writeWeatherCache, type City, type WeatherData} from './lib/weather';
 import {CONNECT_APPS_NOTE} from './config/connectapps';
 
@@ -807,6 +808,29 @@ export function App () {
 		timer = window.setTimeout(run, wait);
 		return () => { cancelled = true; window.clearTimeout(timer); };
 	}, [wxCity !== null, wxLat, wxLon, wakes, showToast]);
+
+	// The TV load line (CPU, RAM, storage, network): one small root command every few seconds, only while Hearth is in
+	// front and the line is switched on. Two samples are kept because the CPU and network figures are rates.
+	const statsOn = config.clock.show && config.clock.showStats && isWebOS();
+	const [statsPair, setStatsPair] = useState<[StatsSample | null, StatsSample | null]>([null, null]);
+	useEffect(() => {
+		if (!statsOn) { setStatsPair([null, null]); return undefined; }
+		let cancelled = false;
+		let timer = 0;
+		const run = () => {
+			if (cancelled || document.hidden) return;            // coming back to the front starts this over
+			readSample().then((sample) => {
+				if (cancelled) return;
+				if (sample) setStatsPair((was) => [was[1], sample]);
+				timer = window.setTimeout(run, STATS_INTERVAL_MS);
+			});
+		};
+		const onVisibility = () => { window.clearTimeout(timer); if (!document.hidden) { setStatsPair([null, null]); run(); } };
+		timer = window.setTimeout(run, 1200);                   // after the first screen, never in its way
+		document.addEventListener('visibilitychange', onVisibility);
+		return () => { cancelled = true; window.clearTimeout(timer); document.removeEventListener('visibilitychange', onVisibility); };
+	}, [statsOn]);
+	const statsLine = useMemo(() => (statsOn ? statsView(statsPair[0], statsPair[1]) : null), [statsOn, statsPair, config.language, langTick]);
 
 	const weatherLine = useMemo(() => {
 		if (!wxCity) return null;
@@ -1627,10 +1651,10 @@ export function App () {
 			{wallpaperOn && photoShow && <PhotoShow fit={config.wallpaper.fit === 'fit'} intervalSec={config.wallpaper.intervalSec} shuffle={config.wallpaper.shuffle} paused={asleep} />}
 			{wallpaperOn && !photoShow && <Wallpaper config={config.wallpaper} opacity={config.wallpaperOpacity} onProblem={(text) => showToast(text, 'error')} />}
 			{/* Home stays mounted under the other screens so it keeps its focus position. */}
-			<Home items={homeItems} favourites={config.favourites} timeFormat={timeFormat} appearance={appearance} active={screen === 'home' && !menu && !recents && !notice} paused={asleep} onActivate={onActivate} onLongPress={onLongPress} onDeadDown={config.hideSettings && !tileBack ? showTileAgain : undefined} onBack={openRecents} wake={wakes} homeKey={config.homeFocus === 'last' && !bootFirst.current ? lastOpened.current : null} focus={focus} weather={weatherLine} moveMode={moveMode} tileKeys={keysRef.current} onMovePick={onMovePick} onMoveStep={onMoveStep} onMoveExit={onMoveExit} />
+			<Home items={homeItems} favourites={config.favourites} timeFormat={timeFormat} appearance={appearance} active={screen === 'home' && !menu && !recents && !notice} paused={asleep} onActivate={onActivate} onLongPress={onLongPress} onDeadDown={config.hideSettings && !tileBack ? showTileAgain : undefined} onBack={openRecents} wake={wakes} homeKey={config.homeFocus === 'last' && !bootFirst.current ? lastOpened.current : null} focus={focus} weather={weatherLine} stats={statsLine} moveMode={moveMode} tileKeys={keysRef.current} onMovePick={onMovePick} onMoveStep={onMoveStep} onMoveExit={onMoveExit} />
 			{recents && screen === 'home' && <Recents icons={recentIcons} edits={config.appEdits} inputs={allInputs} sourceEdits={config.sourceEdits} width={config.recentsW} height={config.recentsH} onClose={closeRecents} onOpen={noteOpened} onToast={showToast} />}
 			{/* Settings stays mounted under the picker so it keeps its tab. */}
-			{screen === 'settings' && settingsTab === TAB.clock && appearance.clock.show && !config.showDebug && <WidgetPreview now={previewNow} format={timeFormat} config={appearance.clock} weather={weatherLine} />}
+			{screen === 'settings' && settingsTab === TAB.clock && appearance.clock.show && !config.showDebug && <WidgetPreview now={previewNow} format={timeFormat} config={appearance.clock} weather={weatherLine} stats={statsLine} />}
 			{(screen !== 'home') && <Settings tabs={tabs} active={screen === 'settings' && !notice && !menu} onToggle={onToggle} onRecent={onRecent} onOption={onOption} onRefresh={onRefresh} favourites={config.favourites} onFavourite={onFavourite} onUninstallPick={onUninstallPick} onEdit={(key) => { setEditKey(key); setScreen('source'); }} onAdjust={onAdjust} onTab={onTab} onCollapse={onCollapse} onClose={() => { onCollapse(); setScreen('home'); }} about={aboutText(versions, rootState(), lastFailure())} />}
 			{menu && <AppMenu title={menu.title} hideDetail={menu.app ? tt('app.youCanAddItBack') : tt('app.youCanAddItBack2')} showUninstall={!!menu.app} blockedReason={menuBlocked} isFavourite={config.favourites.indexOf(menu.key) !== -1} onFavourite={() => { onFavourite('', menu.key); setMenu(null); }} onReorder={config.orderByRecent || menu.key === MISC.lgHome || menu.key === MISC.settings || menu.key === MISC.system ? undefined : () => startMoveMode(menu.key)} onHide={() => hideTile(menu)} onUninstall={() => { if (menu.app) removeApp(menu.app); }} startAtConfirm={!!menu.direct} settingsDetail={menu.direct ? undefined : hidePractice ? tt('appmenu.settingsPractice') : config.hideSettings && !tileBack ? tt('appmenu.settingsDetail') : undefined} onSettings={onMenuSettings} onClose={() => setMenu(null)} />}
 			{screen === 'source' && (editedSource || editedApp) && (

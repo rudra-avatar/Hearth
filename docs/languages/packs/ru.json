@@ -1108,6 +1108,17 @@
     "app.noUpdateNotTv": "Это работает только на телевизоре.",
     "app.noUpdateNoConfirm": "Телевизор не подтвердил изменение.",
     "app.noUpdateChanging": "изменить блокировку обновлений LG",
-    "app.noUpdateStep": "Блокировать окно обновления LG: {name}"
+    "app.noUpdateStep": "Блокировать окно обновления LG: {name}",
+    "pref.showStats.label": "Показывать нагрузку ТВ",
+    "pref.showStats.desc": "Процессор, память, накопитель и сеть под погодой. Обновляется каждые 3 секунды, пока Hearth на экране, и никогда в фоне. Только для ТВ с root.",
+    "stats.cpu": "ЦП",
+    "stats.ram": "ОЗУ",
+    "stats.disk": "Диск",
+    "stats.net": "Сеть",
+    "stats.ofGb": "{used} / {total} ГБ",
+    "stats.freeGb": "{free} ГБ своб.",
+    "stats.kbit": "{v} Кбит/с",
+    "stats.mbit": "{v} Мбит/с",
+    "group.TV load": "Нагрузка ТВ"
   }
 }

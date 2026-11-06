@@ -5,10 +5,33 @@ import {fontFamily} from '../lib/clockfont';
 import type {WeatherView} from '../lib/weather';
 import {WeatherGlyph} from './Glyph';
 import {varScope} from '../lib/cssvars';
+import type {StatsView} from '../lib/tvstats';
+import {t as tt} from '../i18n';
+
+/** The TV load line: CPU, RAM, storage and network, each a quiet label and its value. */
+function StatsLine ({stats, size}: {stats: StatsView; size: number}) {
+	const items: Array<[string, string]> = [
+		[tt('stats.cpu'), stats.cpu],
+		[tt('stats.ram'), stats.ram],
+		[tt('stats.disk'), stats.disk],
+		[tt('stats.net'), stats.net]
+	];
+	return (
+		<div class="clock__stats" style={{fontSize: `${Math.max(20, Math.round(size * 0.13))}px`, marginTop: `${Math.round(size * 0.1)}px`}}>
+			{items.map(([label, value], i) => (
+				<span class="clock__stat" key={label}>
+					{i > 0 && <span class="clock__stat-sep">·</span>}
+					<span class="clock__stat-label">{label}</span>
+					<span class="clock__stat-value">{value}</span>
+				</span>
+			))}
+		</div>
+	);
+}
 
 /** The clock: the time (with a small AM/PM beside it in 12-hour mode) and the date.
  *  Size, thickness, colour, position and what is shown all come from the settings. */
-export function Clock ({now, format, config, weather}: {now: Date; format: TimeFormat; config: ClockConfig; weather?: WeatherView | null}) {
+export function Clock ({now, format, config, weather, stats}: {now: Date; format: TimeFormat; config: ClockConfig; weather?: WeatherView | null; stats?: StatsView | null}) {
 	const {time, period} = timeParts(now, format);
 	const size = config.size;
 	const info = colorInfo(config.color);
@@ -51,6 +74,7 @@ export function Clock ({now, format, config, weather}: {now: Date; format: TimeF
 					<span>{weather.city ? weather.city + '  ·  ' : ''}{weather.main}{weather.range ? '  ·  ' + weather.range : ''}</span>
 				</div>
 			)}
+			{config.showStats && stats && <StatsLine stats={stats} size={size} />}
 		</div>
 	);
 }

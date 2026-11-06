@@ -13,6 +13,7 @@ import {fontFamily, type ClockFont} from '../lib/clockfont';
 import {initialStepState, stepDecision, type ScrollSpeed} from '../lib/scrollspeed';
 import type {ClockConfig} from '../lib/storage';
 import type {WeatherView} from '../lib/weather';
+import type {StatsView} from '../lib/tvstats';
 import {FONT, LAYOUT} from '../theme/tokens';
 import {varScope} from '../lib/cssvars';
 import {moveGroup, movesFor} from '../lib/tileorder';
@@ -80,6 +81,8 @@ interface Props {
 	focus?: {key: string; seq: number};
 	/** the weather line under the date, when it is on and known */
 	weather?: WeatherView | null;
+	/** the TV load line under the weather, when it is on and known */
+	stats?: StatsView | null;
 	/** 2.0.3 T2 move mode (on while set): `picked` is the key of the tile picked up, or null when none is */
 	moveMode?: {picked: string | null} | null;
 	/** keys of the apps and inputs in their saved order (the tiles that can be moved) */
@@ -105,7 +108,7 @@ function useShift (on: boolean): {x: number; y: number} | null {
 /** The home screen: a clock and the tiles along the bottom, in one row or two.
  *  Left/Right move along a row, Up/Down change row (two rows), OK opens, holding OK opens the app's menu.
  *  Back opens the Recent apps panel. */
-export function Home ({items: allItems, favourites, timeFormat, appearance, active, paused, onActivate, onLongPress, onDeadDown, onBack, wake, homeKey, focus, weather, moveMode, tileKeys, onMovePick, onMoveStep, onMoveExit}: Props) {
+export function Home ({items: allItems, favourites, timeFormat, appearance, active, paused, onActivate, onLongPress, onDeadDown, onBack, wake, homeKey, focus, weather, stats, moveMode, tileKeys, onMovePick, onMoveStep, onMoveExit}: Props) {
 	const now = useClock(paused);
 	const [position, setPosition] = useState<RowsPosition>(initialPosition);
 	// Favourites: with any chosen, the first row holds them alone; Down brings up a second row with everything else, Up hides it again.
@@ -346,7 +349,7 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 	return (
 		<div class={`screen${active ? '' : ' screen--away'}${shift ? ' screen--shift' : ''}${shiftVars.cls ? ' ' + shiftVars.cls : ''}`} style={shiftVars.css || undefined}>
 			{moveMode && <div class="movehint"><div class="movehint__main">{tt('move.hint')}</div><div class="movehint__sub">{tt('move.hintBack')}</div></div>}
-			{appearance.clock.show && !moveMode && <Clock now={now} format={timeFormat} config={appearance.clock} weather={weather} />}
+			{appearance.clock.show && !moveMode && <Clock now={now} format={timeFormat} config={appearance.clock} weather={weather} stats={stats} />}
 			<div class={classes} style={rowStyle}>
 				{sizes.map((size, r) => {
 					const start = offsets[r];

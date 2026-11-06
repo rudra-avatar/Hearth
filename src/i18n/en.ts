@@ -1,6 +1,16 @@
 // T1: all UI texts, English. Key = area.name; `{name}` marks a placeholder (keep it unchanged in a translation).
 // Settings rows: pref.<row id>.label and pref.<row id>.desc. Add a text here, then use t(key) in the code.
 export const en = {
+	'pref.showStats.label': 'Show TV load',
+	'pref.showStats.desc': 'CPU, memory, storage and network under the weather. Refreshed every 3 seconds while Hearth is in front, never in the background. Rooted TVs only.',
+	'stats.cpu': 'CPU',
+	'stats.ram': 'RAM',
+	'stats.disk': 'Storage',
+	'stats.net': 'Net',
+	'stats.ofGb': '{used} / {total} GB',
+	'stats.freeGb': '{free} GB free',
+	'stats.kbit': '{v} Kbit/s',
+	'stats.mbit': '{v} Mbit/s',
 	'pref.weatherOn.label': 'Show the weather',
 	'pref.weatherOn.desc': 'The temperature and conditions under the date.',
 	'pref.weatherCity.label': 'City',
@@ -437,6 +447,7 @@ export const en = {
 	// ----- Settings group headers (T1b; the English name is also the group id) -----
 	'group.Time and date': 'Time and date',
 	'group.Weather': 'Weather',
+	'group.TV load': 'TV load',
 	'group.Widget look': 'Widget look',
 	'group.Favourites': 'Favourites',
 	'group.Home row': 'Home row',

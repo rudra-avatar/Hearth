@@ -88,6 +88,8 @@ export interface ClockConfig {
 	/** how solid the whole widget is, % */
 	opacity: number;
 	showDate: boolean;
+	/** the TV load line (CPU, RAM, storage, network) under the weather; rooted TVs only */
+	showStats: boolean;
 	/** AM/PM beside the time (12-hour mode only) */
 	showPeriod: boolean;
 	/** which side of its position the clock, date and weather line up on */
@@ -320,6 +322,7 @@ export const DEFAULT_CLOCK: ClockConfig = {
 	scrim: RANGES.clockScrim.def,
 	opacity: RANGES.clockOpacity.def,
 	showDate: true,
+	showStats: false,          // the TV load line runs a root command every few seconds: off until switched on
 	showPeriod: true,
 	align: 'center'             // P113 (P41f had left)
 };
@@ -585,6 +588,7 @@ export function loadConfig (): UserConfig {
 				scrim: typeof c.scrim === 'number' ? ranged(c.scrim, 'clockScrim') : 0,   // saved config from before the row existed: stays Off (no change for updaters)
 				opacity: ranged(c.opacity, 'clockOpacity'),
 				showDate: c.showDate !== false,
+				showStats: c.showStats === true,
 				showPeriod: c.showPeriod !== false,
 				align: c.align === 'center' || c.align === 'right' ? c.align : 'left'
 			},

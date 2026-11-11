@@ -23,6 +23,8 @@ Hearth makes two folders for you: `/media/developer/wallpapers` for wallpapers a
 
 `<TV address>` is the **IP** number at the bottom right of Hearth's Settings.
 
+Your pictures can also be on a **NAS** or another shared folder in your home network: see [Network folder](network-folder.md).
+
 ## Picture size matters
 
 A big picture makes the TV work harder. **The best size is 1920x1080**: it looks good and Hearth stays fast. Please make your pictures that size. The hard limit is **8 MB and 25 megapixels** per picture; a bigger picture is skipped in a slideshow and refused as a single wallpaper. Use JPG, PNG, WebP or BMP. A photo that appears turned the wrong way should be rotated on the computer first.

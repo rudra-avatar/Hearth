@@ -1,5 +1,46 @@
 # Changelog
 
+## 2.2.0
+
+A bigger release: a calmer Settings screen with help and previews, an Essentials tab you can edit, *Most used* ordering, a network folder, many more buttons to map, and Italian and Thai language packs.
+
+### Changes
+
+- **Essentials tab.** A new first tab after Apps & Sources with the settings most people change: theme, wallpaper, widget, screen saver, quiet mode, icon size. *Edit Essentials* (last row) lets you add, remove and reorder its rows. The rows also stay in their own tabs.
+- **Help and previews in Settings.** Every row can show a short help text beside the list, and rows that change how Home looks (icons, home row, margins, wallpaper, widget position, labels) show a live preview of the home screen. Settings use the full screen width, tab pills slide as you move, and the Magic Remote pointer scrolls the tab bar.
+- **Row names say where they belong.** Rows with a general word now start with their area, for example *Home row: scroll speed*, *Widget: show the date*, *Weather: city*, *Screensaver: brightness*, *Favourites: side margin*. Nothing saved changes.
+- **Most used** replaces *Order by last opened* (the switch keeps its place and its saved value). Apps you open most come first; favourites keep their places.
+- **Network folder** (rooted, experimental). Use pictures, icons, themes, language files and screen saver pictures from a NAS or PC (SMB share, read only). If the share is not there, Hearth uses its built-in pictures. Thanks to Maksim (lordmax895-oss, pull request #53) for the way to connect.
+- **Map additional keys** is rebuilt on the bundled key hook: four kinds of target (an app, an input, another remote button, a TV action such as *Screen off* or volume), a list of the TV's own inputs, and *Add a button* that only listens and does not start the app that button belongs to. Actions that are not tested on a TV are marked *untested*. The old *Reassign remote buttons* is gone: Hearth removes its filter once, keeps a backup of the old map, and asks you to map the buttons again. Thanks to Magic Mapper (afonsojramos, andrewfraley) for the ideas.
+- **Home leaves Settings.** Press Home twice, or Back, to leave Settings. Settings no longer closes by itself when the TV sends Hearth a spurious relaunch.
+- **Quiet mode** can switch the TV off a set time after the apps hide (*Quiet mode: switch the TV off after*). A pointer that wakes quiet mode uses up that one press and nothing else.
+- **Uninstall Hearth and undo all system changes** (rooted, System tab, last row): takes back what Hearth changed on the TV, writes one log, restarts the TV when needed, and uninstalls Hearth.
+- **Magic Remote pointer.** The pointer only moves the highlight in the middle of the home row; in the outer 20% the row scrolls smoothly, at the speed of *Home row: scroll speed*. A hover no longer jumps the row.
+- **Screen saver.** The video stays inside its frame while the OLED care drift runs; the care frame is 12 px. Saver rows have help texts. The saver log says which app was in front when the saver started (for issue #48).
+- **Slideshow *Each visit*** always shows a new picture: at once when Hearth is back in front after a minute or more away, and right after the first frames at a restart.
+- **Widget size** goes from 40 to 200 on the scale shown; date and weather text grow with the clock. The favourites bottom margin starts at 30 on fresh installs.
+- **Weather** tries three Open-Meteo hosts and remembers the one that worked (pull request #51, Maksim).
+- **Cities.** The city list is now grouped by country, 50 cities each for the countries of the bundled languages, including Italy and Thailand. A saved city keeps working.
+- **Languages.** Italian (pull request #55, doppiaRR) and Thai (pull request #56, MangaThatsFine) join French, Polish, Brazilian Portuguese, Indonesian, Spanish, German, Arabic and Russian. All new texts exist in every bundled language; texts in id, es, de, ar, ru, fr, it, pl and pt-BR are machine translated.
+- **Guides.** The README and the guides explain the Essentials tab, help and previews, the network folder, key mapping and installing with webOS Dev Manager on a rooted TV.
+
+### Fixes
+
+- The highlight no longer jumps to the first app while you move along the row (a relaunch while Hearth was in front reset it). *When Home is pressed* now starts on the first app for fresh installs; saved values stay.
+- Favourites: Up and Down glide instead of jerking.
+- The Settings preview shows the wallpaper at once, not only after a change.
+- *Block LG update pop-up* (2.1.5) is removed (LG's pop-up cannot be closed from outside). TVs that had it On are cleaned once at start and *Software update* works again.
+- The clock, pop-ups and app monograms are drawn on whole pixels, so their text stays sharp.
+- Helpers no longer keep the Homebrew Channel's open sockets: each one closes all file descriptors above 2 before it starts, so the TV's service hub cannot be held up by a leftover socket (seen as "root status pending" on a webOS 3.9 TV; not yet tested on a TV). Thanks to chriskoperdraad-tech (pull request #54).
+
+### Texts
+
+- New help texts and row names were machine translated into all bundled languages except Thai; the texts missing in the Italian pack were machine translated too. Corrections are welcome.
+
+## 2.1.6
+
+Not released (its changes are part of 2.2.0).
+
 ## 2.1.5
 
 A release for TVs with a smaller screen, and a switch against LG's update pop-up.

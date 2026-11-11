@@ -262,5 +262,57 @@
  {
   "file": "lib/fitscale.ts",
   "text": "px) scale("
+ },
+ {
+  "file": "screens/Home.tsx",
+  "text": "translate3d(0, {}px, 0)"
+ },
+ {
+  "file": "screens/Home.tsx",
+  "text": "transform {}ms ease-out"
+ },
+ {
+  "file": "screens/Home.tsx",
+  "text": "translate3d(0, 0, 0)"
+ },
+ {
+  "file": "app.tsx",
+  "text": "hidden, timer"
+ },
+ {
+  "file": "app.tsx",
+  "text": "hidden {} ({})"
+ },
+ {
+  "file": "app.tsx",
+  "text": "for good"
+ },
+ {
+  "file": "app.tsx",
+  "text": "ms, back"
+ },
+ {
+  "file": "screens/Home.tsx",
+  "text": "cubic-bezier(0.45, 0, 0.25, 1)"
+ },
+ {
+  "file": "screens/Home.tsx",
+  "text": "position:absolute;margin:0;pointer-events:none;top:{}px;left:{}px;width:{}px;opacity:1;-webkit-transition:opac"
+ },
+ {
+  "file": "screens/Home.tsx",
+  "text": "transform {}ms {}"
+ },
+ {
+  "file": "components/Wallpaper.tsx",
+  "text": "restart, first frames drawn"
+ },
+ {
+  "file": "components/Wallpaper.tsx",
+  "text": "still pending on return"
+ },
+ {
+  "file": "components/Wallpaper.tsx",
+  "text": "back after {} s"
  }
 ]

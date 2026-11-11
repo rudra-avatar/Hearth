@@ -2,6 +2,18 @@
   "format": 1,
   "versions": [
     {
+      "version": "2.2.0",
+      "date": "2026-11-11",
+      "summary": [
+        "New Essentials tab you can edit, a help text beside every row and a live home preview in Settings.",
+        "Most used ordering, a network folder (rooted), many more buttons and TV actions to map, Italian and Thai languages.",
+        "Press Home twice or Back to leave Settings; the highlight no longer jumps to the first app."
+      ],
+      "ipkUrl": "https://github.com/rudra-avatar/Hearth/releases/download/v2.2.0/tld.my.customlauncher_2.2.0_all.ipk",
+      "sha256": "d56b26378e787ae2c22e0fce1e72c21a61e791e908e7082c2c3f31b2ae2572a8",
+      "size": 19510586
+    },
+    {
       "version": "2.1.5",
       "date": "2026-11-06",
       "summary": [

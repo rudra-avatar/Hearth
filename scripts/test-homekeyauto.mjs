@@ -30,7 +30,7 @@ eq(codes('keyid=774, state=1\n'), [774], 'a keyid line without uinput_code still
 // Z5: the Home guard (recorder entries while the key mapper listens)
 {
 	const g = c.addGuard({'398': {action: 'exec', command: c.OPEN_COMMAND}, '774': {action: 'launch', id: 'tld.my.customlauncher'}});
-	eq(g.codes, [773, 125], 'guard: only Home codes without an entry get a recorder');
+	eq(g.codes, [773, 125], 'guard: only Home codes without an entry get a recorder (p20: app buttons no longer guarded)');
 	eq(c.isGuardBind(g.binds['773']) && c.isGuardBind(g.binds['125']) && !c.isGuardBind(g.binds['774']), true, 'guard: recorder entries are recognised');
 	eq(Object.keys(c.stripGuard(g.binds)).sort(), ['398', '774'], 'guard: stripGuard leaves the other entries');
 	eq(c.guardScriptText(773).includes('773 >> ' + c.GUARD_HITS), true, 'guard: the script appends its code to the hits file');

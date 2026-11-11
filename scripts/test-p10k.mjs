@@ -13,10 +13,13 @@ const eq = (got, want, name) => { const ok = JSON.stringify(got) === JSON.string
 const ids = a.PREFS.map((p) => p.id);
 eq(['useHomebrew', 'closeHomeNow', 'useAsHome'].filter((i) => ids.indexOf(i) !== -1), [], 'live-list, close-now and alternative-method rows are gone');
 eq(ids.indexOf('closeHome'), -1, 'the "Close LG Home" row is gone');
-eq(a.ROOT_OPTIONS.slice().sort(), ['homeApp', 'homeKey', 'keepReady', 'keepRelaunch', 'lgLogo', 'noUpdate', 'powerOnApp', 'preload', 'remap', 'replaceHome', 'samHome', 'screensaver', 'screensaverCare', 'screensaverDim', 'screensaverFit', 'screensaverInterval', 'screensaverPictures', 'screensaverPowerOff', 'screensaverShow', 'screensaverShuffle', 'tvInput'], 'root-only rows (the SAM stand-in row is back (2.0.3))');
+eq(a.ROOT_OPTIONS.slice().sort(), ['homeApp', 'homeKey', 'keepReady', 'keepRelaunch', 'lgLogo', 'powerOnApp', 'preload', 'quietPowerOff', 'remap', 'replaceHome', 'samHome', 'screensaver', 'screensaverCare', 'screensaverDim', 'screensaverFit', 'screensaverInterval', 'screensaverPictures', 'screensaverPowerOff', 'screensaverShow', 'screensaverShuffle', 'tvInput', 'undoAll'], 'root-only rows (the SAM stand-in row is back (2.0.3))');
 eq(a.DEFAULT_CONFIG.showDebug, false, 'the Debug tab is off by default');
-const row = a.optionsFor('system', a.DEFAULT_CONFIG).pop();
-eq([row.id, row.label], ['showDebug', 'Show the Debug tab'], 'its switch is the last Options row');
+const sysRows = a.optionsFor('system', a.DEFAULT_CONFIG);
+const undoRow = sysRows.pop();
+eq(undoRow.id, 'undoAll', 'U1: Undo all Hearth changes is the last System row');
+const row = sysRows.pop();
+eq([row.id, row.label], ['showDebug', 'Show the Debug tab'], 'its switch is the last Options row before the undo row');
 eq(a.applyPref(a.DEFAULT_CONFIG, 'showDebug', 'ok').showDebug, true, 'OK turns it on');
 eq(a.applyPref(a.applyPref(a.DEFAULT_CONFIG, 'showDebug', 'ok'), 'showDebug', 'ok').showDebug, false, 'and off again');
 const store = {};

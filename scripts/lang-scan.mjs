@@ -9,7 +9,7 @@ try { ts = require('typescript'); if (!ts.createSourceFile) throw new Error('no 
 const root = new URL('../src/', import.meta.url).pathname;
 // Not scanned by design (AGENT: font names, language names, debug/log lines and shell texts stay English): brand and font tables,
 // city data (undecided), the Debug/Tests tab, theme colour values, remote drawing labels (brands) and the files that build shell commands.
-const SKIP = ['i18n/en.ts', 'i18n/pack.ts', 'config/bundledlanguages.ts', 'lib/cities.ts', 'lib/clockfont.ts', 'lib/debuginfo.ts', 'lib/remotedraw.ts', 'lib/coldstart.ts', 'theme/tokens.ts'];
+const SKIP = ['i18n/en.ts', 'i18n/pack.ts', 'config/bundledlanguages.ts', 'lib/cities.ts', 'lib/citydata.ts', 'lib/clockfont.ts', 'lib/debuginfo.ts', 'lib/remotedraw.ts', 'lib/coldstart.ts', 'theme/tokens.ts'];
 const SKIP_RE = /^(config\/|lib\/probe|lib\/[a-z]*cmd\.ts$)/;
 const SHELL = /(luna-send|mkdir |echo |\$\(|2>|\/dev\/null|grep |awk |\bsed |rm -f|\[ -[fsd] |printf|curl |\bthen\b|; do\b|umount|touch |\bcat |rgba?\(|drop-shadow|\bdd if|\bstat -c|tail -n|df -k|@@|\bexit \d|\.zip\b.*scp |^key_)/;
 const files = [];

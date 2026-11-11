@@ -76,6 +76,8 @@ eq(p.applyPref(c0, 'theme', 'ok').theme, 'grey', 'OK flips the theme');
 eq(p.applyPref(c0, 'showDate', 'ok').clock.showDate, false, 'OK flips a switch');
 eq(p.applyPref(c0, 'showDate', 'right') === c0, true, 'arrows leave a switch alone');
 eq(p.applyPref(c0, 'clockSize', 'right').clock.size, 150, 'clock size steps by 10');
+eq([s.RANGES.clockSize.min, s.RANGES.clockSize.max], [80, 240], '2.1.6: widget size range 80..240 (shown 40..200)');
+eq(p.optionsFor('clock', {...c0, clock: {...c0.clock, size: 140}}).filter((o) => o.id === 'clockSize').map((o) => o.valueText), ['100'], '2.1.6: the row shows the saved px minus 40');
 eq(p.applyPref(c0, 'clockTop', 'right').clock.top, 22, 'clock height steps by 2% (from the 20% default)');
 eq(p.applyPref(c0, 'clockLeft', 'left').clock.left, 48, 'clock sideways: left arrow moves it left by 2% (from the 50% default)');
 eq(p.applyPref({...c0, clock: {...c0.clock, left: 100}}, 'clockLeft', 'right').clock.left, 100, 'clock sideways stops at the right limit');
@@ -95,7 +97,7 @@ for (const tab of ['look', 'clock', 'wallpaper', 'system']) {
   eq(list.length >= 1 && list.length <= 30, true, `${tab} tab has ${list.length} options (a long list scrolls)`);
 }
 const look = p.optionsFor('look', c0);
-eq(look.map((o) => o.id).join(','), 'theme,iconScale,tileShape,iconStyle,iconGap,iconOpacity,rows,scrollSpeed,homeFocus,sideMargin,bottomMargin,inputStatus,showLgHome,showSystem,hideSettings,showLabels,labelColor,labelFont,labelSize,labelWeight,quietSec,quietDimSec,quietDimLevel,oledShift,recentsSize,resetLook', 'P35b: the Look tab lists its rows in group order');
+eq(look.map((o) => o.id).join(','), 'theme,iconScale,tileShape,iconStyle,iconGap,iconOpacity,rows,scrollSpeed,homeFocus,sideMargin,bottomMargin,inputStatus,showLgHome,showSystem,hideSettings,showLabels,labelColor,labelFont,labelSize,labelWeight,quietSec,quietDimSec,quietDimLevel,quietPowerOff,oledShift,recentsSize,resetLook', 'P35b: the Look tab lists its rows in group order');
 eq(p.applyPref(c0, 'rows', 'ok').rows, 2, 'Rows of apps: 1 -> 2');
 eq(p.applyPref(p.applyPref(c0, 'rows', 'ok'), 'rows', 'ok').rows, 1, 'and 2 -> 1');
 eq(p.applyPref(c0, 'showLabels', 'ok').showLabels, false, 'Show app names switches off');
@@ -118,7 +120,7 @@ store[KEY] = JSON.stringify({defaultsV: 1, iconLight: true}); eq(s.loadConfig().
 store[KEY] = JSON.stringify({defaultsV: 1, iconStyle: 'nope'}); eq([s.loadConfig().iconStyle, s.DEFAULT_CONFIG.iconStyle], ['original', 'original'], 'an unknown icon style falls back to original');
 store[KEY] = JSON.stringify({defaultsV: 1, minimal: true}); eq(s.loadConfig().minimal, true, 'the minimalist choice is read back');
 store[KEY] = JSON.stringify({defaultsV: 1, appEdits: {'a.b': {label: 'X'}, 'c.d': {icon: 'nope'}}}); eq(s.loadConfig().appEdits, {'a.b': {label: 'X'}}, 'app edits are read back and cleaned');
-eq(p.optionsFor('system', c0).map((o) => o.id).join(','), 'updates,language,homeKey,remap,tvApps,noRootGuide,tvInput,replaceHome,samHome,powerOnApp,lgLogo,noUpdate,homeApp,preload,keepReady,keepRelaunch,showDebug', 'the System tab (P61b2: the Home button row moved to the Remote group): the TV app list first (shown only when not rooted), the helper script, the Home button, the power-on app, the LG logo, the experimental Home app row (P58c) and last the Debug tab switch (the TV-input row, 2.0.2, is one On/Off toggle)');
+eq(p.optionsFor('system', c0).map((o) => o.id).join(','), 'updates,language,homeKey,remap,tvApps,noRootGuide,tvInput,replaceHome,samHome,powerOnApp,lgLogo,homeApp,preload,keepReady,keepRelaunch,showDebug,undoAll', 'the System tab (U1: the undo row last) (P61b2: the Home button row moved to the Remote group): the TV app list first (shown only when not rooted), the helper script, the Home button, the power-on app, the LG logo, the experimental Home app row (P58c) and last the Debug tab switch (the TV-input row, 2.0.2, is one On/Off toggle)');
 eq(p.optionsFor('system', c0, {homeApp: null, homeHook: null, tvInput: true}).find((o) => o.id === 'tvInput').valueText, 'On', 'the TV-input row reads On when the TV lists Hearth (2.0.2)');
 eq(p.optionsFor('system', c0, {homeApp: null, homeHook: null, tvInput: false}).find((o) => o.id === 'tvInput').valueText, 'Off', 'and Off when it is not listed');
 eq(p.optionsFor('system', c0).some((o) => o.id === 'tvInput'), true, 'and is shown while the TV has not been asked')
@@ -187,6 +189,43 @@ const wall = p.optionsFor('wallpaper', c0).map((o) => o.id).join(',');
 eq(wall, 'wallpaper,wallpaperFit,wallpaperOpacity,fadeStrength', 'without a slideshow the Wallpaper tab has no shuffle or timer, and no separate built-in row');
 const folderCfg = {...c0, wallpaper: {...c0.wallpaper, mode: 'folder', path: '/media/x/Pics'}};
 eq(p.optionsFor('wallpaper', folderCfg).map((o) => o.id).join(','), 'wallpaper,wallpaperFit,interval,shuffle,wallpaperOpacity,fadeStrength', 'a folder slideshow shows the timer and shuffle');
+// S2 (2026-11-09): the Essentials tab holds copies of rows that stay in their own tabs
+{
+  const ess = p.optionsFor('essentials', c0).map((o) => o.id);
+  eq(['theme', 'wallpaper', 'widgetOn', 'quietSec', 'iconScale'].every((id) => ess.includes(id)), true, 'Essentials lists the common rows');
+  eq(ess.some((id) => ['shuffle', 'wallpaperOpacity', 'rows', 'weatherOn', 'screensaverPowerOff'].includes(id)), false, 'and not the rows the user dropped');
+  eq(ess.includes('interval'), false, 'no timer row without a slideshow');
+  eq(p.optionsFor('essentials', folderCfg).map((o) => o.id).includes('interval'), true, 'a folder slideshow shows the timer in Essentials');
+  eq(ess.every((id) => p.optionsFor(p.findPref(id).tab, c0, {homeApp: null, homeHook: null}).some((o) => o.id === id) || id === 'updates' || id === 'essentialsEdit'), true, 'every Essentials row also stays in its own tab');
+  eq(p.optionsFor('essentials', c0).some((o) => o.header), false, 'Essentials has no groups');
+}
+// S3 (2026-11-09): the user edits the Essentials list (saved key `essentials`; null = the default list)
+{
+  const ids = (c, info) => p.optionsFor('essentials', c, info).map((o) => o.id);
+  eq(c0.essentials, null, 'a new config follows the default list');
+  eq(ids(c0)[ids(c0).length - 1], 'essentialsEdit', 'the last Essentials row is Edit Essentials');
+  eq(p.essentialIds(c0), Array.from(p.ESSENTIALS_DEFAULT), 'no saved list: the default rows');
+  eq(p.essentialIds({...c0, essentials: ['quietSec', 'theme', 'nope', 'theme', 'undoAll', 'resetLook', 'essentialsEdit']}), ['quietSec', 'theme'], 'a saved list: order kept; unknown, repeated and excluded ids dropped');
+  eq(ids({...c0, essentials: ['quietSec', 'theme']}), ['quietSec', 'theme', 'essentialsEdit'], 'the tab shows exactly the chosen rows, in order, then the edit row');
+  eq(ids({...c0, essentials: []}), ['essentialsEdit'], 'an empty list leaves only the edit row');
+  eq(ids({...c0, essentials: ['shuffle', 'wallpaper']}), ['wallpaper', 'essentialsEdit'], 'an added row hides by its own rule (no shuffle without a slideshow)');
+  eq(ids({...folderCfg, essentials: ['shuffle', 'wallpaper']}), ['shuffle', 'wallpaper', 'essentialsEdit'], 'and shows with a slideshow');
+  const choices = p.essentialChoices();
+  eq(['undoAll', 'restoreLook', 'resetLook', 'themeRemove', 'languageRemove', 'essentialsEdit'].filter((id) => choices.includes(id)), [], 'destructive and reset rows are never offered');
+  eq(['theme', 'shuffle', 'screensaverPowerOff', 'weatherOn', 'homeKey'].every((id) => choices.includes(id)), true, 'every other row can be added');
+  eq(choices.length, new Set(choices).size, 'each row is offered once');
+  const labels = p.PREFS.filter((x) => x.id !== 'essentialsEdit').map((x) => x.label.toLowerCase());
+  eq(labels.filter((l, i) => labels.indexOf(l) !== i), [], 'no two rows share a name');
+  eq(p.PREFS.filter((x) => ['interval', 'shuffle', 'wallpaperFit', 'screensaverInterval', 'screensaverShuffle', 'screensaverFit', 'screensaverPowerOff'].includes(x.id)).map((x) => x.label),
+    ['Wallpaper: picture size', 'Wallpaper: change picture every', 'Wallpaper: shuffle', 'Screensaver: change picture every', 'Screensaver: shuffle', 'Screensaver: picture size', 'Screensaver: switch the TV off after'], 'rows with a shared name carry a prefix (everywhere)');
+  eq(p.resetLook({...c0, essentials: ['theme']}).essentials, ['theme'], 'Reset visual settings keeps the Essentials list');
+  store[KEY] = JSON.stringify({defaultsV: 1, essentials: ['theme', 7, 'quietSec']});
+  eq(s.loadConfig().essentials, ['theme', 'quietSec'], 'a saved Essentials list loads (bad entries dropped)');
+  store[KEY] = JSON.stringify({defaultsV: 1, essentials: 'nope'});
+  eq(s.loadConfig().essentials, null, 'a bad Essentials list becomes the default list');
+  store[KEY] = JSON.stringify({defaultsV: 1});
+  eq(s.loadConfig().essentials, null, 'saved settings from before S3 follow the default list');
+}
 // 2.0.2: picture size Fit/Fill for wallpapers
 eq(p.optionsFor('wallpaper', {...c0, background: 'theme'}).map((o) => o.id).includes('wallpaperFit'), false, 'plain background: no picture size row');
 const fitRow = (c) => p.optionsFor('wallpaper', c).find((o) => o.id === 'wallpaperFit');
@@ -310,7 +349,7 @@ eq(p.optionsFor('look', c0).some((o) => /^fav/.test(o.id)), false, 'P35e: no fav
 const fv = {...c0, favourites: ['a']};
 eq(p.optionsFor('look', fv).filter((o) => /^fav/.test(o.id)).map((o) => o.id).join(','), 'favSideMargin,favBottomMargin', 'with favourites the two margin rows show');
 eq(p.optionsFor('look', fv, undefined, 'Favourites').filter((o) => o.header).map((o) => o.label).includes('Favourites'), true, 'and they form the Favourites group');
-eq([s.DEFAULT_CONFIG.favSideMargin, s.DEFAULT_CONFIG.favBottomMargin, p.applyPref({...fv, favBottomMargin: 390}, 'favBottomMargin', 'right').favBottomMargin], [20, 10, 400], 'favourites margins default to the home row\'s and the bottom margin reaches 400 px');
+eq([s.DEFAULT_CONFIG.favSideMargin, s.DEFAULT_CONFIG.favBottomMargin, p.applyPref({...fv, favBottomMargin: 390}, 'favBottomMargin', 'right').favBottomMargin], [20, 30, 400], 'favourites bottom margin defaults to 30 px (2.1.6; side margin as the home row), reaches 400 px');
 eq([p.optionsFor('look', c0).filter((o) => o.id === 'rows')[0].disabled, !!p.optionsFor('look', fv).filter((o) => o.id === 'rows')[0].disabled], [undefined, true], 'P33b: Rows of apps is greyed out only while favourites are set');
 
 // P46c: Welcome font row, bundled font set

@@ -1,4 +1,4 @@
-// Tests for the install probe (src/lib/probeinstallcmd.ts, tests 56-57): the target reader, the log reader and the install
+// Tests for the install probe (src/lib/probeinstallcmd.ts, test 37): the target reader, the log reader and the install
 // script run on a fake TV (fake wget, sha256sum, luna-send, timeout).   Run: npm test
 import {build} from 'esbuild';
 import {execSync} from 'child_process';

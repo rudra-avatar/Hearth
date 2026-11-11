@@ -36,6 +36,11 @@ eq([unknown.ok, unknown.ignored, Object.keys(unknown.strings).length], [true, 1,
 eq(m.validatePack('{"format":1,"language":"X","strings":{"__proto__":"y","pref.theme.label":"T"}}').ignored, 1, 'a __proto__ key is left out');
 eq(m.validatePack(pack({strings: {'no.such.key': 'x'}})).ok, false, 'a pack with no matching key is refused');
 eq(m.validatePack(pack({strings: {'pref.theme.label': ''}})).ok, false, 'an empty text is refused');
+const emptyOk = m.validatePack(pack({strings: {'homekey.pluralSuffix': ''}}));
+eq([emptyOk.ok, emptyOk.strings['homekey.pluralSuffix']], [true, ''], 'an empty plural ending (Thai) is accepted for homekey.pluralSuffix only');
+m.setStrings(emptyOk.strings);
+eq(m.t('homekey.pluralSuffix'), '', 'an empty text is shown as empty, not as English');
+m.setStrings(null);
 eq(m.validatePack(pack({strings: {'pref.theme.label': 'a\u0001b'}})).ok, false, 'a control character is refused');
 const withHolder = Object.keys(m.en).filter((k) => /\{\w+\}/.test(m.en[k]))[0];
 eq(m.validatePack(pack({strings: {[withHolder]: 'no placeholder'}})).ok, false, 'a text without the English {placeholders} is refused');

@@ -33,6 +33,7 @@ nav:
     - Widget: features/widget.md
     - Wallpaper: features/wallpaper.md
     - Screen saver: features/screensaver.md
+    - Network folder: features/network-folder.md
     - System: features/system.md
     - Without root: features/no-root.md
   - Custom themes: theme/theme-guide.md

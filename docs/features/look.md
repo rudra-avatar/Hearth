@@ -30,7 +30,7 @@ How to make a theme: [Custom themes](../theme/theme-guide.md).
 
 ![Look: Home row group](../screenshots/settings-home-row.jpg)
 
-**Rows of apps** (one or two), **Row scroll speed** (how fast a held arrow runs), **When Home is pressed**, **Side margin** and **Bottom margin**, **Show input status**, the switches for the **LG Home** and **System Settings** tiles, and **Hide the Hearth Settings tile**. Before it hides the tile, Hearth makes you try the way back once: hold OK on any app and choose **Hearth Settings**. Once the tile is hidden, that is how you open the settings. Pressing Down five times on the Home screen (when there is no row below) shows the tile again until Hearth restarts.
+**Home row: rows of apps** (one or two), **Home row: scroll speed** (how fast a held arrow runs, or the row scrolls at the pointer's edge), **When Home is pressed**, **Side margin** and **Bottom margin**, **Show input status**, the switches for the **LG Home** and **System Settings** tiles, and **Hide the Hearth Settings tile**. Before it hides the tile, Hearth makes you try the way back once: hold OK on any app and choose **Hearth Settings**. Once the tile is hidden, that is how you open the settings. Pressing Down five times on the Home screen (when there is no row below) shows the tile again until Hearth restarts.
 
 ## Labels (the app names)
 

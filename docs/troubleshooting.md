@@ -32,7 +32,7 @@ sh /media/developer/launcher-remap/apply.sh off
 rm -f /var/lib/webosbrew/init.d/47-launcher-remap /var/lib/webosbrew/init.d/48-launcher-homehook /var/lib/webosbrew/init.d/49-launcher-homekey
 ```
 
-   If the first line says it cannot find the file, you never used *Reassigned buttons*: just go on with the second line. Then restart the TV again.
+   If the first line says it cannot find the file, you never used the old *Reassign remote buttons*: just go on with the second line. Then restart the TV again.
 3. **Only if you also use the Input Hook app,** and the remote still does not work after step 2, type these two lines as well. The first deletes the Input Hook app's own start-up link. The second deletes the button settings it saved (this also removes Hearth's Home button mapping, and you must set your buttons again afterwards).
 
 ```
@@ -41,7 +41,7 @@ rm -f /home/root/.config/lginputhook/keybinds.json
 ```
 
    Then restart the TV again.
-4. **When the remote works again,** open Hearth, then **Settings, System, Remote control**, and turn **Reassigned buttons** Off. Otherwise Hearth can put the button changes back into the TV's memory when it opens (until the next restart).
+4. **When the remote works again,** note that the old *Reassigned buttons* switch no longer exists. If the problem comes back when Hearth opens, go to **Settings, System, Remote control** and remove the buttons you mapped in **Map additional keys** and **Map home button**.
 
 ## Other problems
 

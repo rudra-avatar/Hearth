@@ -37,15 +37,17 @@ It is a normal webOS app (app ID `tld.my.customlauncher`). On a rooted TV it can
   - 27 typefaces; adjustable size, thickness, shadow, colour, opacity, position and alignment
   - 12-hour, 24-hour or "same as the TV"
   - The weather line (temperature, conditions, today's high and low) comes from [Open-Meteo](https://open-meteo.com), needs no account, and can be switched off
-  - Pick a city from a list of about 75, search for any place over the internet, or add your own cities with a custom theme
+  - Pick a city from a list grouped by country (up to 50 each), search for any place over the internet, or add your own cities with a custom theme
   - A live preview sits beside the Widget settings
 - **Your apps and inputs in one row.**
   - Choose what is shown, or hold OK on an app for *Reorder home row*, *Add to favourites*, *Hide* and *Uninstall*
   - **Reorder home row** moves apps right on the Home screen: OK picks an app up, the arrow keys move it, OK puts it down
   - **Favourites** make a short row of your most used apps (Down shows all the others)
-  - **Order by last opened** keeps recent apps first
+  - **Most used** puts the apps you open most first
   - Back on the home row opens the **Recent apps** panel (rooted TVs)
   - Inputs with nothing plugged in are greyed out and a connected device's name shows under its input (rooted TVs)
+- **Essentials tab.** The settings most people change on one tab (theme, wallpaper, widget, screen saver, quiet mode, icon size). *Edit Essentials* adds, removes and reorders its rows.
+- **Help and previews in Settings.** A short help text sits beside the focused row, and rows that change the look show a live preview of the home screen.
 - **Your own names and icons.** Hold OK on an app or input in Settings to rename it and pick a different icon, or use your own picture from a USB drive or the TV's storage (rooted TVs).
 - **Looks.**
   - Six dark themes: OLED black, Calm blue-grey, Midnight blue, Deep forest, Deep teal, Warm graphite
@@ -53,14 +55,15 @@ It is a normal webOS app (app ID `tld.my.customlauncher`). On a rooted TV it can
   - One or two rows, margins, app-name font and size
 - **Custom themes** (rooted). Load a zip with colours, fonts, icons, app order and names, cities and a wallpaper, or export your apps as a starting point. See *Custom themes* below.
 - **Wallpaper.** Plain black, one picture, a slideshow of a whole folder (USB drive or the TV's storage, subfolders too) or the bundled photos, with shuffle and an interval from 10 seconds to 1 hour.
+- **Network folder** (rooted, experimental). Use pictures, icons, themes, language files and screen saver pictures from a NAS or PC on your home network (SMB share, read only). See *Network folder* below.
 - **Quiet mode and OLED care.** After a pause the apps hide and the screen dims; OLED shift moves the picture a few pixels each minute.
 - **Screen saver** (rooted, experimental). Your pictures, GIFs, videos or a slideshow, or a built-in fireplace video, in place of the TV's saver; it can switch the TV off after a chosen time.
 - **Start the TV straight into Hearth** (rooted). *System, TV start, When the TV turns on, open...* opens Hearth at power-on.
 - **The Home button opens Hearth** (rooted). Hearth bundles the Input Hook key hook and starts it itself, so you need no other app; a helper script covers leaving apps with Back.
 - **Remote buttons** (rooted, experimental). Give the colour buttons and other dedicated buttons of your remote a new job.
-- **Languages.** Hearth's menus can be switched to French, Polish and Brazilian Portuguese (checked by native speakers), to Indonesian, Spanish, German, Arabic or Russian (machine translated, waiting for native speakers) or to your own language file. See [Language files](https://rudra-avatar.github.io/Hearth/language_packs/).
+- **Languages.** Hearth's menus can be switched to French, Polish and Brazilian Portuguese (checked by native speakers), to Italian and Thai (by contributors), to Indonesian, Spanish, German, Arabic or Russian (machine translated, waiting for native speakers) or to your own language file. See [Language files](https://rudra-avatar.github.io/Hearth/language_packs/).
 - **Updates.** *Settings, System, Check for updates* lists the newer versions with a short summary of each. On a rooted TV you choose a version and Hearth downloads, checks and installs it, with a progress bar (the Homebrew Channel remains the other way). It looks only when you press OK.
-- **Made to be fast.** The home screen is drawn from saved data first; everything else (app list, weather, helper checks) happens a few seconds later in the background. While another app is in front, Hearth lets go of its wallpaper and stops its clock.
+- **Made to be fast.** The home screen is drawn from saved data first; everything else (app list, weather, helper checks) happens a few seconds later in the background. While another app is in front, Hearth stops its clock and its timers.
 - **Clear messages.** When something cannot work on your TV, Hearth says what and why instead of failing silently, and greys out the options that need a rooted TV.
 
 ## What works on which TV
@@ -179,31 +182,42 @@ New to this? The [Beginners guide](https://rudra-avatar.github.io/Hearth/BEGINNE
 **Typing with the TV remote is slow. Easier ways to enter the address:**
 
 - **LG Power** (free Android app; phone and TV on the same Wi-Fi). It is a remote with a keyboard that types straight into the TV. [Google Play](https://play.google.com/store/apps/details?id=com.nic.lgpower), [source](https://github.com/Nicsilver/LGPower) (a hobby project, not made by LG).
-- **webOS Dev Manager** skips the typing: install the `.ipk` file from a computer or an Android phone (Option 2 below).
+- **webOS Dev Manager** skips the typing: install the `.ipk` file from a computer or an Android phone ([Google Play](https://play.google.com/store/apps/details?id=org.webosbrew.devman); Option 2 below).
 - **Over SSH** from a computer on the same network:
 
   `ares-launch org.webosbrew.hbchannel -p '{"launchMode":"addRepository","url":"https://raw.githubusercontent.com/rudra-avatar/Hearth/main/repo/apps.json"}'`
 
 ### Option 2: install the file yourself
 
-Download `tld.my.customlauncher_2.0.1_all.ipk` from the [Releases](../../releases) page, then use one of these:
+Download `tld.my.customlauncher_<version>_all.ipk` (for example `tld.my.customlauncher_2.2.0_all.ipk`) from the [Releases](../../releases) page, then use one of these. Computer or phone and TV must be on the same network.
 
 - **webOS Dev Manager on a computer** (Windows, Mac, Linux; [download](https://github.com/webosbrew/dev-manager-desktop)). No root needed, Developer Mode is enough.
-- **webOS Dev Manager on an Android phone** (the app *webOS Dev Manager* on Google Play). The downloaded file is in *Downloads*.
+- **webOS Dev Manager on an Android phone** (the app *webOS Dev Manager* by webOSbrew on [Google Play](https://play.google.com/store/apps/details?id=org.webosbrew.devman)). The downloaded file is in *Downloads*. We know of no iPhone version.
 - **Over SSH** on a rooted TV (commands below).
 
-With Dev Manager:
+With Dev Manager, TV with Developer Mode only (not rooted):
 
-1. Choose **Add device** and type the TV's **IP address** (the Developer Mode app shows it). **Dev Mode Status** and **Key Server** must be on.
-2. Open the TV's **Apps** page, press **Install** and pick the `.ipk` file.
-3. Open **Hearth** from the TV's app list.
+1. In the TV's **Developer Mode** app switch **Dev Mode Status** and **Key Server** on and leave the screen open. It shows the TV's IP address and a passphrase.
+2. In Dev Manager choose **Add device**, type the TV's **IP address** and the **passphrase**, and confirm.
+3. Open the TV's **Apps** page, press **Install** and pick the `.ipk` file.
+4. Open **Hearth** from the TV's app list.
 
-With SSH on a rooted TV:
+With Dev Manager, rooted TV:
+
+1. In the **Homebrew Channel**, *Settings*, switch **Enable SSH server** on (restart if asked). Check that *Root status* is **ok**.
+2. In Dev Manager choose **Add device** and type the TV's IP address. A rooted TV is reached over SSH: user `root`, port `22`, password `alpine` unless you set your own or installed an SSH key. If the app lets you choose how to log in, choose the SSH / rooted-TV option. A rooted TV often has no Developer Mode app, so there is no passphrase.
+
+   ![webOS Dev Manager, Add device for a rooted TV: the TV's IP address, port 22, user root, password alpine](docs/screenshots/devmanager-add-rooted.png)
+3. Open the TV's **Apps** page, press **Install** and pick the `.ipk` file, then open **Hearth** from the TV's app list.
+
+The step-by-step version with the same steps is in the [install guide](https://rudra-avatar.github.io/Hearth/guide/install/).
+
+With SSH on a rooted TV (replace the file name with the one you downloaded):
 
 ```
-scp -O tld.my.customlauncher_2.0.1_all.ipk root@TV_IP:/tmp/
+scp -O tld.my.customlauncher_<version>_all.ipk root@TV_IP:/tmp/
 ssh root@TV_IP
-luna-send -i luna://com.webos.appInstallService/dev/install '{"id":"com.ares.defaultName","ipkUrl":"/tmp/tld.my.customlauncher_2.0.1_all.ipk","subscribe":true}'
+luna-send -i luna://com.webos.appInstallService/dev/install '{"id":"com.ares.defaultName","ipkUrl":"/tmp/tld.my.customlauncher_<version>_all.ipk","subscribe":true}'
 luna-send -n 1 luna://com.webos.applicationManager/launch '{"id":"tld.my.customlauncher"}'
 ```
 
@@ -224,8 +238,8 @@ To remove Hearth, turn off *Replace LG Home with SAM* or *Replace LG Home (helpe
 | Home | hold OK | The app's menu: reorder the row, favourite it, hide it, uninstall it |
 | Home | Back | Open the Recent apps panel (OK opens an app, hold OK closes it, ↑ Close all) |
 | Home | ↓ / ↑ | With favourites: show or hide the row of all other apps |
-| Settings | ← → on the tab bar | Apps & Sources · Look · Widget · Wallpaper · Screen saver · System |
-| Settings (Apps, Sources) | OK / hold OK | Show or hide an item / edit its name and icon. **Refresh list**, **Favourites** and **Order by last opened** sit above the grid |
+| Settings | ← → on the tab bar | Apps & Sources · Essentials · Look · Widget · Wallpaper · Screen saver · System |
+| Settings (Apps, Sources) | OK / hold OK | Show or hide an item / edit its name and icon. **Refresh list**, **Favourites** and **Most used** sit above the grid |
 | Settings (other tabs) | OK, or ← → | OK steps through the choices or opens a group; ← → nudge numbers (they stop at the ends) |
 | Any other screen | Back | Go back one screen (Back first closes an open group) |
 
@@ -235,6 +249,7 @@ To remove Hearth, turn off *Replace LG Home with SAM* or *Replace LG Home (helpe
   - which apps and HDMI inputs are on the row
   - their order, favourites, names and icons
   - **Refresh list** looks for newly installed apps
+- **Essentials:** the rows you chose (a starting set; *Edit Essentials* is the last row).
 - **Look:**
   - *Theme*: *Current theme*, *Export theme base*, *Save this theme*, *Delete this theme*
   - *Icons*: size, shape, style, tile, colour, spacing, opacity
@@ -251,13 +266,13 @@ To remove Hearth, turn off *Replace LG Home with SAM* or *Replace LG Home (helpe
 - **Wallpaper:** the picture or slideshow, interval, shuffle, opacity and bottom fade.
 - **Screen saver (rooted):**
   - the saver on or off and what it plays
-  - interval, shuffle, fit, OLED care, brightness
+  - interval, shuffle, picture size, OLED care, brightness
   - switch the TV off after, show it now
 - **System:**
   - *Check for updates*
   - *Hearth language*
   - *Remote control*: Map home button, Map additional keys
-  - *TV start*: app list without root, no-root guide, Replace LG Home, When the TV turns on open..., Block LG update pop-up (experimental), LG logo, Home app
+  - *TV start*: app list without root, no-root guide, Replace LG Home, When the TV turns on open..., LG logo, Home app
   - *Memory*: LG preloaded apps, Keep Hearth ready, Reopen
   - *Show the Debug tab*: adds the Debug and Tests tabs, for reporting a problem
 
@@ -268,7 +283,18 @@ Every feature is explained in plain words in the [guides](https://rudra-avatar.g
 | ![Look: Theme](docs/screenshots/settings-theme.jpg) | ![Look: Icons](docs/screenshots/settings-icons.jpg) |
 | ![Look: Home row](docs/screenshots/settings-home-row.jpg) | ![Apps & Sources](docs/screenshots/settings-apps.jpg) |
 | ![Widget](docs/screenshots/settings-widget.jpg) | ![Screen saver](docs/screenshots/settings-saver.jpg) |
-| ![System](docs/screenshots/settings-system.jpg) |
+| ![System](docs/screenshots/settings-system.jpg) | ![Essentials tab](docs/screenshots/settings-essentials.jpg) |
+
+### Essentials, help and previews
+
+The **Essentials** tab collects the rows most people use. Its last row, **Edit Essentials**, opens a list: OK adds or removes a row, and ← → moves a chosen row up or down. **Reset to default** brings the starting set back. The rows also stay in their own tabs.
+
+While you move through Settings, a short **help text** beside the list says what the focused row does. Rows that change how Home looks (icon size, shape, margins, row speed, wallpaper, widget position) also show a small **preview** of the home screen, so you see the result before you leave Settings.
+
+| | |
+|---|---|
+| ![Edit Essentials](docs/screenshots/essentials-edit.jpg) | ![Help text beside a row](docs/screenshots/help-scroll-speed.jpg) |
+| ![Help text and home preview](docs/screenshots/help-icon-size.jpg) | ![Choose a city, with Thailand](docs/screenshots/cities-thailand.jpg) |
 
 ### Icon styles
 
@@ -324,6 +350,16 @@ The hard limit is **8 MB and 25 megapixels** per picture. A picture over the lim
 3. **Without an SSH client:** connect to the TV in [webOS Dev Manager](https://github.com/webosbrew/dev-manager-desktop) and use its file or terminal option to copy into the same folder. A USB drive works too.
 4. Open **Settings → Wallpaper → Wallpaper** and choose the picture or the folder.
 
+### Network folder (rooted, experimental)
+
+A shared folder on a NAS, a router with a disk, or a PC can be a place in every file picker (wallpaper, icon, theme, language and screen saver). Hearth only **reads** from it (SMB sharing, with a guest login or a user name and password).
+
+Set it up once: **Settings, Wallpaper, Wallpaper**, go to the last row, **Network folder (not set up)**, type the NAS address and the shared folder name, then **Connect**. The same rows then appear in the other pickers.
+
+The TV forgets the connection at every restart; Hearth connects again when it needs the folder and does not slow down the start. **If the NAS cannot be reached, everything falls back to its default:** the wallpaper to the default background (your choice stays saved), the screen saver to the built-in video, and icon, theme and language keep what was set before. A restart tries the NAS again (the screen saver looks every 20 seconds for 2 minutes).
+
+Steps, the list of error messages and what each one means: [Network folder guide](https://rudra-avatar.github.io/Hearth/features/network-folder/).
+
 ### Folders Hearth makes on the TV
 
 On a rooted TV Hearth makes folders under `/media/developer`, each one only when something needs it.
@@ -359,7 +395,7 @@ The weather comes from [Open-Meteo](https://open-meteo.com) (free, no account).
 
 **More cities.** Three ways to choose where the weather is for:
 
-- pick a city from the list of about 75
+- pick a city from the list (grouped by country, up to 50 each)
 - choose **Search for a city** and type any place name (worldwide; needs the internet)
 - add your own cities with a custom theme (the `cities` part, see *Custom themes*); they appear at the top of the City list
 
@@ -437,7 +473,7 @@ A theme puts its values into the normal settings, so you can still change them a
 - the languages that come with Hearth (no root; they arrive with updates)
 - your own language file (OK loads it, rooted TVs)
 
-The bundled French pack (by Foxinou35), Polish pack (by sir_RAFIK) and Brazilian Portuguese pack (by assanches) were written and checked by native speakers. The bundled Indonesian, Spanish, German, Arabic and Russian packs are machine translated and are shown as *(machine translated)* until a native speaker reviews them.
+The bundled French pack (by Foxinou35), Italian pack (by doppiaRR), Polish pack (by sir_RAFIK), Brazilian Portuguese pack (by assanches) and Thai pack (by MangaThatsFine) were written by native speakers. The bundled Indonesian, Spanish, German, Arabic and Russian packs are machine translated and are shown as *(machine translated)* until a native speaker reviews them.
 
 To add a language, see [Language files](https://rudra-avatar.github.io/Hearth/language_packs/) and the *Translation* issue form. Supported scripts: Latin, Cyrillic, Greek and Arabic (left to right).
 
@@ -533,11 +569,11 @@ Undo steps: [`src/homeapp/README.md`](src/homeapp/README.md).
 
 ### Other rooted features
 
-- **Reassign remote buttons (experimental).** *System, Remote control, Map additional keys* gives the colour buttons and other dedicated buttons of your remote a new job: open an app or input, Hearth, mute, LG Home, or nothing.
-  - *Press a button to reassign it* lets the remote say which button is meant.
+- **Map additional keys (experimental).** *System, Remote control, Map additional keys* gives the colour buttons and other dedicated buttons of your remote a new job: open an app, switch to an input, act as another remote button, or run a TV action (the ones not yet tried on a real TV are marked *untested*).
+  - *Add a button* lets the remote say which button is meant: press it when asked.
   - Home, arrows, OK, Back, power, volume, channels and numbers are never taken.
-  - A small key filter is added to the TV's own filter chain, in memory only.
-  - After the first change Hearth asks whether the remote still works, and only then makes it permanent.
+  - It uses the same small key helper as *Map home button* (the open-source *Input Hook*, bundled with Hearth). No key filter is added to the TV any more, and the mapped buttons stay after restarts.
+  - Buttons mapped with an older version (*Reassign remote buttons*) are not carried over: Hearth removes the old filter once, backs the old map up and tells you to map the buttons again.
 
   ![Map additional keys](docs/screenshots/remote-extra-keys.jpg)
 - **LG preloaded apps (experimental).** LG keeps some apps (YouTube, the browser and other video apps) loaded in the background so they open fast; on some TVs that holds several hundred MB.
@@ -585,13 +621,13 @@ More in the [Troubleshooting guide](https://rudra-avatar.github.io/Hearth/troubl
   sh /media/developer/launcher-remap/apply.sh off
   rm -f /var/lib/webosbrew/init.d/47-launcher-remap /var/lib/webosbrew/init.d/48-launcher-homehook /var/lib/webosbrew/init.d/49-launcher-homekey
   ```
-  - If the first line says it cannot find the file, you never used *Reassigned buttons*: go on with the second line.
+  - If the first line says it cannot find the file, you never used the old *Reassign remote buttons*: go on with the second line.
   - **Only if you also use the Input Hook app** and the remote still does not work, type these two lines as well (they delete its start-up link and its saved button settings, which also removes Hearth's Home button mapping), then restart the TV:
     ```
     rm -f /var/lib/webosbrew/init.d/inputhook
     rm -f /home/root/.config/lginputhook/keybinds.json
     ```
-  - When the remote works again, turn **Settings, System, Remote control, Reassigned buttons** Off, so Hearth does not put the changes back when it opens. Step-by-step: [Troubleshooting guide](https://rudra-avatar.github.io/Hearth/troubleshooting/#the-remote-stops-answering).
+  - The old *Reassigned buttons* switch no longer exists. If the problem comes back when Hearth opens, go to **Settings, System, Remote control** and remove the buttons you mapped in *Map additional keys* and *Map home button*. Step-by-step: [Troubleshooting guide](https://rudra-avatar.github.io/Hearth/troubleshooting/#the-remote-stops-answering).
 - **The Home button does nothing after uninstalling Hearth:** right after uninstalling it can stay dead until the TV restarts. Restart the TV (unplug it for 30 seconds); the clean-up then finishes and the Home button works again (confirmed by a user).
 - **Odd layout after changing sizes:** Settings, Look, **Reset Hearth visual settings to default**.
 
@@ -600,10 +636,13 @@ More in the [Troubleshooting guide](https://rudra-avatar.github.io/Hearth/troubl
 **Code contributions** (applied by hand into Hearth's own code; authors credited in the commits and the changelog):
 
 - **Alejandro Morales**, pull request #1: slideshow shuffle that survives restarts.
-- **chriskoperdraad-tech**, pull requests #2, #3 and #37: webOS 3.x (Chromium 38) support (the Home-bar watcher lines are theirs; the ES5 build and the custom-property fallback are Hearth's own code) and the fix that lets *Map home button* find the Home button's code on webOS 3 (#37). Also the testing and research on a webOS 3.9 TV that shaped Hearth's webOS 3 support (issue #23).
+- **chriskoperdraad-tech**, pull requests #2, #3, #37 and #54: webOS 3.x (Chromium 38) support (the Home-bar watcher lines are theirs; the ES5 build and the custom-property fallback are Hearth's own code) and the fix that lets *Map home button* find the Home button's code on webOS 3 (#37). The finding that helpers started through the Homebrew Channel keep its open sockets, and the idea of closing them before a helper starts (#54, written again in Hearth's own code). Also the testing and research on a webOS 3.9 TV that shaped Hearth's webOS 3 support (issue #23).
 - **ganondorft**, pull request #6: the webOS 11 permission fix and the Windows line-ending fix.
 - **iulyax27**, pull requests #8 and #10: icon batches, the Input Hook guide, and the ideas for quiet mode, OLED shift and *When Home is pressed*.
 - **Obednal97**, pull requests #16 to #22, #25 and #39: input status (#16), the Settings scroll fix (#17), *Set Hearth as the TV's Home app* (#18), remote button reassigning and the remote drawings (#19, #22), *When Home is pressed* (#20), icon refresh after app updates (#21), *When the TV turns on, open...* with the TV's start-up table method (#25), and the clear message and the 2016 Magic Remote drawing for TVs that cannot use the other remote method (#39, issue #36), and the idea that a waking pointer must not click anything in quiet mode (#46). Hearth's code is adapted from theirs.
+- **Maksim (lordmax895-oss)**, pull requests #51 and #53: the fallback weather hosts (#51, applied as sent) and the way to connect to a network share (#53, rewritten in Hearth's own code).
+- **MangaThatsFine**, pull request #56: the Thai language pack.
+- **doppiaRR**, pull request #55: the Italian language pack.
 - **itsempty77**, issue #47: the report and photos of Hearth drawn too large on a 1280x720 TV, which led to the screen fit in 2.1.5.
 - **James18232**, issue #36: the debugging on a webOS 3.4.3 TV that found how the LG Home tile and button job can work there (sending the Home key) and which remote device takes it.
 - **simbasjungles**, free-my-tv pull request #285: the fix for the "1008" error that newer LG firmware gives a web page's connection to the TV's remote-control service (SSAP): a small packaged service connects with the right origin. Hearth's helper service `tld.my.customlauncher.ssap` follows that idea and is written in Hearth's own code; it is what makes the app list work without root on webOS 11.2.
@@ -620,6 +659,7 @@ More in the [Troubleshooting guide](https://rudra-avatar.github.io/Hearth/troubl
   - It is loaded with **[ezinject](https://github.com/smx-smx/ezinject)** by smx-smx (zlib-style licence).
   - The original script is by Informatic.
   - Licences and source links: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- **[Magic Mapper](https://github.com/afonsojramos/magic-mapper-webos)** by afonsojramos and andrewfraley (MIT): ideas for *Map additional keys* (categories of targets, TV actions, listening for a button). No code taken.
 - **[webos-vibehack](https://github.com/OmkarK97/webos-vibehack)** by OmkarK97 (MIT; design credited to tv-vibehack): the second-device watcher idea described under *Opening Hearth without root*.
 - **Clean Your TV:** the idea of reading the app list through LG's remote-control service.
 - **Photos:** the 25 bundled photos are public-domain photos supplied by the maintainer, resized to 1920x1080.

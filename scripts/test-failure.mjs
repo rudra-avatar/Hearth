@@ -44,7 +44,7 @@ eq(grey.every((o) => !o.disabled), true, 'and none of them is greyed out');
 eq(p.optionsFor('look', f.DEFAULT_CONFIG, {root: 'no'}).some((o) => o.id === 'resetLook' && !o.disabled), true, 'Reset look and clock (on the Look tab) stays usable without root');
 eq(reasons[0].indexOf('Needs a rooted TV') === 0 && reasons[0].indexOf('TV said: Service does not exist') > 0, true, 'the reason says what the TV said');
 eq(p.disabledReason('theme', {root: 'no'}), null, 'a look setting is never greyed out');
-eq(p.optionsFor('look', f.DEFAULT_CONFIG, {root: 'no'}).filter((o) => o.disabled).length, 0, 'the Look tab has no greyed rows');
+eq(p.optionsFor('look', f.DEFAULT_CONFIG, {root: 'no'}).filter((o) => o.disabled).map((o) => o.id), ['quietPowerOff'], 'QP: the only greyed Look row without root is the quiet-mode power-off row');
 
 // the LG logo setting
 const sys = f.system;

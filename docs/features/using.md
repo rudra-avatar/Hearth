@@ -23,7 +23,7 @@ Open **Settings, Apps & Sources**. You see every app and every input (HDMI 1, HD
 - **Refresh list:** looks for apps you installed a minute ago.
 - **Favourites:** see below.
 - **Uninstall apps:** (Apps tab, rooted TV only.) Press it, then press **OK** on an app and confirm. The app is removed from the TV for good. Apps that belong to the TV, and Hearth itself, cannot be removed; Hearth tells you why. Press **Done** (or Back) when you finish.
-- **Order by last opened:** a switch. The apps you used last jump to the front. While it is on, reordering by hand is not offered. Switch it off and your own order is back.
+- **Most used:** a switch. The apps you open most often come first (favourites keep their places). While it is on, reordering by hand is not offered. Switch it off and your own order is back.
 
 ## Put the apps in your own order
 
@@ -55,7 +55,23 @@ Press **Back** on the home row to see the apps you used lately. **OK** opens one
 
 ## When you press Home
 
-**Settings, Look, Home row, When Home is pressed** decides where the highlight starts: on the **first app**, or on the app you **opened last** (that is the starting choice). Right after you switch the TV on, the highlight always starts on the first app until you open something.
+**Settings, Look, Home row, When Home is pressed** decides where the highlight starts: on the **first app** (the starting choice on a new install), or on the app you **opened last**. Right after you switch the TV on, the highlight always starts on the first app until you open something.
+
+## Essentials, help and previews
+
+![The Essentials tab](../screenshots/settings-essentials.jpg)
+
+The **Essentials** tab, right after Apps & Sources, holds the settings most people change: theme, wallpaper, widget, screen saver, quiet mode and icon size. The rows are the same ones as in the other tabs, so a change made in either place is the same change.
+
+Make the tab your own with its last row, **Edit Essentials**. **OK** adds a row (a circle) or removes it (a tick). **Left** and **Right** move a chosen row up or down. **Reset to default** brings the starting set back.
+
+![Edit Essentials](../screenshots/essentials-edit.jpg)
+
+Beside the list, a short **help text** says what the focused row does. For rows that change how Home looks, such as icon size, margins, row speed, the wallpaper and the widget position, a small **preview** of the home screen sits under the help text, so you see the result at once.
+
+![A help text and the home preview](../screenshots/help-icon-size.jpg)
+
+![A help text for Home row: scroll speed](../screenshots/help-scroll-speed.jpg)
 
 ## Quiet mode and OLED care
 

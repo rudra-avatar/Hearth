@@ -36,6 +36,7 @@ if (base) { show('NEW (translate these):', added); show('CHANGED (re-check these
 if (removed.length) console.log('\nREMOVED (delete from packs):\n  ' + removed.join('\n  '));
 
 const ph = (s) => (String(s).match(/\{\w+\}/g) || []).sort().join(',');
+const EMPTY_OK = ['homekey.pluralSuffix'];   // may be empty (no plural ending); same list in gen-bundled-languages.mjs and src/lib/langpack.ts
 if (existsSync(PACKS)) {
   const files = readdirSync(PACKS).filter((f) => f.endsWith('.json')).sort();
   if (files.length) console.log('\nPacks (docs/languages/packs):');
@@ -47,7 +48,7 @@ if (existsSync(PACKS)) {
     if (p.format !== 1) bad.push('format is not 1');
     const have = Object.keys(s).filter((k) => k in en);
     const unknown = Object.keys(s).length - have.length;
-    for (const k of have) if (typeof s[k] !== 'string' || !s[k] || ph(s[k]) !== ph(en[k])) bad.push('bad text/placeholders: ' + k);
+    for (const k of have) if (typeof s[k] !== 'string' || (!s[k] && EMPTY_OK.indexOf(k) < 0) || ph(s[k]) !== ph(en[k])) bad.push('bad text/placeholders: ' + k);
     const missing = keys.filter((k) => !(k in s));
     const stale = changed.filter((k) => k in s);
     console.log(`  ${f} (${p.language}): ${have.length}/${keys.length} texts, ${missing.length} missing (English shown), ${stale.length} possibly outdated, ${unknown} unknown keys` + (bad.length ? `, PROBLEMS: ${bad.slice(0, 5).join('; ')}${bad.length > 5 ? ` and ${bad.length - 5} more` : ''}` : ''));

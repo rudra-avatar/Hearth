@@ -29,25 +29,29 @@ const CONFIG = 'customlauncher-config-v1';
 
 // ---- the setting ----
 const c0 = s.loadConfig();
-eq(c0.homeFocus, 'last', 'default: the last app opened (P41c)');
+eq(c0.homeFocus, 'first', 'default: the first app (p22b; P41c was the last app opened)');
 const row = p.optionsFor('look', c0).find((o) => o.id === 'homeFocus');
-eq([row && row.label, row && row.valueText, row && row.stepper], ['When Home is pressed', 'The last app opened', true], 'Look tab has the row, showing "The last app opened"');
+eq([row && row.label, row && row.valueText, row && row.stepper], ['When Home is pressed', 'The first app', true], 'Look tab has the row, showing "The first app"');
 const c1 = p.applyPref(c0, 'homeFocus', 'ok');
-eq([c1.homeFocus, p.optionsFor('look', c1).find((o) => o.id === 'homeFocus').valueText], ['first', 'The first app'], 'OK -> the first app');
-eq(p.applyPref(c1, 'homeFocus', 'ok').homeFocus, 'last', 'OK again wraps back to the last app opened');
-eq([p.applyPref(c1, 'homeFocus', 'left').homeFocus, p.applyPref(c0, 'homeFocus', 'right').homeFocus], ['first', 'last'], '← → stop at the ends');
+eq([c1.homeFocus, p.optionsFor('look', c1).find((o) => o.id === 'homeFocus').valueText], ['last', 'The last app opened'], 'OK -> the last app opened');
+eq(p.applyPref(c1, 'homeFocus', 'ok').homeFocus, 'first', 'OK again wraps back to the first app');
+eq([p.applyPref(c1, 'homeFocus', 'right').homeFocus, p.applyPref(c0, 'homeFocus', 'left').homeFocus], ['last', 'first'], '← → stop at the ends');
 store[CONFIG] = JSON.stringify({defaultsV: 1, homeFocus: 'first'});
 eq(s.loadConfig().homeFocus, 'first', 'the choice is kept after a restart');
 store[CONFIG] = JSON.stringify({defaultsV: 1, homeFocus: 'middle'});
-eq(s.loadConfig().homeFocus, 'last', 'an unknown value falls back to the default, the last app opened');
-const r109 = p.resetLook({...c0, homeFocus: 'first', quietSec: 0, quietDimSec: 0, quietDimLevel: 80, showLgHome: true, showSystem: true, inputStatus: false});
-eq([r109.homeFocus, r109.quietSec, r109.quietDimSec, r109.quietDimLevel, r109.showLgHome, r109.showSystem, r109.inputStatus], ['last', 20, 20, 30, false, false, true], 'P109: reset also restores quiet mode, Home focus, the LG Home and System tiles and input status');
+eq(s.loadConfig().homeFocus, 'last', 'a saved unknown value keeps reading as the last app opened (saved settings are not changed by the new default)');
+store[CONFIG] = JSON.stringify({defaultsV: 1, homeFocus: 'last'});
+eq(s.loadConfig().homeFocus, 'last', 'a saved last app opened stays (p22b: updaters keep their choice)');
+delete store[CONFIG];
+eq(s.loadConfig().homeFocus, 'first', 'a fresh install (nothing saved) starts on the first app');
+const r109 = p.resetLook({...c0, homeFocus: 'last', quietSec: 0, quietDimSec: 0, quietDimLevel: 80, showLgHome: true, showSystem: true, inputStatus: false});
+eq([r109.homeFocus, r109.quietSec, r109.quietDimSec, r109.quietDimLevel, r109.showLgHome, r109.showSystem, r109.inputStatus], ['first', 20, 20, 30, false, false, true], 'P109 (p22b: first app): reset also restores quiet mode, Home focus, the LG Home and System tiles and input status');
 
 // ---- the tile opened last ----
 eq(h.readLastOpened(), null, 'nothing opened yet: none known');
 h.writeLastOpened('netflix');
 eq([h.readLastOpened(), store[h.LAST_OPENED_KEY]], ['netflix', 'netflix'], 'the tile opened is kept in its own entry');
-eq(store[CONFIG].indexOf('netflix'), -1, 'not in the settings themselves (they are not rewritten on every launch)');
+eq(String(store[CONFIG] || '').indexOf('netflix'), -1, 'not in the settings themselves (they are not rewritten on every launch)');
 h.writeLastOpened('com.webos.app.hdmi2');
 eq(h.readLastOpened(), 'com.webos.app.hdmi2', 'an input counts too, and the newest wins');
 store[h.LAST_OPENED_KEY] = '';

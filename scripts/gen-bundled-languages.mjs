@@ -10,6 +10,8 @@ const OUT = new URL('public/languages/', root);
 const INDEX = new URL('src/config/bundledlanguages.ts', root);
 const ph = (s) => (String(s).match(/\{\w+\}/g) || []).sort().join(',');
 const CONTROL = /[\u0000-\u0009\u000b-\u001f\u007f]/;
+// Keys whose text may be empty (a language without a plural ending, e.g. Thai, writes ""). Same list in src/lib/langpack.ts and scripts/lang-check.mjs.
+const EMPTY_OK = ['homekey.pluralSuffix'];
 
 export function readBundled () {
   const en = readEnglish();
@@ -29,7 +31,7 @@ export function readBundled () {
     for (const k of Object.keys(p.strings || {})) {
       const v = p.strings[k];
       if (!(k in en)) continue;                                  // unknown keys are left out, as when a file is loaded
-      if (typeof v !== 'string' || !v || v.length > 1000 || CONTROL.test(v) || ph(v) !== ph(en[k])) { bad(`bad text or placeholders: ${k}`); continue; }
+      if (typeof v !== 'string' || (!v && EMPTY_OK.indexOf(k) < 0) || v.length > 1000 || CONTROL.test(v) || ph(v) !== ph(en[k])) { bad(`bad text or placeholders: ${k}`); continue; }
       strings[k] = v;
     }
     if (!Object.keys(strings).length) bad('no text matches the English keys');

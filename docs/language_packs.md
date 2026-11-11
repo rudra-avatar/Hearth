@@ -41,7 +41,7 @@ Rules, checked when the file is loaded:
 
 - The file is UTF-8 JSON, at most 400 KB, and `"format"` is `1`.
 - Keep every `{placeholder}` exactly as in English (for example `{name}` or `{n}`): the same ones, no more, no fewer. The text around them may move.
-- A text is not empty, has no more than 1000 characters and no control characters (a line break is allowed).
+- A text is not empty (one exception: `homekey.pluralSuffix` may be `""` for a language without a plural ending), has no more than 1000 characters and no control characters (a line break is allowed).
 - Keys that Hearth does not know are ignored; keys you leave out stay English. You do not have to translate everything.
 
 ## Limits
@@ -57,7 +57,7 @@ Rules, checked when the file is loaded:
 3. Maintainers add the file to the folder [`docs/languages/packs`](https://github.com/rudra-avatar/Hearth/tree/main/docs/languages/packs) (the file name must be `<code>.json` and the `"code"` inside must match) and to the list below, with your name if you want it. Your wording is not changed.
 4. The next Hearth release carries it inside the app (the build copies every file of that folder; a wrong file stops the build). From then on everybody, rooted or not, picks it with the arrows.
 
-Languages that come with Hearth: Bahasa Indonesia (`id`), Español (`es`), Deutsch (`de`), العربية (`ar`), Français (`fr`), Polski (`pl`), Português (Brasil) (`pt-BR`), Русский (`ru`). Français was written and checked by Foxinou35 (issue #33), Polski by sir_RAFIK (issue #35) and Português (Brasil) by assanches (issue #38), all native speakers. The first four languages of the list and Русский were translated from the English base file by Claude (Anthropic), not by a native speaker; the texts added after the native versions of Français, Polski and Português (Brasil) were written (2.1.0) were also translated by Claude; wording corrections are welcome through the *Translation* form or a pull request. Arabic is shown with the bundled Noto Sans Arabic font; the screens stay laid out left to right (no mirrored layout).
+Languages that come with Hearth: Bahasa Indonesia (`id`), Español (`es`), Deutsch (`de`), العربية (`ar`), Français (`fr`), Italiano (`it`), Polski (`pl`), Português (Brasil) (`pt-BR`), Русский (`ru`). Français was written and checked by Foxinou35 (issue #33), Italiano by doppiaRR (pull request #55), Polski by sir_RAFIK (issue #35) and Português (Brasil) by assanches (issue #38), all native speakers. The first four languages of the list and Русский were translated from the English base file by Claude (Anthropic), not by a native speaker; the texts added after the native versions of Français, Polski and Português (Brasil) were written (2.1.0) were also translated by Claude; wording corrections are welcome through the *Translation* form or a pull request. Arabic is shown with the bundled Noto Sans Arabic font; the screens stay laid out left to right (no mirrored layout).
 
 ## Keep a language file up to date
 

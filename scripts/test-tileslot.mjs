@@ -1,0 +1,22 @@
+// Tests for src/lib/tileslot.ts (which home-row tile holds a node).   Run: npm test
+import {build} from 'esbuild';
+const out = new URL('../node_modules/.cache-tileslot-test.mjs', import.meta.url).pathname;
+await build({entryPoints: [new URL('../src/lib/tileslot.ts', import.meta.url).pathname], bundle: true, format: 'esm', outfile: out, platform: 'node', logLevel: 'error'});
+const g = await import(out);
+let fail = 0;
+const eq = (a, b, m) => { const ok = JSON.stringify(a) === JSON.stringify(b); if (!ok) { fail++; console.log('FAIL', m, JSON.stringify(a), '!=', JSON.stringify(b)); } else console.log('ok  ', m); };
+const node = (cls, parent) => { const n = {cls, classList: {contains: (c) => cls.indexOf(c) !== -1}, parentNode: parent || null, children: []}; if (parent) parent.children.push(n); return n; };
+const rows = node(['rows']);
+const mkRow = (n) => { const sec = node(['row'], rows); node(['row__label'], sec); const vp = node(['row__viewport'], sec); const tr = node(['row__track'], vp); const tiles = []; for (let i = 0; i < n; i++) { const t = node(['tile'], tr); const fr = node(['tile__frame'], t); tiles.push({t, img: node([], fr), label: node(['tile__label'], t)}); } return tiles; };
+const r0 = mkRow(3); const r1 = mkRow(2);
+eq(g.tileSlot(r0[1].img), {row: 0, col: 1}, 'an image inside tile 1 of row 0');
+eq(g.tileSlot(r0[2].t), {row: 0, col: 2}, 'the tile itself');
+eq(g.tileSlot(r1[1].label), {row: 1, col: 1}, 'a label in row 1');
+eq(g.tileSlot(r1[0].img), {row: 1, col: 0}, 'first tile of row 1');
+eq(g.tileSlot(rows), null, 'the rows box is no tile');
+eq(g.tileSlot(null), null, 'null');
+eq(g.tileSlot(undefined), null, 'undefined');
+const gridTrack = node(['grid__track']); const gt = node(['tile'], gridTrack);
+eq(g.tileSlot(gt), null, 'a tile of the Settings grid is no home-row tile');
+console.log(fail ? `${fail} FAILED` : 'all ok');
+process.exit(fail ? 1 : 0);

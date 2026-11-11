@@ -82,6 +82,33 @@ check "with no source the bundled photos are used" "$(run apply >/dev/null; grep
 echo 'source=/nonexistent' > "$T/dir/settings"
 check "a missing folder falls back to the bundled photos" "$(run apply >/dev/null; grep -c 'photo-0' "$T/dir/main.qml")" 2
 
+# a source on the network folder: connected first; not reachable = the saver default (the built-in video; the bundled photos
+# when that file is missing) and a mark for the boot job
+cat > "$T/fakenet" <<'FAKE'
+#!/bin/sh
+n=$(cat "$T_STATE/netcalls" 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > "$T_STATE/netcalls"
+if [ -f "$T_STATE/netdown" ] && [ "$n" -le "$(cat "$T_STATE/netdown")" ]; then echo "result=down"; exit 0; fi
+mkdir -p "$NETMNT/pics"; touch "$NETMNT/pics/n1.jpg" "$NETMNT/pics/n2.jpg" "$NETMNT/pics/n3.jpg"; echo "result=ok"
+FAKE
+chmod +x "$T/fakenet"
+export NETSH="$T/fakenet" NETMNT="$T/net"
+printf 'source=%s\ninterval=20\nshuffle=1\ndim=0\n' "$T/net/pics" > "$T/dir/settings"
+rm -rf "$T/net"; rm -f "$T/state/netcalls"; echo 99 > "$T/state/netdown"
+mkdir -p "$T/launcher/saver"; touch "$T/launcher/saver/builtin.mp4"
+check "network folder down: the built-in video is used" "$(run apply >/dev/null; grep -c 'saver/builtin.mp4' "$T/dir/main.qml")" 1
+check "network folder down: not the bundled photos" "$(grep -c 'photo-0' "$T/dir/main.qml")" 0
+rm -rf "$T/launcher/saver"
+check "network folder down, no video file: the bundled photos are used" "$(run apply >/dev/null; grep -c 'photo-0' "$T/dir/main.qml")" 2
+check "network folder down: no share path in the list" "$(grep -c 'net/pics' "$T/dir/main.qml")" 0
+check "network folder down: the boot job is told" "$([ -f "$T/dir/netfail" ] && echo yes)" yes
+rm -f "$T/state/netdown"
+check "network folder up: its pictures are listed" "$(run apply >/dev/null; grep -c 'net/pics/n' "$T/dir/main.qml")" 3
+check "network folder up: the mark is gone" "$([ -f "$T/dir/netfail" ] && echo left || echo gone)" gone
+printf 'source=%s\ninterval=20\nshuffle=1\ndim=0\n' "$T/photos" > "$T/dir/settings"
+rm -f "$T/state/netcalls"; run apply >/dev/null
+check "a source outside the share never asks the share" "$([ -f "$T/state/netcalls" ] && echo asked || echo not)" not
+unset NETSH NETMNT
+
 check "show says shown" "$(run show)" shown
 check "show asks the TV's power service" "$(grep -c 'turnOnScreenSaver' "$T/lunalog")" 1
 check "off takes it all away" "$(run off)" removed
@@ -111,6 +138,17 @@ export BLOCK_SCHEMA="$T/no-schema"
 echo '{"id":"com.webos.app.screensaver","type":"qml"}' > "$T/app/appinfo.json"; rm -f "$T/app/qml/main.qml"
 check "no QML file: no-target" "$(run on)" no-target
 echo stock > "$T/app/qml/main.qml"
+
+# boot job: the share is not there at the first looks, then it is (the third call answers)
+export NETSH="$T/fakenet" NETMNT="$T/net"
+printf 'source=%s\ninterval=20\nshuffle=1\ndim=0\n' "$T/net/pics" > "$T/dir/settings"
+rm -rf "$T/net"; rm -f "$T/state/netcalls"; echo 2 > "$T/state/netdown"
+check "on with the share down still applies" "$(run on)" applied
+DRY_RUN=1 sh "$T/dir/screensaver.sh" boot >/dev/null 2>&1
+check "boot: the share came up later, its pictures are listed" "$(grep -c 'net/pics/n' "$T/dir/main.qml")" 3
+check "boot: no mark is left" "$([ -f "$T/dir/netfail" ] && echo left || echo gone)" gone
+rm -f "$T/state/netdown"; unset NETSH NETMNT
+printf 'source=\n' > "$T/dir/settings"; run apply >/dev/null
 
 check "on again" "$(run on)" applied
 rm -f "$T/launcher/appinfo.json"

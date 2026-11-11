@@ -7,8 +7,8 @@ A screen saver shows pictures when nobody has pressed a button for a while. Hear
 Open **Settings, Screen saver**:
 
 - **Custom Screen Saver:** the main switch.
-- **Pictures:** what it plays: a photo, a GIF, a video (mp4, mkv or webm, plays quietly to its end), a folder, the bundled photos, or the same as the wallpaper.
-- **Change picture every** and **Shuffle**, for slideshows.
+- **Screensaver file or folder:** what it plays: a photo, a GIF, a video (mp4, mkv or webm, plays quietly to its end), a folder, the bundled photos, or the same as the wallpaper. A folder can be on a NAS: see [Network folder](network-folder.md).
+- **Screensaver: change picture every** and **Screensaver: shuffle**, for slideshows.
 - **Picture size:** *Fit* shows the whole picture; *Fill* crops it to the screen.
 - **OLED care:** a thin moving frame so one still picture cannot burn into the screen.
 - **Brightness:** *Bright*, or *Dim* by an amount you choose, from 10% to 80% in steps of 10 (a dark layer; the backlight is not touched).

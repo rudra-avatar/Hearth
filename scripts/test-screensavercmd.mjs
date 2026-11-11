@@ -65,6 +65,15 @@ eq(readFileSync(join(dir, 'settings'), 'utf8').indexOf('shuffle=1') !== -1, true
 const applied = h.applyCommand({...s, source: '', interval: 45}).split(h.SAVER_DIR).join(dir);
 eq(h.parseSaverResult(execSync(applied, {env, encoding: 'utf8'})), 'applied', 'new settings are applied in one call');
 eq(readFileSync(join(dir, 'main.qml'), 'utf8').indexOf('intervalSec: 45') !== -1, true, 'and show up in the QML');
+// Q6: the probe overlay setting
+const base = {source: '', interval: 60, shuffle: false, dim: false, care: 1, fill: 1, powerOff: 0, recursive: false, dimLevel: 40};
+eq(h.settingsText(base).indexOf('overlay') === -1, true, 'Q6: no overlay line in normal settings');
+eq(/\noverlay=1\n/.test(h.settingsText({...base, overlay: true})), true, 'Q6: overlay=1 is written for the probe');
+eq(readFileSync(join(dir, 'main.qml'), 'utf8').indexOf('__OVERLAY__') === -1 && /overlay: 0 === 1/.test(readFileSync(join(dir, 'main.qml'), 'utf8')), true, 'Q6: the overlay marker is filled (0 in normal use)');
+// p21: the nudge drift is the normal one: no drift mode any more
+const qmlOut = readFileSync(join(dir, 'main.qml'), 'utf8');
+eq(h.settingsText({...base, driftMode: 3}).indexOf('driftmode') === -1 && qmlOut.indexOf('__DRIFTMODE__') === -1 && qmlOut.indexOf('driftMode') === -1, true, 'p21: no drift mode setting or marker is left');
+eq(/win\.pulseLeft = 36;/.test(qmlOut) && /id: pulse/.test(qmlOut) && /nd: 0; width: pw \+ nd/.test(qmlOut), true, 'p21: the video nudge during the slide is in the QML');
 rmSync(T, {recursive: true, force: true});
 if (fail) { console.log(`${fail} FAILED`); process.exit(1); }
 console.log('screen saver commands: all ok');

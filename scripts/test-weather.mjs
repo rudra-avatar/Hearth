@@ -44,4 +44,12 @@ eq(w.geocodeUrl('São Paulo & co').indexOf('name=S%C3%A3o%20Paulo%20%26%20co') >
 
 const cmd = n.shellFetchCommand('https://x.test/a?b=1&c=2');
 eq([cmd.indexOf("U='https://x.test/a?b=1&c=2';") === 0, cmd.indexOf('curl') > 0, cmd.indexOf('wget') > 0], [true, true, true], 'shell fallback tries curl then wget');
+
+// forecast hosts: the official one first by default, the one that worked last first afterwards
+eq(w.forecastUrl(55.75, 37.62).indexOf('https://api.open-meteo.com/v1/forecast?') === 0, true, 'the official forecast host by default');
+eq(w.forecastUrl(55.75, 37.62, 'historical-forecast-api.open-meteo.com').indexOf('https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=55.750&longitude=37.620') === 0, true, 'a fallback host keeps the same path and query');
+eq(n.hostOrder(null), ['api.open-meteo.com', 'historical-forecast-api.open-meteo.com', 'previous-runs-api.open-meteo.com'], 'no saved host: the usual order');
+eq(n.hostOrder('previous-runs-api.open-meteo.com'), ['previous-runs-api.open-meteo.com', 'api.open-meteo.com', 'historical-forecast-api.open-meteo.com'], 'the host that worked last is asked first');
+const safe = /^https:\/\/[A-Za-z0-9._\/?=&,%-]+$/;
+eq(w.FORECAST_HOSTS.every((h) => safe.test(w.forecastUrl(1, 2, h))), true, 'every forecast address passes the shell-fetch safety pattern');
 process.exit(fail ? 1 : 0);

@@ -58,7 +58,10 @@ WebOSWindow {
         if (m < 3 * n) return 2 * n - m;
         return m - 4 * n;
     }
-    // a 10 px frame; steps of 2 px: +-8 px across, +-6 px down, so the picture never leaves the screen
+    // a 12 px frame (was 10 until 2.1.6 p1); steps of 2 px: +-8 px across, +-6 px down, so the picture never leaves the screen
+    // p21 (TV test 68, user 2026-11-10): the TV's video plane does not follow a moving layer by itself. While the layer slides (3 s) the video item is
+    // made 1 px wider and back every 0.1 s (`pulseLeft` counts the steps), which makes the plane read its rectangle again: the video stays inside the frame.
+    property int pulseLeft: 0
     property int offX: frame > 0 ? frame + 2 * tri(driftStep, 4) : 0
     property int offY: frame > 0 ? frame + 2 * tri(driftStep, 3) : 0
 
@@ -89,7 +92,7 @@ WebOSWindow {
         order = o;
         // one item only (picture, GIF or video): the thin frame and the slow drift
         if (l.length === 1 && careMode > 0) {
-            frame = 10;
+            frame = 12;
             console.log("hearth-saver: care frame on, kind " + kindOf(l[0]));
         }
     }
@@ -100,7 +103,7 @@ WebOSWindow {
     // The bars of Fit are the opaque black base (B2) around it. This replaces the B3 hole sizing and the B5 24 px workaround.
     // The video is one pixel short of the layer's height (the TV needs it). The black veil fades out once, at the first start only.
     function videoQml(version, loop) {
-        return 'import QtQuick 2.4; import QtMultimedia ' + version + '; import Eos.Items 0.1; import WebOS.Global 1.0; Video { id: v; fillMode: ' + (fill ? 'VideoOutput.PreserveAspectCrop' : 'VideoOutput.Stretch') + '; property bool crop: ' + (fill ? 'true' : 'false') + '; property real ar: (metaData.resolution && metaData.resolution.width > 0 && metaData.resolution.height > 0) ? metaData.resolution.width / metaData.resolution.height : 1.7778; property int ph: crop ? parent.height - 1 : Math.round(Math.min(parent.height - 1, parent.width / ar)); property int pw: crop ? parent.width : Math.round(Math.min(parent.width, ph * ar)); width: pw; height: ph; x: Math.floor((parent.width - pw) / 2); y: Math.floor((parent.height - ph) / 2); volume: 0; autoPlay: true; ' + (loop ? 'loops: MediaPlayer.Infinite; ' : '') + 'onPlaying: { if (!hole.visible) { hole.visible = true; veilIn.running = true; } parent.vstatus(true, false, false); } onStatusChanged: parent.vstatus(false, status === MediaPlayer.EndOfMedia, status === MediaPlayer.InvalidMedia); onPaused: parent.vstatus(false, true, false); onErrorChanged: if (error !== 0) parent.vfail(errorString); PunchThrough { id: hole; visible: false; z: -1; x: 0; y: 0; width: v.width; height: v.height; Rectangle { id: veil; x: -v.x; y: -v.y; width: 1920; height: 1080; z: 1; color: "black"; OpacityAnimator { id: veilIn; target: veil; from: 1; to: 0; duration: 1500; running: false } } } }';
+        return 'import QtQuick 2.4; import QtMultimedia ' + version + '; import Eos.Items 0.1; import WebOS.Global 1.0; Video { id: v; fillMode: ' + (fill ? 'VideoOutput.PreserveAspectCrop' : 'VideoOutput.Stretch') + '; property bool crop: ' + (fill ? 'true' : 'false') + '; property real ar: (metaData.resolution && metaData.resolution.width > 0 && metaData.resolution.height > 0) ? metaData.resolution.width / metaData.resolution.height : 1.7778; property int ph: crop ? parent.height - 1 : Math.round(Math.min(parent.height - 1, parent.width / ar)); property int pw: crop ? parent.width : Math.round(Math.min(parent.width, ph * ar)); property int nd: 0; width: pw + nd; height: ph; x: Math.floor((parent.width - pw) / 2); y: Math.floor((parent.height - ph) / 2); volume: 0; autoPlay: true; ' + (loop ? 'loops: MediaPlayer.Infinite; ' : '') + 'onPlaying: { if (!hole.visible) { hole.visible = true; veilIn.running = true; } parent.vstatus(true, false, false); } onStatusChanged: parent.vstatus(false, status === MediaPlayer.EndOfMedia, status === MediaPlayer.InvalidMedia); onPaused: parent.vstatus(false, true, false); onErrorChanged: if (error !== 0) parent.vfail(errorString); PunchThrough { id: hole; visible: false; z: -1; x: 0; y: 0; width: v.width; height: v.height; Rectangle { id: veil; x: -v.x; y: -v.y; width: 1920; height: 1080; z: 1; color: "black"; OpacityAnimator { id: veilIn; target: veil; from: 1; to: 0; duration: 1500; running: false } } } }';
     }
 
     // A lone video loops by the player itself (QtMultimedia 5.8 or later: loops); older Qt: restarted from videoEnded().
@@ -160,10 +163,27 @@ WebOSWindow {
     // The drift: one small step about every minute (only while a frame is on).
     Timer {
         id: drift
-        interval: 60000
+        interval: __DRIFTMS__   // 60000 (Q5 test: 8000)
         repeat: true
         running: win.frame > 0
-        onTriggered: { win.driftAnimated = true; win.driftStep = win.driftStep + 1; }
+        onTriggered: {
+            win.driftAnimated = true;
+            win.driftStep = win.driftStep + 1;
+            win.pulseLeft = 36;
+        }
+    }
+
+    // p21: the front video item is made 1 px wider and back, so the TV's video plane reads its rectangle again (see driftStep above).
+    Timer {
+        id: pulse
+        interval: 100
+        repeat: true
+        running: win.pulseLeft > 0
+        onTriggered: {
+            win.pulseLeft = win.pulseLeft - 1;
+            var l = win.frontIsA ? layerA : layerB;
+            if (l.vobj) l.vobj.nd = win.pulseLeft % 2;
+        }
     }
 
     Timer {
@@ -350,6 +370,82 @@ WebOSWindow {
         color: "black"
         opacity: __DIMLEVEL__ / 100
         visible: win.dim
+    }
+
+    // Q6 probe overlay (Tests tab 49-53 only; overlay=0 in normal use, then nothing below is created). It does not depend on the picture:
+    // an info panel with the live numbers, a RED box on the picture layer (moves with the drift), a GREEN box on the video item,
+    // and a MAGENTA line on each of the four screen edges. Where the picture's edge differs from the boxes, or a magenta line is
+    // missing, the stripe is found.
+    property bool overlay: __OVERLAY__ === 1
+    Loader { z: 30; active: win.overlay; sourceComponent: probeOverlay }
+    Component {
+        id: probeOverlay
+        Item {
+            id: po
+            width: 1920
+            height: 1080
+            property var front: win.frontIsA ? layerA : layerB
+            property int up: 0
+            property int lx: 0
+            property int ly: 0
+            property int lw: 0
+            property int lh: 0
+            property int vx: 0
+            property int vy: 0
+            property int vw: 0
+            property int vh: 0
+            property bool hasVideo: false
+            property int seen: -1
+            property int ago: 0
+            function sample() {
+                var f = po.front;
+                if (!f) return;
+                lx = f.x; ly = f.y; lw = f.width; lh = f.height;
+                var v = f.vobj;
+                if (v) { hasVideo = true; vx = f.x + v.x; vy = f.y + v.y; vw = v.width; vh = v.height; }
+                else hasVideo = false;
+            }
+            Timer { interval: 250; repeat: true; running: true; triggeredOnStart: true; onTriggered: po.sample() }
+            Timer { interval: 1000; repeat: true; running: true; onTriggered: { po.up = po.up + 1; if (win.driftStep !== po.seen) { po.seen = win.driftStep; po.ago = 0; } else po.ago = po.ago + 1; } }
+            // the four screen edges
+            Rectangle { x: 0; y: 0; width: 1920; height: 3; color: "#ff00ff" }
+            Rectangle { x: 0; y: 1077; width: 1920; height: 3; color: "#ff00ff" }
+            Rectangle { x: 0; y: 0; width: 3; height: 1080; color: "#ff00ff" }
+            Rectangle { x: 1917; y: 0; width: 3; height: 1080; color: "#ff00ff" }
+            // the picture layer (red), drawn inside its edge
+            Rectangle { x: po.lx; y: po.ly; width: po.lw; height: 4; color: "#ff0000" }
+            Rectangle { x: po.lx; y: po.ly + po.lh - 4; width: po.lw; height: 4; color: "#ff0000" }
+            Rectangle { x: po.lx; y: po.ly; width: 4; height: po.lh; color: "#ff0000" }
+            Rectangle { x: po.lx + po.lw - 4; y: po.ly; width: 4; height: po.lh; color: "#ff0000" }
+            // the video item (green), 6 px inside its edge
+            Item {
+                visible: po.hasVideo
+                Rectangle { x: po.vx + 6; y: po.vy + 6; width: po.vw - 12; height: 4; color: "#00ff00" }
+                Rectangle { x: po.vx + 6; y: po.vy + po.vh - 10; width: po.vw - 12; height: 4; color: "#00ff00" }
+                Rectangle { x: po.vx + 6; y: po.vy + 6; width: 4; height: po.vh - 12; color: "#00ff00" }
+                Rectangle { x: po.vx + po.vw - 10; y: po.vy + 6; width: 4; height: po.vh - 12; color: "#00ff00" }
+            }
+            Rectangle {
+                x: 60
+                y: 60
+                width: 1200
+                height: info.height + 24
+                color: "#d9000000"
+                Text {
+                    id: info
+                    x: 16
+                    y: 12
+                    color: "white"
+                    font.pixelSize: 26
+                    text: "HEARTH SAVER PROBE (Q6)   up " + po.up + " s\n"
+                        + "kind " + (po.front ? po.front.kind : "-") + "   size " + (win.fill ? "Fill" : "Fit") + "   care " + (win.careMode > 0 ? "on" : "off") + "   frame " + win.frame + " px\n"
+                        + "drift step " + win.driftStep + " (" + po.ago + " s ago)   every " + (drift.interval / 1000) + " s   (red box moves)\n"
+                        + "RED box = picture layer   x " + po.lx + "  y " + po.ly + "   " + po.lw + " x " + po.lh + "\n"
+                        + (po.hasVideo ? "GREEN box = video item   x " + po.vx + "  y " + po.vy + "   " + po.vw + " x " + po.vh : "no video item (picture or GIF)") + "\n"
+                        + "MAGENTA line = each of the four screen edges   window " + win.width + " x " + win.height
+                }
+            }
+        }
     }
 
     // A video problem is shown for a while in a corner (for reports); nothing else is ever drawn over the pictures.

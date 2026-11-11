@@ -1,4 +1,4 @@
-// Probe tests 56-57 (Tests tab only, 2.0.3 R2-b1): can Hearth install the GitHub release through root exec, and does the
+// Probe test 37 (Tests tab only, 2.0.3 R2-b1): can Hearth install the GitHub release through root exec, and does the
 // install finish while Hearth itself is replaced? The shell script is plain text (no TV calls) so a node test can run it
 // on a fake TV (`scripts/test-probeinstall.mjs`). It runs detached from Hearth and writes /tmp/hearth-install.log.
 

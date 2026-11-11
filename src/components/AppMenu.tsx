@@ -14,7 +14,7 @@ interface Props {
 	/** P102b: whether the tile is a favourite (the entry then reads Remove) */
 	isFavourite: boolean;
 	onFavourite: () => void;
-	/** 2.0.3 T2: starts the home row's move mode with this tile picked up; not given while the row follows the last opened apps */
+	/** 2.0.3 T2: starts the home row's move mode with this tile picked up; not given while the row follows the most used apps */
 	onReorder?: () => void;
 	onHide: () => void;
 	onUninstall: () => void;

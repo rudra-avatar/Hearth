@@ -6,7 +6,7 @@ import {useCallback, useEffect, useMemo, useRef, useState} from 'preact/hooks';
 import {Home, type Appearance} from './screens/Home';
 import {Settings, type SettingsTab} from './screens/Settings';
 import {WidgetPreview} from './components/WidgetPreview';
-import {useClock} from './hooks/useClock';
+import {HomePreview} from './components/HomePreview';
 import {PowerOnPicker, type PowerOnChoice} from './screens/PowerOnPicker';
 import {activateSavedTheme, deleteTheme, ensureThemeFonts, loadThemeZip, removeLoadedTheme, readLoadedTheme, saveLoadedTheme, type LoadOutcome} from './lib/theme';
 import {themeSlug} from './lib/themeslug';
@@ -42,16 +42,18 @@ import {exportThemeBase} from './lib/themeexport';
 import {isWebOS} from './lib/luna';
 import {listening, resumeListening} from './lib/keydetect';
 import {hearthCodes, keyLabel, readRecord, type AutoResult} from './lib/homekeycore';
+import {retirePointerBlock} from './lib/pointergone';
 import {setEngineAtBoot} from './lib/homeengine';
 import {readBinds, syncKeepBind} from './lib/homekey';
 import {Notice, type NoticeButton} from './components/Notice';
 import {Preload} from './screens/Preload';
+import {EssentialsEdit} from './screens/EssentialsEdit';
 import {homeAppMessage, readHomeApp, restoreHomeApp, setHearthAsHome} from './lib/homeapp';
 import {clearPowerOnApp, powerOnMessage, readPowerOn, restartTv, setPowerOnApp} from './lib/poweron';
 import {needsRestart, powerOnName} from './lib/poweroncmd';
 import {applyPreload} from './lib/preload';
 import {applyKeepReady, readKeepList, readKeepStatus} from './lib/keepready';
-import {applyNoUpdate, readNoUpdate} from './lib/noupdate';
+import {cleanupDone, cleanupOldBlock} from './lib/noupdate';
 import {KEEP_WARNING, keepMessage, keepProblemText, statusMatches} from './lib/keepreadycmd';
 import {askKeepAlive, askedRecently} from './lib/keepalive';
 import {hidePointerOnForeground, startPointerGuard} from './lib/pointer';
@@ -67,7 +69,7 @@ import {t as tt} from './i18n';
 import {applyLanguage, removePack, bundledReady, loadBundled, reapply} from './i18n/pack';
 import {loadPackFile} from './lib/langpack';
 import {PACK_ID, isBundledLanguage} from './lib/languages';
-import {applyPref, disabledReason, findPref, homeReplacementOn, GROUP_PREFIX, optionsFor, resetLook, type Press, type PrefTab, type SystemInfo} from './lib/prefs';
+import {applyPref, disabledReason, essentialIds, findPref, homeReplacementOn, GROUP_PREFIX, optionsFor, resetLook, type Press, type PrefTab, type SystemInfo} from './lib/prefs';
 import {storeReport} from './lib/storeguard';
 import {setProbeContext} from './lib/probecontext';
 import {loadConfig, saveConfig, saveConfigVerified, setSaveFailHandler, isMonoStyle, effectiveIconStyle, hasLightTile, toggleId, DEFAULT_WALLPAPER, withBackedUpLook, dropPrefsBackup, type UserConfig} from './lib/storage';
@@ -83,25 +85,29 @@ import {aboutText, readHomebrewVersion, readIp, readVersions, type Versions} fro
 import {useTimeFormat} from './hooks/useTimeFormat';
 import {AppMenu} from './components/AppMenu';
 import {extendOrder, hiddenAfterUpgrade, toggleHidden, visibleApps} from './lib/apporder';
-import {RemoteButtons, type RemapTarget} from './screens/RemoteButtons';
-import {capturedButton, checkRemap, installRemap, keepRemap, remapMessage, remapState, removeRemap, saveRemap, setCapture} from './lib/remap';
-import {buttonLabel, setButton, type RemapAction, type RemapConfig} from './lib/remapcmd';
-import {noteRecent, orderByRecent, readRecent, writeRecent} from './lib/recency';
+import {buildTargets, type RemapTarget} from './lib/maptargets';
+import {keyFilterRetired, retireKeyFilter} from './lib/remapgone';
+import {noteRecent, noteUsage, orderByUsage, readRecent, readUsage, writeRecent, writeUsage} from './lib/recency';
 import {addTvInput, removeTvInput, TV_INPUT_LOG} from './lib/tvinput';
 import {guardAtStart, noteGuardChange, readBootTrace} from './lib/bootguard';
 import {uninstallApp, uninstallVerdict, UNINSTALL_LOG} from './lib/uninstall';
+import {undoAll, UNDO_LOG} from './lib/undoallcmd';
 import {appTile, inputTile, pickInOrder} from './lib/tiles';
 import {orderTiles, orderUpdate, stepKeys} from './lib/tileorder';
-import {APP_ID, TIMING, WALLPAPER} from './config/constants';
+import {APP_ID, TIMING} from './config/constants';
 import {LEGACY, PROBE_ENABLED, WEATHER_ENABLED} from './config/features';
 import {PROBE_TESTS, RUN_ALL_ID, bad as probeBad, probeOptions, runAll, withLimit, type ProbeState} from './lib/probe';
 import {fetchWeather} from './lib/weathernet';
 import {FRESH_MS, isFresh, readWeatherCache, usableCached, weatherView, writeWeatherCache, type City, type WeatherData} from './lib/weather';
 import {CONNECT_APPS_NOTE} from './config/connectapps';
 
-type Screen = 'home' | 'settings' | 'picker' | 'saverpicker' | 'cities' | 'source' | 'iconpicker' | 'homekey' | 'preload' | 'poweron' | 'remote' | 'extrakeys' | 'themes' | 'languages' | 'updates';
+type Screen = 'home' | 'settings' | 'picker' | 'saverpicker' | 'cities' | 'source' | 'iconpicker' | 'homekey' | 'preload' | 'poweron' | 'extrakeys' | 'themes' | 'languages' | 'updates' | 'essedit';
 
-const TAB = {apps: 'apps', sources: 'sources', appsSources: 'appsources', look: 'look', clock: 'clock', wallpaper: 'wallpaper', saver: 'saver', system: 'system', debug: 'debug', tests: 'tests'} as const;
+const TAB = {apps: 'apps', sources: 'sources', appsSources: 'appsources', essentials: 'essentials', look: 'look', clock: 'clock', wallpaper: 'wallpaper', saver: 'saver', system: 'system', debug: 'debug', tests: 'tests'} as const;
+const HOME_KEY_MS = 1000;               // p33e: a Home key seen this long before a relaunch makes it a Home press
+const DOUBLE_HOME_MIN_MS = 150;        // p33e: two relaunches between these two gaps = Home pressed twice (fallback)
+const DOUBLE_HOME_MS = 800;
+const HIDDEN_GRACE_MS = 3000;           // p24: hidden for less than this does not close Settings or the other screens
 const MISC = {lgHome: 'lg-home', settings: 'settings', system: 'system-settings'} as const;
 
 /** The three tiles that always end the row. */
@@ -126,9 +132,14 @@ export function App () {
 	const [versions, setVersions] = useState<Versions>({});          // shown at the bottom right of Settings (read when Settings opens)
 	const [probe, setProbe] = useState<ProbeState>({});            // Tests tab (probe builds only): answers shown in the rows
 	const [asleep, setAsleep] = useState(document.hidden);
-	const [wakes, setWakes] = useState(0);                    // counts each return to the front (Home pressed)
-	const [wallpaperOn, setWallpaperOn] = useState(!document.hidden);
+	const [wakes, setWakes] = useState(0);                    // counts each return to the front and each relaunch (list refresh, screens close)
+	const [homeResets, setHomeResets] = useState(0);          // p22b: counts only the genuine returns (back from another app, TV start); only these put the highlight back at its start
 	const wasHidden = useRef(document.hidden);
+	const screenRef = useRef<Screen>(screen);                // p24: the effect below runs once, so it reads the open screen here
+	screenRef.current = screen;
+	const homeKeyAt = useRef(0);                              // p33e: when a Home key last reached the page
+	const lastRelaunchAt = useRef(0);                         // p33e: when the last relaunch in front came
+	const hiddenAt = useRef(0);                               // p24: when the page was first seen hidden (0 = visible)
 	const [recents, setRecents] = useState(false);          // the Recent apps panel (Back on the home screen)
 	const openRecents = useCallback(() => setRecents(true), []);
 	const closeRecents = useCallback(() => setRecents(false), []);
@@ -145,7 +156,8 @@ export function App () {
 	const bootFirst = useRef(false);                                   // H1: this page started with the TV: the highlight starts on the first app
 	const keyedSinceStart = useRef(false);
 	const lastOpened = useRef<string | null>(readLastOpened());       // the app or input opened last (Settings -> Look -> When Home is pressed)
-	const recentRef = useRef<string[] | null>(null);                  // the opened tiles, newest first (Settings -> Apps -> Order by last opened); read when first needed
+	const recentRef = useRef<string[] | null>(null);                  // the opened tiles, newest first (tie-break of Most used); read when first needed
+	const usageRef = useRef<Record<string, number> | null>(null);     // open counts per tile (Settings -> Apps -> Most used); read when first needed
 	const noteOpened = useCallback((key: string) => {
 		if (lastOpened.current !== key) { lastOpened.current = key; writeLastOpened(key); }
 		bootFirst.current = false;          // H3a: until an app is opened after the TV started, the first app stays the highlight
@@ -154,14 +166,15 @@ export function App () {
 		const next = noteRecent(recentRef.current || readRecent(), key);
 		recentRef.current = next;
 		writeRecent(next);          // the row itself reorders when Hearth next comes to the front (see orderedTiles)
+		const counts = noteUsage(usageRef.current || readUsage(), key);
+		usageRef.current = counts;
+		writeUsage(counts);
 	}, []);
 	const [settingsTab, setSettingsTab] = useState('');            // the Settings tab showing (Widget tab: live preview, P76)
 	useEffect(() => { if (screen === 'home' && settingsTab) setSettingsTab(''); }, [screen]);        // Settings opens on its first tab again
-	const previewNow = useClock(screen !== 'settings' || settingsTab !== TAB.clock);
-	const [remapBusy, setRemapBusy] = useState(false);                                       // the button map is being put on the TV (P61)
-	const [captured, setCaptured] = useState<{name: string; seq: number} | null>(null);     // "Press a button": the button the TV reported
-	const captureOn = useRef(false);
-	const remapChecked = useRef(0);
+	// p22d (user): the Widget preview does not tick; its time is read when the tab opens and again when a clock setting changes
+	const [previewNow, setPreviewNow] = useState(() => new Date());
+	useEffect(() => { if (screen === 'settings' && settingsTab === TAB.clock) setPreviewNow(new Date()); }, [screen, settingsTab, config.clock, config.clockFormat]);
 	const remoteWarned = useRef(false);
 	/** R6: once per session, before a remote-button screen opens: what to do if the remote stops answering. */
 	const askRemoteWarning = useCallback((go: () => void) => {
@@ -202,7 +215,7 @@ export function App () {
 			log(`home: no app opened since boot: ${opened ? 'no (marker found)' : skip ? 'yes, but one was opened just now' : 'yes, first app'} (page age ${Math.round(performance.now() / 1000)} s)${!opened && !skip && keyedSinceStart.current ? ' (a key was pressed already: highlight left)' : ''}`);
 			if (opened || skip) return;
 			bootFirst.current = true;
-			if (!keyedSinceStart.current) setWakes((n) => n + 1);          // put the highlight on the first app now (nothing has been pressed yet)
+			if (!keyedSinceStart.current) { setWakes((n) => n + 1); setHomeResets((n) => n + 1); }          // put the highlight on the first app now (nothing has been pressed yet)
 		}, () => off);
 		return () => { off = true; document.removeEventListener('keydown', onKey, true); };
 	}, []);
@@ -393,6 +406,18 @@ export function App () {
 	// front. Shaking the remote still brings it back.
 	useEffect(() => hidePointerOnForeground(), []);
 	useEffect(() => { startPointerGuard(); }, []);
+	// 2.1.6: once per TV, take away what the removed update-block row and the pop-up probes left behind (nothing runs when it is already done)
+	useEffect(() => {
+		if (!isWebOS() || cleanupDone()) return undefined;
+		const t = window.setTimeout(() => { cleanupOldBlock(); }, startDelay(TIER3_MS, 9000));
+		return () => window.clearTimeout(t);
+	}, []);
+	// p33g: the removed *Block the Magic Remote pointer* row: a leftover ignore entry for button 1198 (test builds only) is given back once, silently
+	useEffect(() => {
+		if (!isWebOS()) return undefined;
+		const t = window.setTimeout(() => { retirePointerBlock(); }, startDelay(TIER3_MS, 9000));
+		return () => window.clearTimeout(t);
+	}, []);
 	// A button maps to Hearth: make sure the key engine's own start-up link is in place (repairs TVs set up before the engine had its own link).
 	useEffect(() => {
 		if (!isWebOS() || !readRecord()) return undefined;
@@ -496,12 +521,28 @@ export function App () {
 	// X1: Home pressed while the key mapper listens: it stays open (and keeps reading the key log) when Hearth comes back; every other screen goes home
 	const keepKeyMapper = (s: Screen): Screen => (s === 'homekey' && listening(resumeListening()) ? s : 'home');
 	useEffect(() => {
+		let hiddenTimer = 0;
+		const leaveScreens = (why: string) => {
+			if (screenRef.current !== 'home') log(`screen: ${screenRef.current} closed, ${why}`);
+			setScreen(keepKeyMapper); setMenu(null); setRecents(false);
+		};
+		// timers may stand still while hidden, so the decision is also taken on return (above); this one frees the screen if the page stays hidden
+		const armHiddenClose = () => { window.clearTimeout(hiddenTimer); hiddenTimer = window.setTimeout(() => { if (document.hidden) leaveScreens('hidden, timer'); }, HIDDEN_GRACE_MS + 250); };
 		const sync = (why: string) => {
+			const before = wasHidden.current;
 			const hidden = document.hidden;
+			if (hidden && !hiddenAt.current) { hiddenAt.current = Date.now(); armHiddenClose(); }
+			const away = hiddenAt.current ? Date.now() - hiddenAt.current : 0;
+			if (!hidden) { hiddenAt.current = 0; window.clearTimeout(hiddenTimer); }
 			if (wasHidden.current && !hidden) {
 				setWakes((n) => n + 1);
+				setHomeResets((n) => n + 1);          // p22b: back from another app: the highlight starts again as *When Home is pressed* says
+				log('home: highlight reset (back from another app)');
+				// W1 probe: how long the first frames after a return take (the Debug report shows it)
+				const t0 = performance.now();
+				window.requestAnimationFrame(() => window.requestAnimationFrame(() => log(`wallpaper: return, second frame after ${Math.round(performance.now() - t0)} ms`)));
 			}
-			if (wasHidden.current !== hidden) noteLife(hidden);
+			if (wasHidden.current !== hidden) { noteLife(hidden); try { document.dispatchEvent(new Event('hearth-visibility')); } catch (e) { /* old web view: the real event still reaches the wallpaper */ } }
 			wasHidden.current = hidden;
 			setAsleep((was) => {
 				if (was !== hidden && replaceRef.current) {
@@ -511,26 +552,37 @@ export function App () {
 				}
 				return hidden;
 			});
-			if (hidden) { setScreen(keepKeyMapper); setMenu(null); setRecents(false); }
+			// p24: screens close only when the person really went elsewhere (hidden for HIDDEN_GRACE_MS or more), not on a short "hidden"
+			// flicker of the TV (an overlay, an input change, a helper relaunch): such a flicker used to throw the person out of Settings
+			if (hidden ? Date.now() - hiddenAt.current >= HIDDEN_GRACE_MS : before && away >= HIDDEN_GRACE_MS) leaveScreens(`hidden ${hidden ? 'for good' : away + ' ms, back'} (${why})`);
+			else if (before && !hidden && screenRef.current !== 'home') log(`screen: hidden for only ${away} ms (${why}), ${screenRef.current} kept`);
 		};
 		const onVisibility = () => sync('event');
 		document.addEventListener('visibilitychange', onVisibility);
 		const poll = window.setInterval(() => sync('check'), 1000);
 		// Home pressed while the launcher is already in front: the TV relaunches it without hiding it first.
 		let lastRelaunchNote = 0;
+		const onHomeKey = (e: KeyboardEvent) => { if (e.keyCode === 773 || e.keyCode === 774 || e.keyCode === 125) homeKeyAt.current = Date.now(); };
+		window.addEventListener('keydown', onHomeKey, true);
 		const onRelaunch = (ev?: Event) => {
 			if (lgHomeLearnRequested(ev && (ev as CustomEvent).detail)) lgLearnRef.current();    // the LG Home button job found no key device (lghome.ts)
 			if (askedRecently()) { log('keep: relaunch event from the keepAlive request ignored'); return; }
-			// "Press a button" in Reassign remote buttons: the TV's key filter opened Hearth again to say which button it was
-			const detail = ev && (ev as CustomEvent).detail;
-			const pressed = capturedButton(detail);
-			if (captureOn.current) {
-				let shown = '';
-				try { shown = typeof detail === 'string' ? detail : JSON.stringify(detail); } catch { shown = '?'; }
-				log(`remap: relaunch while waiting: event ${(shown || 'none').slice(0, 80)}, button ${pressed || 'none'}`);
-			}
-			if (pressed && captureOn.current) { setCaptured((c) => ({name: pressed, seq: (c ? c.seq : 0) + 1})); return; }
-			setScreen(keepKeyMapper); setMenu(null); setRecents(false); setWakes((n) => n + 1);
+			const inFront = !document.hidden && !wasHidden.current;
+			// p24: a relaunch while Hearth is in front and a screen (Settings, a picker) is open does not close it: the TV, the helper or an update send
+			// such relaunches by themselves, nothing tells them from a Home press, and they threw the person out of Settings (Back still leaves it)
+			// p33e (user 2026-11-11): Home leaves an open screen when it is a real Home press. A: a Home key (773/774/125) reached the page within 1 s
+			// before the relaunch; C (fallback, when the key never reaches the page): two relaunches 150-800 ms apart = Home pressed twice.
+			const nowT = Date.now();
+			const homeKey = nowT - homeKeyAt.current < HOME_KEY_MS;
+			const twice = lastRelaunchAt.current > 0 && nowT - lastRelaunchAt.current >= DOUBLE_HOME_MIN_MS && nowT - lastRelaunchAt.current <= DOUBLE_HOME_MS;
+			lastRelaunchAt.current = nowT;
+			const homePress = inFront && screenRef.current !== 'home' && (homeKey || twice);
+			if (homePress) log(`screen: Home press (${homeKey ? 'key seen' : 'pressed twice'}), ${screenRef.current} left`);
+			if (inFront && screenRef.current !== 'home' && !homePress) log(`screen: relaunch while in front, ${screenRef.current} kept`);
+			else { setScreen(keepKeyMapper); setMenu(null); setRecents(false); setWakes((n) => n + 1); }
+			// p22b: Hearth was in front already, so nobody came back: the highlight stays where the person put it (the TV, the helper or an update
+			// send such relaunches in bursts, and each one used to put the highlight back on the first app while the person was browsing)
+			if (inFront && screenRef.current === 'home') log('home: relaunch while in front, highlight kept');
 			// a burst of presses makes one note and one touch set per 2.5 s
 			const now = Date.now();
 			if (now - lastRelaunchNote < 2500) return;
@@ -540,7 +592,7 @@ export function App () {
 			if (replaceRef.current) markAliveSoon('launcher: relaunched while in front');
 		};
 		document.addEventListener('webOSRelaunch', onRelaunch);
-		return () => { document.removeEventListener('visibilitychange', onVisibility); document.removeEventListener('webOSRelaunch', onRelaunch); window.clearInterval(poll); };
+		return () => { document.removeEventListener('visibilitychange', onVisibility); document.removeEventListener('webOSRelaunch', onRelaunch); window.removeEventListener('keydown', onHomeKey, true); window.clearInterval(poll); };
 	}, []);
 
 	const recentIcons = useMemo(() => { const m: Record<string, string | undefined> = {}; apps.forEach((a) => { m[a.id] = a.iconUrl; }); return m; }, [apps]);
@@ -548,14 +600,8 @@ export function App () {
 	// The bundled-photo slideshow is drawn (and timed) by PhotoShow; it pauses while the launcher is in the background.
 	const photoShow = config.background === PHOTO_SHOW && config.wallpaper.mode === 'gradient';
 
-	// The wallpaper stays loaded for a while after the launcher goes to the background, so pressing Home
-	// again finds it ready (no fade-in). After that it is released to give the memory back.
-	useEffect(() => {
-		if (!asleep) { setWallpaperOn(true); return undefined; }
-		const timer = window.setTimeout(() => setWallpaperOn(false), WALLPAPER.releaseAfterMs);
-		return () => window.clearTimeout(timer);
-	}, [asleep]);
-
+	// W1 (user 2026-11-07): the wallpaper is never released while Hearth runs (one decoded photo, about 8 MB), so coming back from an app
+	// finds it ready: no rebuild, no second decode, no wipe. The slideshow only pauses its timer while hidden (`PhotoShow paused`).
 	// Inputs are only read when they're needed: some are on the home row, or Settings is open.
 	const needInputs = config.sourceIds.length > 0 || screen === 'settings';
 	const cecNames = config.inputStatus;
@@ -621,8 +667,7 @@ export function App () {
 					if (root === 'no') { setSystemInfo({homeApp: null, homeHook: null, logo: null, powerOn: null, root, rootDetail}); return undefined; }
 					return Promise.all([getHookStatus(), getLogo(), readPowerOn(), readHomeApp(), readInputHookInUse(), root === 'yes' ? readHomebrewVersion() : Promise.resolve(undefined), getSamStatus()]).then(([homeHook, logo, powerOn, homeApp, inputHook, homebrew, samHome]) => {
 						if (!live) return;
-						setSystemInfo((previous) => ({homeApp, homeHook, samHome, logo, powerOn, root, rootDetail, inputHook, keepList: previous.keepList, noUpdate: previous.noUpdate, samBusy: previous.samBusy}));
-						readNoUpdate().then((noUpdate) => { if (live && noUpdate) setSystemInfo((previous) => ({...previous, noUpdate})); });     // 2.1.5: apart, so the other rows never wait for it
+						setSystemInfo((previous) => ({homeApp, homeHook, samHome, logo, powerOn, root, rootDetail, inputHook, keepList: previous.keepList, samBusy: previous.samBusy}));
 						readKeepList().then((keepList) => { if (live && keepList !== null) setSystemInfo((previous) => ({...previous, keepList})); });     // K2: apart, so the other rows never wait for it
 						if (homebrew) setVersions((p) => ({...p, homebrew}));
 						log(`settings: status reads done +${since()} ms`);
@@ -912,7 +957,7 @@ export function App () {
 	}, [inputs, config.appEdits, config.sourceEdits]);
 
 	// apps and inputs share one order (Move to start / left / right / end); LG Home and Settings always end the row
-	// With "Order by last opened" the row follows the opened tiles (favourites keep their places); it is rebuilt when Hearth comes
+	// With "Most used" the row follows the open counts (favourites keep their places); it is rebuilt when Hearth comes
 	// back to the front, so a tile never jumps while its app is opening. The manual order stays saved underneath.
 	const recentWake = config.orderByRecent ? wakes : 0;
 	const orderedTiles: TileModel[] = useMemo(
@@ -920,7 +965,8 @@ export function App () {
 			const manual = orderTiles(shownApps.map((a) => appTile(a, appEditsShown)).concat(shownInputs.map((i) => inputTile(i, config.sourceEdits, config.inputStatus))), (t) => t.key, config.tileOrder);
 			if (!config.orderByRecent) return manual;
 			if (!recentRef.current) recentRef.current = readRecent();
-			return orderByRecent(manual, (t) => t.key, recentRef.current, config.favourites);
+			if (!usageRef.current) usageRef.current = readUsage();
+			return orderByUsage(manual, (t) => t.key, usageRef.current, recentRef.current, config.favourites);
 		},
 		[shownApps, shownInputs, config.tileOrder, config.sourceEdits, config.inputStatus, appEditsShown, config.orderByRecent, config.favourites, recentWake, themeRev]
 	);
@@ -1030,8 +1076,9 @@ export function App () {
 				shown: () => shownInputs.map((i) => inputTile(i, config.sourceEdits, config.inputStatus))
 			})
 		]},
+		lazyTab({id: TAB.essentials, label: tt('app.essentials'), items: [], shown: []}, {options: () => groupsOf('essentials', systemInfo)}),
 		lazyTab({id: TAB.look, label: tt('app.look'), items: [], shown: []}, {options: () => groupsOf('look', systemInfo)}),
-		lazyTab({id: TAB.clock, label: tt('app.widget'), items: [], shown: []}, {options: () => groupsOf('clock')}),
+		lazyTab({id: TAB.clock, label: tt('app.widget'), items: [], shown: [], preview: config.clock.show}, {options: () => groupsOf('clock')}),
 		lazyTab({id: TAB.wallpaper, label: tt('app.wallpaper'), items: [], shown: []}, {options: () => groupsOf('wallpaper')}),
 		...(noRoot ? [] : [lazyTab({id: TAB.saver, label: tt('app.screenSaver'), items: [], shown: []}, {options: () => groupsOf('saver', systemInfo)})]),
 		lazyTab({id: TAB.system, label: tt('app.system'), items: [], shown: []}, {options: () => groupsOf('system', {...systemInfo, tvInput, powerOnNames})}),
@@ -1047,8 +1094,8 @@ export function App () {
 
 	setMonoIcons(isMonoStyle(iconStyle));
 	const appearance: Appearance = useMemo(
-		() => ({iconScale: config.iconScale, iconOpacity: config.iconOpacity, labelColor: config.labelColor, labelFont: config.labelFont, labelSize: config.labelSize, labelWeight: config.labelWeight, scrollSpeed: config.scrollSpeed, iconGap: config.iconGap, tileShape: config.tileShape, iconStyle, quietSec: config.quietSec, quietDimSec: config.quietDimSec, quietDimLevel: config.quietDimLevel, oledShift: config.oledShift, sideMargin: config.sideMargin, bottomMargin: config.bottomMargin, favSideMargin: config.favSideMargin, favBottomMargin: config.favBottomMargin, showLabels: config.showLabels, rows: config.rows, clock: config.clock}),
-		[config.iconScale, config.iconOpacity, config.labelColor, config.labelFont, config.labelSize, config.labelWeight, config.scrollSpeed, config.iconGap, config.tileShape, iconStyle, config.quietSec, config.quietDimSec, config.quietDimLevel, config.oledShift, config.sideMargin, config.bottomMargin, config.favSideMargin, config.favBottomMargin, config.showLabels, config.rows, config.clock, config.theme]
+		() => ({iconScale: config.iconScale, iconOpacity: config.iconOpacity, labelColor: config.labelColor, labelFont: config.labelFont, labelSize: config.labelSize, labelWeight: config.labelWeight, scrollSpeed: config.scrollSpeed, iconGap: config.iconGap, tileShape: config.tileShape, iconStyle, quietSec: config.quietSec, quietDimSec: config.quietDimSec, quietDimLevel: config.quietDimLevel, quietPowerOff: config.quietPowerOff, oledShift: config.oledShift, sideMargin: config.sideMargin, bottomMargin: config.bottomMargin, favSideMargin: config.favSideMargin, favBottomMargin: config.favBottomMargin, showLabels: config.showLabels, rows: config.rows, clock: config.clock}),
+		[config.iconScale, config.iconOpacity, config.labelColor, config.labelFont, config.labelSize, config.labelWeight, config.scrollSpeed, config.iconGap, config.tileShape, iconStyle, config.quietSec, config.quietDimSec, config.quietPowerOff, config.quietDimLevel, config.oledShift, config.sideMargin, config.bottomMargin, config.favSideMargin, config.favBottomMargin, config.showLabels, config.rows, config.clock, config.theme]
 	);
 
 	// ----- actions -----
@@ -1104,7 +1151,7 @@ export function App () {
 		if (optionId.indexOf(GROUP_PREFIX) === 0) {          // a group header: open it (closing the others) or close it
 			const tabId = optionId.slice(GROUP_PREFIX.length).split(':')[0] as PrefTab;
 			const name = optionId.slice(GROUP_PREFIX.length + tabId.length + 1);
-			const header = optionsFor(tabId, config, tabId === 'system' ? {...systemInfo, tvInput, powerOnNames} : tabId === 'saver' || tabId === 'look' ? systemInfo : undefined, openGroups[tabId] || '').filter((o) => o.id === optionId)[0];
+			const header = optionsFor(tabId, config, tabId === 'system' ? {...systemInfo, tvInput, powerOnNames} : tabId === 'saver' || tabId === 'look' || tabId === 'essentials' ? systemInfo : undefined, openGroups[tabId] || '').filter((o) => o.id === optionId)[0];
 			setOpenGroups((g) => ({...g, [tabId]: header && header.open ? '' : name}));
 			return;
 		}
@@ -1139,6 +1186,7 @@ export function App () {
 		}
 		if (optionId === 'theme' && press === 'ok' && systemInfo.root === 'yes') { setScreen('themes'); return; }       // OK (rooted TVs): load a theme zip; ← → step the built-in themes
 		if (optionId === 'language' && press === 'ok' && systemInfo.root === 'yes') { setScreen('languages'); return; }       // OK (rooted TVs): load a language file; ← → switch
+		if (optionId === 'essentialsEdit') { if (press === 'ok') setScreen('essedit'); return; }       // S3: edit and reorder the Essentials rows
 		if (optionId === 'wallpaper' && press === 'ok') { setScreen('picker'); return; }       // OK: pick a picture or folder; ← → step the built-in backgrounds
 		if (pref.kind === 'action') {
 			if (optionId === 'weatherCity') setScreen('cities');
@@ -1149,6 +1197,21 @@ export function App () {
 			}
 			else if (optionId === 'languageRemove') { removePack(); updateConfig({...config, language: 'en'}); showToast(tt('app.languageRemoved')); }
 			else if (optionId === 'resetLook') { updateConfig(resetLook(config)); showToast(tt('app.visualSettingsResetTo')); }
+			else if (optionId === 'undoAll') {       // U1: takes every Hearth change on the TV back, writes one log, then uninstalls Hearth
+				setNotice({
+					title: tt('undoall.title'),
+					text: tt('undoall.text', {log: UNDO_LOG}),
+					buttons: [
+						{label: tt('app.ok'), tone: 'danger', run: () => {
+							// p17: this pop-up has no buttons and ignores Back; it stays until the TV has removed Hearth (a failed start closes it)
+							setNotice({title: tt('undoall.working'), text: tt('undoall.workingText', {log: UNDO_LOG}), buttons: [], onBack: () => undefined});
+							undoAll().catch(() => { setNotice(null); showToast(tt('undoall.failed'), 'error'); });
+						}},
+						{label: tt('appmenu.cancel'), tone: 'light', run: () => setNotice(null)}
+					],
+					onBack: () => setNotice(null)
+				});
+			}
 			else if (optionId === 'themeExport') {
 				showToast(tt('app.writingTheThemeBase'));
 				// S1b: every app, hidden ones too, in the Apps-tab order
@@ -1333,14 +1396,6 @@ export function App () {
 				}
 				else changeInput();
 			}
-			else if (optionId === 'noUpdate') {
-				const wantOn = !(systemInfo.noUpdate && systemInfo.noUpdate.linked);
-				showToast(tt('app.noUpdateWorking'));
-				applyNoUpdate(wantOn).then((why) => readNoUpdate().then((noUpdate) => {
-					if (noUpdate) setSystemInfo((previous) => ({...previous, noUpdate}));
-					showToast(why ? why : wantOn ? tt('app.noUpdateOn') : tt('app.noUpdateOff'), why ? 'error' : 'info');
-				}));
-			}
 			else if (optionId === 'lgLogo') {
 				const wantOn = systemInfo.logo !== 'on';
 				showToast(tt('app.changing'));
@@ -1492,23 +1547,15 @@ export function App () {
 	}, [apps, showToast]);
 
 	const menuVerdict = menu && menu.app ? uninstallVerdict(menu.app) : null;
-	// ----- Reassign remote buttons (P61; PR #19 by Obednal97, adapted) -----
-	// What a button can be given: the TV's own action, nothing, Hearth, mute, the inputs, then every app.
+	// ----- Map additional keys (K1): every button job, in four groups (app, input, other button, TV action) -----
 	const remapTargets: RemapTarget[] = useMemo(() => {
-		if (screen !== 'remote' && screen !== 'extrakeys') return [];
-		const list: RemapTarget[] = [
-			{key: 'default', label: tt('app.theTvSOwn'), detail: tt('app.whatTheButtonDid'), action: null},
-			{key: 'none', label: tt('app.nothing'), detail: tt('app.theButtonIsSwitched'), action: {t: 'none'}},
-			{key: 'hearth', label: tt('app.hearth2'), detail: tt('app.thisHomeScreen2'), action: {t: 'app', id: APP_ID}},
-			{key: 'mute', label: tt('app.muteOrUnmute'), detail: tt('app.likeTheMuteButton'), action: {t: 'mute'}}
-		];
-		// only "Map additional keys" (key hook) can open LG Home; the other method's key filter has no such job
-		if (screen === 'extrakeys') list.push({key: 'lghome', label: tt('app.lgHome2'), detail: tt('app.opensLgSOwnHome'), action: {t: 'lghome'}});
-		inputs.forEach((i) => list.push({key: 'in:' + i.appId, label: (config.sourceEdits[i.appId] && config.sourceEdits[i.appId].label) || i.label, detail: tt('app.input'), action: {t: 'app', id: i.appId}}));
-		apps.filter((a) => a.id !== APP_ID).slice().sort((a, b) => a.title.localeCompare(b.title))
-			.forEach((a) => list.push({key: 'app:' + a.id, label: a.title, detail: tt('app.app2'), action: {t: 'app', id: a.id}}));
-		return list;
-	}, [screen === 'remote' || screen === 'extrakeys', screen === 'extrakeys', apps, inputs, config.sourceEdits]);    // eslint-disable-line react-hooks/exhaustive-deps
+		if (screen !== 'extrakeys') return [];
+		return buildTargets(
+			apps.map((a) => ({id: a.id, title: a.title})),
+			inputs.map((i) => ({appId: i.appId, label: (config.sourceEdits[i.appId] && config.sourceEdits[i.appId].label) || i.label})),
+			APP_ID
+		);
+	}, [screen === 'extrakeys', apps, inputs, config.sourceEdits]);    // eslint-disable-line react-hooks/exhaustive-deps
 
 	/** Before a button gets the LG Home job: with a Home replacement on, LG Home would not stay in front, so ask first. */
 	const askLgHome = useCallback((go: () => void) => {
@@ -1524,114 +1571,39 @@ export function App () {
 		});
 	}, [systemInfo, config, showToast]);
 
-	/** Puts `next` on the TV: the filter is added (or taken out) when the switch changes, otherwise only the map is sent. */
-	const applyRemap = useCallback((next: RemapConfig, message?: string) => {
-		const was = config.remap;
-		setRemapBusy(true);
-		const work = !next.on ? (was.on ? removeRemap().then((r) => ({result: r, detail: ''})) : Promise.resolve({result: 'removed' as const, detail: ''}))
-			: !was.on ? installRemap(next) : saveRemap(next).then((r) => ({result: r, detail: ''}));
-		work.then(({result, detail}) => {
-			setRemapBusy(false);
-			const ok = result === 'applied' || result === 'removed';
-			if (ok) { patchConfig((c) => ({remap: next, remapKept: next.on ? c.remapKept : false})); remapChecked.current = Date.now(); }
-			showToast(ok && message ? message : remapMessage(result, detail), ok ? 'info' : 'error');
-			// the buttons are kept after a restart by default (no question): the boot link is added after the first successful change
-			if (ok && next.on && !config.remapKept && Object.keys(next.keys).length > 0) keepRemap().then((r) => { if (r === 'applied') patchConfig(() => ({remapKept: true})); else log(`remap: boot link not added: ${r}`); });
-		});
-	}, [config, showToast]);
-
-	// P61e: the setting says On but, without Keep, a restart of the TV removed the filter. Read the real state (read only, never
-	// re-applies: nothing may come back after a restart without the user's Keep) and show Off if the TV has no filter.
-	const remapVerified = useRef(false);
-	const verifyRemap = useCallback((tries: number) => {
-		if (!isWebOS() || remapVerified.current || Date.now() - remapChecked.current < 30000) return;
-		remapVerified.current = true;
-		remapState().then((state) => {
-			if (state === 'unknown') { remapVerified.current = false; log(`remap: state unknown (${tries} left)`); if (tries > 0) window.setTimeout(() => verifyRemap(tries - 1), 20000); return; }
-			log(`remap: state on the TV: filter ${state === 'in' ? 'present' : 'missing'}`);
-			if (state === 'in') return;
-			setConfig((c) => { if (!c.remap.on || c.remapKept) return c; const next = {...c, remap: {...c.remap, on: false}}; saveConfig(next); return next; });
-			showToast(tt('app.remoteButtonsWereNot'));
-		});
-	}, [showToast]);
+	// K2 (2.1.6): "Reassign remote buttons" (the TV's key filter) is gone. A TV that still had it: once, a while after the start, the filter and
+	// its boot link are taken out, the old map is backed up, and a pop-up says the buttons must be mapped again (lib/remapgone.ts).
 	useEffect(() => {
-		if (!config.remap.on || config.remapKept) { remapVerified.current = false; return undefined; }
-		const timer = window.setTimeout(() => verifyRemap(2), startDelay(TIER3_MS, 6000));
-		return () => window.clearTimeout(timer);
-	}, [config.remap.on, config.remapKept]);                               // eslint-disable-line react-hooks/exhaustive-deps
-	useEffect(() => {
-		if (screen === 'remote' && config.remap.on && !config.remapKept) verifyRemap(0);
-	}, [screen]);                                                          // eslint-disable-line react-hooks/exhaustive-deps
-
-	const onRemapSwitch = useCallback(() => applyRemap({...config.remap, on: !config.remap.on}), [config, applyRemap]);
-	const onRemapAssign = useCallback((name: string, action: RemapAction | null) => {
-		const target = action ? remapTargets.filter((t) => t.action && t.action.t === action.t && (action.t !== 'app' || (t.action.t === 'app' && t.action.id === action.id)))[0] : null;
-		const next = {...setButton(config.remap, name, action), on: true};       // giving a button a job turns the feature on
-		applyRemap(next, action ? `${buttonLabel(name)}: ${target ? (action.t === 'app' ? 'opens ' + target.label : target.label.toLowerCase()) : 'changed'}` : tt('app.v1BackToTheTv', {v1: buttonLabel(name)}));
-	}, [config, remapTargets, applyRemap]);
-	/** Resolves true once the filter is listening (the screen stops waiting on false). */
-	const onRemapCapture = useCallback((waiting: boolean): Promise<boolean> => {
-		captureOn.current = waiting;
-		if (!waiting) { setCapture(false); return Promise.resolve(true); }
-		// the filter must be on the TV to hear the press (it is added, with no button changed, if it isn't)
-		const ready = config.remap.on ? Promise.resolve(true) : installRemap({...config.remap, on: true}).then(({result, detail}) => {
-			if (result === 'applied') { patchConfig((c) => ({remap: {...c.remap, on: true}})); return true; }
-			// issue #36: say why (the detail was dropped here), and don't let "Couldn't listen" below replace it
-			captureOn.current = false;
-			log(`remap: the filter could not be added for "Press a button": ${result}${detail ? ' (' + detail + ')' : ''}`);
-			showToast(remapMessage(result, detail), 'error');
-			return false;
-		});
-		return ready.then((ok) => ok && setCapture(true)).then((ok) => {
-			log(`remap: waiting for a button, filter told: ${ok ? 'yes' : 'no'}`);
-			if (!ok && captureOn.current) showToast(tt('app.couldnTListenFor'), 'error');
-			return ok;
-		});
-	}, [config, showToast]);
-
-	// Leaving the screen while it waits for a press: tell the filter to stop waiting.
-	useEffect(() => {
-		if (screen !== 'remote' && captureOn.current) { captureOn.current = false; setCapture(false); }
-	}, [screen]);                                                            // eslint-disable-line react-hooks/exhaustive-deps
-
-	// Only when the user kept the buttons (the boot link exists): shortly after Hearth comes to the front (at most every 10 minutes), make
-	// sure the filter is still in place; the TV's config service forgets it if it reconfigures. One cheap read when all is well.
-	// Never before the user confirmed the remote works, so a bad filter cannot come back after a restart.
-	useEffect(() => {
-		if (!config.remap.on || !config.remapKept || !isWebOS()) return undefined;
-		let timer = 0;
-		const arm = () => {
-			window.clearTimeout(timer);
-			if (document.hidden || Date.now() - remapChecked.current < 600000) return;
-			timer = window.setTimeout(() => {
-				remapChecked.current = Date.now();
-				checkRemap(config.remap).then(({result, detail, fatal, unreachable}) => {
-					if (unreachable) { remapChecked.current = 0; return; }
-					if (!fatal) return;
-					setConfig((c) => { const next = {...c, remap: {...c.remap, on: false}, remapKept: false}; saveConfig(next); return next; });
-					removeRemap();
-					showToast(remapMessage(result, detail), 'error');
+		if (!isWebOS() || keyFilterRetired(config)) return undefined;
+		const timer = window.setTimeout(() => {
+			retireKeyFilter(config).then((out) => {
+				if (!out) return;
+				patchConfig(() => ({remap: {on: false, keys: config.remap.keys}, remapKept: false}));
+				if (!out.count) return;
+				setNotice({
+					title: tt('app.reassignRemoteButtonsWasRemoved'),
+					text: tt('app.nButtonsSetWithItAre', {n: out.count}),
+					buttons: [{label: tt('app.ok'), run: () => setNotice(null)}],
+					onBack: () => setNotice(null)
 				});
-			}, startDelay(TIER3_MS, 6000));
-		};
-		arm();
-		document.addEventListener('visibilitychange', arm);
-		return () => { window.clearTimeout(timer); document.removeEventListener('visibilitychange', arm); };
-	}, [config.remap.on, config.remapKept, showToast]);                      // eslint-disable-line react-hooks/exhaustive-deps
+			});
+		}, startDelay(TIER3_MS, 6000));
+		return () => window.clearTimeout(timer);
+	}, []);                                                                 // eslint-disable-line react-hooks/exhaustive-deps
 
 	const menuBlocked = menuVerdict && !menuVerdict.ok ? menuVerdict.reason : null;
 	keysRef.current = orderedTiles.map((t) => t.key);
 
 	return (
 		<>
-			{wallpaperOn && photoShow && <PhotoShow fit={config.wallpaper.fit === 'fit'} intervalSec={config.wallpaper.intervalSec} shuffle={config.wallpaper.shuffle} paused={asleep} />}
-			{wallpaperOn && !photoShow && <Wallpaper config={config.wallpaper} opacity={config.wallpaperOpacity} onProblem={(text) => showToast(text, 'error')} />}
+			{photoShow && <PhotoShow fit={config.wallpaper.fit === 'fit'} intervalSec={config.wallpaper.intervalSec} shuffle={config.wallpaper.shuffle} paused={asleep} />}
+			{!photoShow && <Wallpaper config={config.wallpaper} opacity={config.wallpaperOpacity} onProblem={(text) => showToast(text, 'error')} />}
 			{/* Home stays mounted under the other screens so it keeps its focus position. */}
-			<Home items={homeItems} favourites={config.favourites} timeFormat={timeFormat} appearance={appearance} active={screen === 'home' && !menu && !recents && !notice} paused={asleep} onActivate={onActivate} onLongPress={onLongPress} onDeadDown={config.hideSettings && !tileBack ? showTileAgain : undefined} onBack={openRecents} wake={wakes} homeKey={config.homeFocus === 'last' && !bootFirst.current ? lastOpened.current : null} focus={focus} weather={weatherLine} moveMode={moveMode} tileKeys={keysRef.current} onMovePick={onMovePick} onMoveStep={onMoveStep} onMoveExit={onMoveExit} />
+			<Home items={homeItems} favourites={config.favourites} timeFormat={timeFormat} appearance={appearance} active={screen === 'home' && !menu && !recents && !notice} paused={asleep} onActivate={onActivate} onLongPress={onLongPress} onDeadDown={config.hideSettings && !tileBack ? showTileAgain : undefined} onBack={openRecents} wake={homeResets} homeKey={config.homeFocus === 'last' && !bootFirst.current ? lastOpened.current : null} focus={focus} weather={weatherLine} moveMode={moveMode} tileKeys={keysRef.current} onMovePick={onMovePick} onMoveStep={onMoveStep} onMoveExit={onMoveExit} />
 			{recents && screen === 'home' && <Recents icons={recentIcons} edits={config.appEdits} inputs={allInputs} sourceEdits={config.sourceEdits} width={config.recentsW} height={config.recentsH} onClose={closeRecents} onOpen={noteOpened} onToast={showToast} />}
 			{/* Settings stays mounted under the picker so it keeps its tab. */}
-			{screen === 'settings' && settingsTab === TAB.clock && appearance.clock.show && !config.showDebug && <WidgetPreview now={previewNow} format={timeFormat} config={appearance.clock} weather={weatherLine} />}
-			{(screen !== 'home') && <Settings tabs={tabs} active={screen === 'settings' && !notice && !menu} onToggle={onToggle} onRecent={onRecent} onOption={onOption} onRefresh={onRefresh} favourites={config.favourites} onFavourite={onFavourite} onUninstallPick={onUninstallPick} onEdit={(key) => { setEditKey(key); setScreen('source'); }} onAdjust={onAdjust} onTab={onTab} onCollapse={onCollapse} onClose={() => { onCollapse(); setScreen('home'); }} about={aboutText(versions, rootState(), lastFailure())} />}
+			{screen === 'settings' && settingsTab === TAB.clock && appearance.clock.show && <WidgetPreview now={previewNow} format={timeFormat} config={appearance.clock} weather={weatherLine} />}
+			{(screen !== 'home') && <Settings tabs={tabs} active={screen === 'settings' && !notice && !menu} onToggle={onToggle} onRecent={onRecent} onOption={onOption} onRefresh={onRefresh} favourites={config.favourites} onFavourite={onFavourite} onUninstallPick={onUninstallPick} onEdit={(key) => { setEditKey(key); setScreen('source'); }} onAdjust={onAdjust} onTab={onTab} onCollapse={onCollapse} onClose={() => { onCollapse(); setScreen('home'); }} about={aboutText(versions, rootState(), lastFailure())} homePreview={() => <HomePreview items={homeItems} favourites={config.favourites} appearance={appearance} timeFormat={timeFormat} weather={weatherLine} wallpaperRev={`${JSON.stringify(config.wallpaper)}|${config.background}|${config.wallpaperOpacity}|${config.fadeStrength}|${config.fadeHeight}`} />} />}
 			{menu && <AppMenu title={menu.title} hideDetail={menu.app ? tt('app.youCanAddItBack') : tt('app.youCanAddItBack2')} showUninstall={!!menu.app} blockedReason={menuBlocked} isFavourite={config.favourites.indexOf(menu.key) !== -1} onFavourite={() => { onFavourite('', menu.key); setMenu(null); }} onReorder={config.orderByRecent || menu.key === MISC.lgHome || menu.key === MISC.settings || menu.key === MISC.system ? undefined : () => startMoveMode(menu.key)} onHide={() => hideTile(menu)} onUninstall={() => { if (menu.app) removeApp(menu.app); }} startAtConfirm={!!menu.direct} settingsDetail={menu.direct ? undefined : hidePractice ? tt('appmenu.settingsPractice') : config.hideSettings && !tileBack ? tt('appmenu.settingsDetail') : undefined} onSettings={onMenuSettings} onClose={() => setMenu(null)} />}
 			{screen === 'source' && (editedSource || editedApp) && (
 				<SourceEditor
@@ -1659,10 +1631,10 @@ export function App () {
 				/>
 			)}
 			{screen === 'picker' && <Picker onChoose={onChooseWallpaper} onClose={() => setScreen('settings')} />}
+			{screen === 'essedit' && <EssentialsEdit chosen={essentialIds(config)} onChange={(list) => patchConfig({essentials: list})} onClose={() => setScreen('settings')} />}
 			{screen === 'preload' && <Preload apps={apps} onClose={() => setScreen('settings')} onChanged={(n) => setConfig((c) => { if (c.preloadOff === n) return c; const next = {...c, preloadOff: n}; saveConfig(next); return next; })} onToast={showToast} />}
-			{screen === 'remote' && <RemoteButtons remap={config.remap} targets={remapTargets} captured={captured} busy={remapBusy} onSwitch={onRemapSwitch} onAssign={onRemapAssign} onCapture={onRemapCapture} onClose={() => setScreen('extrakeys')} />}
 			{screen === 'updates' && <Updates debug={config.showDebug} paused={!!notice} notify={setNotice} closeNotice={() => setNotice(null)} onClose={() => setScreen('settings')} />}
-			{screen === 'extrakeys' && <ExtraKeys targets={remapTargets} model={config.remoteModel} onModel={onRemoteModel} onOtherMethod={() => setScreen('remote')} paused={!!notice} onLgHomeCheck={askLgHome} onClose={() => setScreen('settings')} onToast={showToast} />}
+			{screen === 'extrakeys' && <ExtraKeys targets={remapTargets} model={config.remoteModel} onModel={onRemoteModel} paused={!!notice} onLgHomeCheck={askLgHome} onClose={() => setScreen('settings')} onToast={showToast} />}
 			{screen === 'themes' && <Picker forTheme onChoose={() => undefined} onClose={() => setScreen('settings')} onTheme={(path) => loadThemeZip(path, apps.map((a) => a.id)).then((outcome: LoadOutcome) => {
 				if (outcome.ok) { setScreen('settings'); afterTheme(outcome, tt('app.themeLoaded')); }
 				else setNotice({title: tt('app.themeNotLoaded'), text: tt('app.nothingWasChanged', {reason: outcome.reason}), buttons: [{label: tt('app.ok4'), tone: 'light', run: () => setNotice(null)}], onBack: () => setNotice(null)});

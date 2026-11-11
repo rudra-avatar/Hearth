@@ -8,6 +8,8 @@ import {allLogLines, onLog} from './log';
 import {REPORT_FILE} from './debuginfo';
 
 const KEEP_LINES = 100;          // what is kept from the last run
+const CAP_BYTES = 65536;         // while running, the file is cut back to its last lines once it passes this
+const CAP_LINES = 300;
 const FLUSH_MS = 4000;
 
 let before: string[] = [];       // the end of the file as the last run left it
@@ -23,7 +25,9 @@ function flush (): void {
 	if (!queue.length) return;
 	const batch = queue;
 	queue = [];
-	exec(`printf '%s\\n' ${batch.map(shellQuote).join(' ')} >> ${REPORT_FILE}`, 5000).catch(() => undefined);
+	// the size check runs only after an append (nothing runs while idle): over the cap, keep the last lines
+	const cap = `s=$(wc -c < ${REPORT_FILE}); if [ "$s" -gt ${CAP_BYTES} ]; then tail -n ${CAP_LINES} ${REPORT_FILE} > ${REPORT_FILE}.t && cat ${REPORT_FILE}.t > ${REPORT_FILE}; rm -f ${REPORT_FILE}.t; fi`;
+	exec(`printf '%s\\n' ${batch.map(shellQuote).join(' ')} >> ${REPORT_FILE}; ${cap}`, 5000).catch(() => undefined);
 }
 
 /** Overwrite the file with the full report (the Debug tab does this each time it opens). */

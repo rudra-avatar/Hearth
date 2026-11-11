@@ -17,6 +17,13 @@ const PROFILES: Record<ScrollSpeed, Profile> = {
 	fast: {start: 80, end: 30, ramp: 6}
 };
 
+/** p24: the Magic Remote pointer's edge scroll speed follows the same setting: Medium is the speed it always had (factor 1), the other levels
+ *  scale it by how much faster or slower a held key steps at that level (the final repeat interval, so the two stay linked if a profile changes). */
+export function edgeSpeedFactor (speed: ScrollSpeed): number {
+	const p = PROFILES[speed] || PROFILES.medium;
+	return Math.round(PROFILES.medium.end / p.end * 100) / 100;
+}
+
 /** A key counts as held when it comes this soon after the last step (or the TV marks it as a repeat). */
 export const HELD_GAP_MS = 90;
 /** A pause this long ends the held run. */

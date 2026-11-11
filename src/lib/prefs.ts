@@ -4,6 +4,7 @@
 
 import {recordedCode} from './homekeycore';
 import {extraCount} from './extrakeyscore';
+import {sizeLabel} from './clock';
 import type {OptionItem} from '../components/OptionList';
 import type {ThemeName} from '../theme/tokens';
 import {BACKGROUND_IDS, PHOTO_SHOW, backgroundLabel} from './backgrounds';
@@ -18,6 +19,7 @@ import {SCROLL_SPEED_IDS, scrollSpeedText} from './scrollspeed';
 import {TILE_SHAPE_IDS, tileShapeText} from './tileshape';
 import {CLOCK_COLOR_IDS, LABEL_COLOR_IDS, iconColorValues, iconColorEffective, iconColorText, colorInfo, labelColorText, withoutInk, type ClockColor} from './clockcolor';
 import {baseName} from './wallpaper';
+import {QUIET_POWEROFF_VALUES} from './quietoff';
 import {SAVER_FIT_VALUES, fitText, SAVER_INTERVAL_VALUES, SAVER_POWEROFF_VALUES, powerOffText, SAVER_PHOTOS, SAVER_VIDEO, saverIsSlideshow} from './saverconfig';
 import {WEATHER_ENABLED} from '../config/features';
 import type {TempUnit} from './weather';
@@ -31,7 +33,7 @@ import {hasPack, packName} from '../i18n/pack';
 import {td} from '../i18n';
 import {HEARTH_VERSION} from '../config/version';
 
-export type PrefTab = 'look' | 'clock' | 'wallpaper' | 'saver' | 'system';
+export type PrefTab = 'essentials' | 'look' | 'clock' | 'wallpaper' | 'saver' | 'system';
 
 /** Facts about the TV (not user settings) that some rows display. */
 export interface SystemInfo {
@@ -49,8 +51,6 @@ export interface SystemInfo {
 	powerOn?: PowerOnStatus | null;
 	/** names of the chosen and the loaded power-on apps for the row (the app list knows them, not the TV) */
 	powerOnNames?: {chosen?: string; loaded?: string};
-	/** 2.1.5: Block LG update pop-up is linked for every start (null/undefined while unknown); present: the TV has LG's updater file */
-	noUpdate?: {linked: boolean; covered: boolean; present: boolean} | null;
 	/** the TV's "show the LG logo at start" setting (null while unknown) */
 	logo?: LogoState | null;
 	/** can this TV run commands through the Homebrew Channel (rooted)? */
@@ -69,7 +69,7 @@ export interface SystemInfo {
 /** The options that run shell commands, so they can't work without root. */
 /** System rows that stay while root has failed (P83). */
 export const NO_ROOT_ROWS = ['updates', 'language', 'languageRemove', 'tvApps', 'noRootGuide', 'showDebug'];
-export const ROOT_OPTIONS = ['remap', 'replaceHome', 'samHome', 'homeApp', 'homeKey', 'preload', 'keepReady', 'keepRelaunch', 'tvInput', 'powerOnApp', 'lgLogo', 'noUpdate', 'screensaver', 'screensaverPictures', 'screensaverInterval', 'screensaverShuffle', 'screensaverCare', 'screensaverFit', 'screensaverDim', 'screensaverPowerOff', 'screensaverShow'];
+export const ROOT_OPTIONS = ['remap', 'replaceHome', 'samHome', 'homeApp', 'homeKey', 'preload', 'keepReady', 'keepRelaunch', 'tvInput', 'powerOnApp', 'lgLogo', 'quietPowerOff', 'screensaver', 'screensaverPictures', 'screensaverInterval', 'screensaverShuffle', 'screensaverCare', 'screensaverFit', 'screensaverDim', 'screensaverPowerOff', 'screensaverShow', 'undoAll'];
 
 
 /** Why a row is greyed out, or null when it is usable. */
@@ -116,7 +116,6 @@ export function disabledReason (id: string, info?: SystemInfo, config?: UserConf
 	// Reopen needs Keep Hearth ready (a row that is on stays usable, so it can be switched off)
 	if (id === 'keepRelaunch' && config && !config.keepReady && !config.keepRelaunch) return td('disabled.keepRelaunch');
 	if (id === 'lgLogo' && info && info.logo === 'unsupported') return td('disabled.lgLogo');
-	if (id === 'noUpdate' && info && info.noUpdate && !info.noUpdate.present && !info.noUpdate.linked) return td('disabled.noUpdate');
 	if (!info || info.root !== 'no' || ROOT_OPTIONS.indexOf(id) === -1) return null;
 	const kind = lastFailure();
 	const why = td(kind === 'denied' ? 'disabled.rootDenied' : 'disabled.rootDown');
@@ -339,6 +338,8 @@ const BASE_PREFS: PrefDef[] = [
 		rangeValues('quietSec'), (c) => c.quietSec, (c, v) => ({...c, quietSec: v}), (v) => (v === 0 ? td('level.off') : td('time.seconds', {n: v}))),
 	{...choice('quietDimSec', 'look',
 		rangeValues('quietDimSec'), (c) => c.quietDimSec, (c, v) => ({...c, quietDimSec: v}), (v) => (v === 0 ? td('level.off') : td('time.seconds', {n: v}))), visible: (c) => c.quietSec > 0},
+	{...choice('quietPowerOff', 'look',
+		QUIET_POWEROFF_VALUES, (c) => c.quietPowerOff, (c, v) => ({...c, quietPowerOff: v}), powerOffText), visible: (c) => c.quietSec > 0},
 	{...choice('quietDimLevel', 'look',
 		rangeValues('quietDimLevel'), (c) => c.quietDimLevel, (c, v) => ({...c, quietDimLevel: v}), (v) => td('pref.darker', {n: v})), visible: (c) => c.quietSec > 0 && c.quietDimSec > 0},
 	range('iconScale', 'look',
@@ -414,7 +415,7 @@ const BASE_PREFS: PrefDef[] = [
 	choice('clockFormat', 'clock',
 		CLOCK_FORMATS, (c) => c.clockFormat, (c, v) => ({...c, clockFormat: v}), (v) => formatText(v)),
 	range('clockSize', 'clock',
-		'clockSize', (c) => c.clock.size, (c, v) => ({...c, clock: {...c.clock, size: v}}), (v) => `${v}`),
+		'clockSize', (c) => c.clock.size, (c, v) => ({...c, clock: {...c.clock, size: v}}), (v) => `${sizeLabel(v)}`),
 	toggle('widgetOn', 'clock',
 		(c) => c.clock.show, (c, v) => ({...c, clock: {...c.clock, show: v}})),
 	choice('clockFont', 'clock',
@@ -524,18 +525,14 @@ const BASE_PREFS: PrefDef[] = [
 	},
 	{
 		id: 'remap', tab: 'system', kind: 'action',
-		text: (c) => {
-			const n = extraCount() + (c.remap.on ? Object.keys(c.remap.keys).length : 0);
+		text: () => {
+			const n = extraCount();
 			return n ? (n === 1 ? td('pref.oneButton') : td('pref.nButtons', {n})) : td('common.off');
 		}
 	},
 	{
 		id: 'lgLogo', tab: 'system', kind: 'action',
 		text: (_c, info) => (!info || info.logo === null || info.logo === undefined || info.logo === 'unsupported' ? td('common.unknown') : info.logo === 'on' ? td('common.on') : td('common.off'))
-	},
-	{
-		id: 'noUpdate', tab: 'system', kind: 'action',
-		text: (_c, info) => (info && info.noUpdate && info.noUpdate.linked ? td('common.on') : td('common.off'))
 	},
 	{
 		id: 'screensaver', tab: 'system', kind: 'action',
@@ -578,7 +575,16 @@ const BASE_PREFS: PrefDef[] = [
 		shownWith: () => hasPack()
 	},
 	toggle('showDebug', 'system',
-		(c) => c.showDebug, (c, v) => ({...c, showDebug: v}))
+		(c) => c.showDebug, (c, v) => ({...c, showDebug: v})),
+	{
+		id: 'undoAll', tab: 'system', kind: 'action',
+		text: () => td('act.undoAll')
+	},
+	{
+		// S3: the last Essentials row opens the list where the user adds, removes and reorders the rows of that tab
+		id: 'essentialsEdit', tab: 'essentials', kind: 'action',
+		text: () => ''
+	}
 ];
 
 /** Where every row lives, in order: tab, group ('' = no group, always shown), row ids. */
@@ -588,7 +594,7 @@ const LAYOUT: [PrefTab, string, string[]][] = [
 	['look', 'Icons', ['iconScale', 'tileShape', 'iconStyle', 'iconLight', 'iconColor', 'iconGap', 'iconOpacity']],
 	['look', 'Home row', ['rows', 'scrollSpeed', 'homeFocus', 'sideMargin', 'bottomMargin', 'inputStatus', 'showLgHome', 'showSystem', 'hideSettings']],
 	['look', 'Labels', ['showLabels', 'labelColor', 'labelFont', 'labelSize', 'labelWeight']],
-	['look', 'Quiet mode', ['quietSec', 'quietDimSec', 'quietDimLevel', 'oledShift']],
+	['look', 'Quiet mode', ['quietSec', 'quietDimSec', 'quietDimLevel', 'quietPowerOff', 'oledShift']],
 	['look', 'Favourites', ['favSideMargin', 'favBottomMargin']],
 	['look', 'Recent apps', ['recentsSize']],
 	['look', '', ['resetLook']],
@@ -600,9 +606,9 @@ const LAYOUT: [PrefTab, string, string[]][] = [
 	['saver', '', ['screensaver', 'screensaverPictures', 'screensaverInterval', 'screensaverShuffle', 'screensaverFit', 'screensaverCare', 'screensaverDim', 'screensaverPowerOff', 'screensaverShow']],
 	['system', '', ['updates', 'language', 'languageRemove']],
 	['system', 'Remote control', ['homeKey', 'remap']],
-	['system', 'TV start', ['tvApps', 'noRootGuide', 'tvInput', 'replaceHome', 'samHome', 'powerOnApp', 'lgLogo', 'noUpdate', 'homeApp']],
+	['system', 'TV start', ['tvApps', 'noRootGuide', 'tvInput', 'replaceHome', 'samHome', 'powerOnApp', 'lgLogo', 'homeApp']],
 	['system', 'Memory', ['preload', 'keepReady', 'keepRelaunch']],
-	['system', '', ['showDebug']]
+	['system', '', ['showDebug', 'undoAll']]
 ];
 
 const PLACE: Record<string, {tab: PrefTab; group: string; order: number}> = {};
@@ -625,11 +631,51 @@ export function findPref (id: string): Pref | undefined {
 export const FIRST_GROUP = '@first';
 export const GROUP_PREFIX = 'group:';
 
+/** S2 (user 2026-11-09): the Essentials tab lists copies of the rows people change often; each row also stays in its own tab.
+ *  Same `Pref` objects, no saved value changes; no groups; root-only rows are left out when root failed.
+ *  S3 (user 2026-11-09): the user edits the list (`config.essentials`, row ids in order; null = this default list, so later changes to it
+ *  reach users who never edited). Rows that do not apply still hide by their own rules. */
+export const ESSENTIALS_DEFAULT: readonly string[] = ['theme', 'wallpaper', 'interval', 'widgetOn', 'screensaver', 'screensaverPictures', 'quietSec', 'iconScale', 'showLabels', 'updates'];
+/** Never offered in Essentials: rows that undo, reset, restore or delete things, and the edit row itself (it is always last). */
+export const ESSENTIALS_EXCLUDED: readonly string[] = ['undoAll', 'restoreLook', 'resetLook', 'themeRemove', 'languageRemove', 'essentialsEdit'];
+export const ESSENTIALS_EDIT = 'essentialsEdit';
+
+/** The row ids chosen for Essentials: the saved list or the default; unknown, excluded and repeated ids dropped. */
+export function essentialIds (config: UserConfig): string[] {
+	const list = config.essentials ? config.essentials : ESSENTIALS_DEFAULT;
+	return list.filter((id, i) => list.indexOf(id) === i && ESSENTIALS_EXCLUDED.indexOf(id) === -1 && !!findPref(id));
+}
+
+/** Every row that can be put in Essentials, in the order of the Settings tabs (the edit list's second half). */
+export function essentialChoices (): string[] {
+	return PREFS.filter((p) => ESSENTIALS_EXCLUDED.indexOf(p.id) === -1 && !!PLACE[p.id])
+		.sort((a, b) => PLACE[a.id].order - PLACE[b.id].order).map((p) => p.id);
+}
+
+/** The tab a row lives in (for the edit list's detail line). */
+export function prefTab (id: string): PrefTab | '' {
+	const p = findPref(id);
+	return p ? p.tab : '';
+}
+
+function essentialRows (config: UserConfig, info?: SystemInfo): Pref[] {
+	const out: Pref[] = [];
+	essentialIds(config).forEach((id) => {
+		const p = findPref(id);
+		if (!p || (p.visible && !p.visible(config)) || (p.shownWith && !p.shownWith(config, info))) return;
+		if (rootState() === 'no' && ROOT_OPTIONS.indexOf(id) !== -1) return;
+		out.push({...p, group: ''});
+	});
+	const edit = findPref(ESSENTIALS_EDIT);
+	if (edit) out.push({...edit, group: ''});
+	return out;
+}
+
 /** The Settings list for one tab. With `open` undefined every row is listed flat. With `open` set, the tab's
  *  groups become header rows (id `group:<tab>:<name>`, OK opens or closes) and only the rows of the open group
  *  show: `open` is a group name, '' (all closed) or FIRST_GROUP. Rows with no group always show. */
 export function optionsFor (tab: PrefTab, config: UserConfig, info?: SystemInfo, open?: string): OptionItem[] {
-	let rows = PREFS.filter((p) => p.tab === tab && (!p.visible || p.visible(config)) && (!p.shownWith || p.shownWith(config, info)))
+	let rows = tab === 'essentials' ? essentialRows(config, info) : PREFS.filter((p) => p.tab === tab && (!p.visible || p.visible(config)) && (!p.shownWith || p.shownWith(config, info)))
 		.sort((a, b) => (PLACE[a.id] ? PLACE[a.id].order : 1e6) - (PLACE[b.id] ? PLACE[b.id].order : 1e6));
 	// P83: while root has failed, System keeps only the SSAP switch and the Debug switch (no group header)
 	if (tab === 'system' && rootState() === 'no') rows = rows.filter((p) => NO_ROOT_ROWS.indexOf(p.id) !== -1).map((p) => ({...p, group: ''}));

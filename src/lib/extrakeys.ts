@@ -9,6 +9,7 @@ import {failureText} from './failure';
 import {setEngineAtBoot, startEngine} from './homeengine';
 import {describeBind, isHearthBind, keyLabel, unbind, type Keybinds} from './homekeycore';
 import {actionToBind, readExtra, whyNot, writeExtra} from './extrakeyscore';
+import {ensureKeyActScript} from './keyactions';
 import {ensureLgHomeScript} from './lghome';
 import {log} from './log';
 import type {RemapAction} from './remapcmd';
@@ -24,6 +25,10 @@ export function setExtraKey (code: number, action: RemapAction): Promise<Outcome
 	// the LG Home job runs a small script: it is on the TV before a button points to it
 	if (action.t === 'lghome') {
 		return ensureLgHomeScript().then((ready): Promise<Outcome> => (ready ? applyExtraKey(code, action) : Promise.resolve({ok: false, text: tt('extrakeys.couldnTPutTheLg')})));
+	}
+	// K1: a TV action runs the keyact.sh script: it is on the TV before a button points to it
+	if (action.t === 'act') {
+		return ensureKeyActScript().then((ready): Promise<Outcome> => (ready ? applyExtraKey(code, action) : Promise.resolve({ok: false, text: tt('extrakeys.couldnTPutTheActionScript')})));
 	}
 	return applyExtraKey(code, action);
 }

@@ -11,6 +11,7 @@
 
 import {APP_ID} from '../config/constants';
 import {exec, shellQuote} from './apps';
+import {detached} from './fdclean';
 import {failureText} from './failure';
 import {setEngineAtBoot} from './homeengine';
 import {writeFileCommands} from './homehookcmd';
@@ -19,6 +20,7 @@ import {
 	sameBind, serialize, unbind, validCode, writeBaseline, writeRecord,
 	type DetectBaseline, type Keybind, type Keybinds
 } from './homekeycore';
+import {readExtra} from './extrakeyscore';
 import {log} from './log';
 import {loadConfig} from './storage';
 import {t as tt} from '../i18n';
@@ -136,7 +138,8 @@ export function startHomeGuard (): Promise<void> {
 	return readBinds().then((read) => {
 		if (!read.ok) return undefined;
 		const clean = stripGuard(read.binds);
-		if (Object.keys(clean).some((k) => !isHearthBind(clean[k]))) return undefined;
+		const mine = readExtra();      // 2.1.6 p16: buttons set by *Map additional keys* are Hearth's own too
+		if (Object.keys(clean).some((k) => !isHearthBind(clean[k]) && !mine[k])) return undefined;
 		const added = addGuard(clean);
 		if (!added.codes.length) return undefined;
 		const timerPath = `/tmp/${GUARD_MARK}-timer.sh`;
@@ -150,7 +153,7 @@ export function startHomeGuard (): Promise<void> {
 			if (!written.ok) return undefined;
 			log(`keys: Home guard on ${added.codes.join(' ')}`);
 			// a backup: if the page is gone before it removes the guard, this timer puts the file back (only while the id file still names it)
-			return exec(`id=$$-$(date +%s); echo "$id" > ${GUARD_ID}; (nohup sh ${timerPath} "$id" > /dev/null 2>&1 < /dev/null &); true`, 8000).then(() => undefined);
+			return exec(`id=$$-$(date +%s); echo "$id" > ${GUARD_ID}; ${detached(`sh ${timerPath} "$id"`)}; true`, 8000).then(() => undefined);
 		});
 	}).catch(() => undefined);
 }

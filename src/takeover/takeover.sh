@@ -73,6 +73,21 @@ LG_HOME=com.webos.app.home
 NUDGE_ID=tld.my.customlauncher.rescan    # not an app: blocking it blocks nothing
 
 log () { echo "$(date '+%H:%M:%S') takeover: $*" >> "$LOG"; }
+# >>> fdclean (the same lines in every helper; checked by scripts/test-fdclean.sh) >>>
+# #54: a helper started through the Homebrew service inherits its sockets (fds 3 and up) and a stuck registration can follow.
+# fdclean closes every fd above 2 in the process that runs it (use it in the background part, before `exec`); a shell that
+# cannot name a two-digit fd (dash) closes only fds 3 to 9. fdnote prints the count for the log.
+fdclean () {
+    _w=0; ( eval "exec 10>&-" ) 2>/dev/null && _w=1
+    for _f in /proc/self/fd/*; do
+        _n=${_f##*/}
+        case "$_n" in ''|*[!0-9]*|0|1|2) continue ;; esac
+        [ "${#_n}" -gt 1 ] && [ "$_w" = 0 ] && continue
+        eval "exec $_n>&-" 2>/dev/null
+    done
+}
+fdnote () { set -- /proc/self/fd/*; echo "fds=$#"; }
+# <<< fdclean <<<
 # /tmp is gone after a restart; a copy is kept at the moments that matter, so a bad start can be read afterwards
 keep_log () { cp "$LOG" "$KEEP_LOG" 2>/dev/null; }
 lsend () { "$LUNA" -n 1 "$@" 2>/dev/null; }
@@ -395,7 +410,7 @@ start_watcher () {
     alive "$WATCH_PID" && return 0
     log "starting the watcher"
     [ -n "$DRY_RUN" ] && return 0
-    ( nohup sh "$0" watch >/dev/null 2>&1 </dev/null & )
+    ( { fdclean; exec nohup sh "$0" watch; } >/dev/null 2>&1 </dev/null & )
 }
 
 # (a stop request is only noticed when the command it is waiting for ends, so the watcher and its children are killed outright)
@@ -446,7 +461,7 @@ watch_report () {
     if is_mounted; then
         log "watch: the stand-in is in front: asked for Hearth"
         # (only where the stand-in is in place: before that this is the helper's job, and LG Home in front is no failure)
-        if [ -z "$DRY_RUN" ]; then ( nohup sh "$0" verify >/dev/null 2>&1 </dev/null & ); fi
+        if [ -z "$DRY_RUN" ]; then ( { fdclean; exec nohup sh "$0" verify; } >/dev/null 2>&1 </dev/null & ); fi
     else
         log "watch: LG Home is in front (the stand-in is not in place yet): asked for Hearth"
     fi
@@ -456,7 +471,7 @@ cmd_watch () {
     if alive "$WATCH_PID" && [ "$other" != "$$" ]; then exit 0; fi
     echo "$$" > "$WATCH_PID"
     trap 'pkill -P $$ 2>/dev/null; rm -f "$WATCH_PID"; exit 0' TERM INT
-    log "watcher started (pid $$)"
+    log "watcher started (pid $$, $(fdnote))"
     quick=0
     while [ -f "$FLAG" ]; do
         started=$(date +%s)
@@ -562,7 +577,7 @@ cmd_stock () {
         put_back
         unlock
     fi
-    if [ -z "$DRY_RUN" ]; then ( nohup sh "$0" guard >/dev/null 2>&1 </dev/null & ); fi
+    if [ -z "$DRY_RUN" ]; then ( { fdclean; exec nohup sh "$0" guard; } >/dev/null 2>&1 </dev/null & ); fi
     echo stock
 }
 
@@ -604,6 +619,7 @@ cmd_apply () {
 }
 
 boot_job () {
+    log "boot job started ($(fdnote))"
     # Where this needs sam restarted, a start-up that never finishes (the TV left black and power-cycled) is not repeated:
     # the mark is only taken off once the take has come back, healthy or not.
     [ "$(cat "$METHOD" 2>/dev/null)" = restart ] && : > "$BOOT_ATTEMPT"
@@ -632,7 +648,7 @@ cmd_boot () {
     start_watcher
     # a block cut short in an earlier run would leave LG Home unable to launch
     lsend luna://com.webos.applicationManager/releaseBlockSystemApp "{\"id\":\"$LG_HOME\"}" >/dev/null
-    if [ -n "$DRY_RUN" ]; then boot_job; else ( nohup sh "$0" bootjob >/dev/null 2>&1 </dev/null & ); fi
+    if [ -n "$DRY_RUN" ]; then boot_job; else ( { fdclean; exec nohup sh "$0" bootjob; } >/dev/null 2>&1 </dev/null & ); fi
 }
 
 cmd_status () {

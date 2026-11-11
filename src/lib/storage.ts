@@ -34,8 +34,8 @@ export const RANGES = {
 	sideMargin:   {min: 0,   max: 300, step: 10, def: 20},    // px at 1080p, left and right of the app row
 	bottomMargin: {min: 0,   max: 200, step: 10, def: 10},    // px at 1080p, below the app row
 	favSideMargin:   {min: 0, max: 300, step: 10, def: 20},   // px at 1080p, left and right of the favourites row
-	favBottomMargin: {min: 0, max: 400, step: 10, def: 10},   // px at 1080p, below the favourites row while it is alone (a high row is possible)
-	clockSize:    {min: 80,  max: 220, step: 10, def: 140},   // px, height of the digits
+	favBottomMargin: {min: 0, max: 400, step: 10, def: 30},   // px at 1080p, below the favourites row while it is alone (a high row is possible)
+	clockSize:    {min: 80,  max: 240, step: 10, def: 140},   // px, height of the digits
 	clockTop:     {min: 0,   max: 70,  step: 2,  def: 20},   // % of the screen height (0 = the very top)
 	clockLeft:    {min: 0,   max: 100, step: 2,  def: 50},   // % of the screen width (where the clock's centre sits)
 	clockShadow: {min: 10,  max: 100, step: 10, def: 100},     // % (strength of the widget's drop shadow)
@@ -142,6 +142,8 @@ export interface UserConfig {
 	sourceIds: string[];
 	/** the order of the apps and inputs together on the home row (tile keys); null → apps, then inputs */
 	tileOrder: string[] | null;
+	/** S3 (2.1.6): the Essentials rows the user chose, in order (row ids; unknown ids ignored); null = the default list (follows later changes to it) */
+	essentials: string[] | null;
 	/** tile keys (apps and inputs) the user marked as favourites; empty → no favourites row */
 	favourites: string[];
 	/** read the live app list through the Homebrew Channel (root) */
@@ -230,6 +232,8 @@ export interface UserConfig {
 	quietDimSec: number;
 	/** quiet mode dim strength: % darkness */
 	quietDimLevel: number;
+	/** quiet mode: seconds after the apps hide before the TV is switched off (0 = never; rooted TVs only, QP) */
+	quietPowerOff: number;
 	/** OLED shift: the clock and the apps move a few pixels now and then so nothing burns in */
 	oledShift: boolean;
 	/** colour of the names under the icons: 'theme' or a plain colour id (see LABEL_COLOR_IDS) */
@@ -255,7 +259,7 @@ export interface UserConfig {
 	showSystem: boolean;
 	/** R10: the Hearth Settings tile is hidden (hold OK on an app opens Settings; Down x5 on Home shows the tile until the next start) */
 	hideSettings: boolean;
-	/** the home row shows the tiles opened last first (Settings -> Apps / Sources); the manual order stays saved */
+	/** the home row shows the most opened tiles first (Settings -> Apps / Sources, "Most used"; before 2.1.6 "Order by last opened", same saved key); the manual order stays saved */
 	orderByRecent: boolean;
 	/** "Reassign remote buttons" (P61, from PR #19 by Obednal97): what the remote's app buttons do instead; see remapcmd.ts */
 	remap: RemapConfig;
@@ -330,6 +334,7 @@ export const DEFAULT_CONFIG: UserConfig = {
 	hiddenIds: [],
 	sourceIds: [],
 	tileOrder: null,
+	essentials: null,
 	favourites: [],
 	closeHome: true,
 	tvApps: false,
@@ -374,13 +379,14 @@ export const DEFAULT_CONFIG: UserConfig = {
 	quietSec: RANGES.quietSec.def,
 	quietDimSec: RANGES.quietDimSec.def,
 	quietDimLevel: RANGES.quietDimLevel.def,
+	quietPowerOff: 0,                  // QP: never (additive; saved settings keep working)
 	oledShift: true,
 	labelColor: 'theme',
 	labelFont: 'default',
 	labelSize: 100,
 	labelWeight: 400,
 	scrollSpeed: 'medium',
-	homeFocus: 'last',                // P41c
+	homeFocus: 'first',               // p22b (user 2026-11-10): fresh installs and the Look reset start on the first app (P41c: 'last'); saved settings keep theirs, see the parse below
 	showLabels: true,
 	minimal: false,
 	showLgHome: false,                // P41c: hidden on a fresh install (saved settings keep theirs)
@@ -416,7 +422,7 @@ function ranged (value: unknown, name: RangeName): number {
 }
 
 /** Fields left alone by the P41f reset: the user's own apps, order, names and favourites, and everything installed on the TV (helper, Home key, power-on app, saver, keep-ready, remote, debug). */
-const KEPT_ON_RESET: readonly (keyof UserConfig)[] = ['appIds', 'hiddenIds', 'sourceIds', 'tileOrder', 'favourites', 'sourceEdits', 'appEdits', 'closeHome', 'tvApps', 'showDebug', 'language', 'hideSettings',
+const KEPT_ON_RESET: readonly (keyof UserConfig)[] = ['appIds', 'hiddenIds', 'sourceIds', 'tileOrder', 'essentials', 'favourites', 'sourceEdits', 'appEdits', 'closeHome', 'tvApps', 'showDebug', 'language', 'hideSettings',
 	'replaceHome', 'homeApp', 'homeAppPrevious', 'preloadOff', 'keepReady', 'keepRelaunch', 'takeoverHome', 'samHome', 'screensaver', 'screensaverSource', 'screensaverInterval', 'screensaverShuffle',
 	'screensaverCare', 'screensaverPowerOff', 'screensaverDim', 'screensaverDimLevel', 'screensaverFit', 'screensaverRecursive', 'powerOnApp', 'powerOnNetwork', 'remoteModel', 'remap', 'remapKept', 'defaultsV'];
 
@@ -503,6 +509,7 @@ export function loadConfig (): UserConfig {
 			hiddenIds: stringList(parsed.hiddenIds) !== null ? stringList(parsed.hiddenIds) : (stringList(parsed.appIds) === null ? [] : null),
 			sourceIds: stringList(parsed.sourceIds) || [],
 			tileOrder: stringList(parsed.tileOrder),
+			essentials: stringList(parsed.essentials),
 			favourites: stringList(parsed.favourites) || [],
 			closeHome: parsed.closeHome !== false,
 			tvApps: parsed.tvApps === true,
@@ -546,13 +553,14 @@ export function loadConfig (): UserConfig {
 			quietSec: ranged(parsed.quietSec, 'quietSec'),
 			quietDimSec: ranged(parsed.quietDimSec, 'quietDimSec'),
 			quietDimLevel: ranged(parsed.quietDimLevel, 'quietDimLevel'),
+			quietPowerOff: typeof parsed.quietPowerOff === 'number' && parsed.quietPowerOff >= 0 && parsed.quietPowerOff <= 86400 ? Math.round(parsed.quietPowerOff) : 0,
 			screensaverDimLevel: typeof parsed.screensaverDimLevel === 'number' && parsed.screensaverDimLevel >= 10 && parsed.screensaverDimLevel <= 80 ? Math.round(parsed.screensaverDimLevel / 10) * 10 : 40,
 			oledShift: parsed.oledShift !== false,
 			labelColor: LABEL_COLOR_IDS.indexOf(parsed.labelColor as string) !== -1 ? (parsed.labelColor as string) : 'theme',
 			labelFont: parsed.labelFont === 'default' || CLOCK_FONT_IDS.indexOf(parsed.labelFont as ClockFont) !== -1 ? (parsed.labelFont as string) : 'default',
 			labelSize: typeof parsed.labelSize === 'number' && parsed.labelSize >= 80 && parsed.labelSize <= 140 ? Math.round(parsed.labelSize / 10) * 10 : 100,
 			labelWeight: LABEL_WEIGHTS.indexOf(parsed.labelWeight as number) !== -1 ? (parsed.labelWeight as number) : 400,
-			homeFocus: parsed.homeFocus === 'first' ? 'first' : 'last',
+			homeFocus: parsed.homeFocus === 'first' ? 'first' : 'last',          // p22b: a saved setting without a valid value keeps reading as 'last' (as before); only a fresh install and the reset use the new default
 			scrollSpeed: SCROLL_SPEED_IDS.indexOf(parsed.scrollSpeed as ScrollSpeed) !== -1 ? (parsed.scrollSpeed as ScrollSpeed) : 'medium',
 			showLabels: parsed.showLabels !== false,
 			minimal: parsed.minimal === true,

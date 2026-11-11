@@ -130,9 +130,11 @@ export function isHearthBind (bind: Keybind | undefined | null): boolean {
 	return bind.action === 'exec' && bind.command === OPEN_COMMAND;
 }
 
-/** Z5: while a key mapper listens, the Home codes that nobody uses are bound to a tiny recorder (test 42's way): the press is
+/** Z5: while a key mapper listens, the Home codes that nobody uses are bound to a tiny recorder (the way the removed Home-button probe did it): the press is
  *  taken by the key engine, so LG Home does not open and Hearth stays; the code is read back from a hits file. */
 export const GUARD_MARK = 'hearth-hkguard';
+/** 2.1.6 p20: app buttons (Netflix, Amazon, Disney+, Alexa, Assistant: 1037, 1038, 1042, 1086, 1117) are NOT bound to the recorder any more (p16 did; on the tester's TV the app still opened, so the press was not swallowed). *Add a button* reads the raw key devices and tells the user to come back to Hearth. The list stays for the user-facing check. */
+export const APP_BUTTON_CODES = [1037, 1038, 1042, 1086, 1117];
 export const GUARD_CODES = [773, 774, 125];
 export const GUARD_HITS = '/tmp/hearth-hkguard.hits';
 export const guardScriptPath = (code: number): string => `/tmp/${GUARD_MARK}-${code}.sh`;

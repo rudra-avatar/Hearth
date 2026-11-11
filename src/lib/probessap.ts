@@ -1,4 +1,4 @@
-// Probe tests 18-24 (Tests tab only): can a web app on this TV reach LG's remote-control protocol (SSAP) on the TV
+// Probe tests 14-23 (Tests tab only): can a web app on this TV reach LG's remote-control protocol (SSAP) on the TV
 // itself, pair without a computer, and read the full app list? Nothing is changed on the TV. Pairing shows a normal
 // "allow connection" prompt on screen. The saved key is only in this app's web storage (hearth-probe-ssap).
 
@@ -105,8 +105,8 @@ function loadSaved (): Saved | null {
 /** Reconnects to the saved endpoint with the saved key and runs `fn` on it. */
 function withSession<T> (fn: (ws: WebSocket) => Promise<T>): Promise<T> {
 	const saved = loadSaved();
-	if (!saved) return Promise.reject(new Error('no saved pairing: run test 21 first'));
-	if (saved.svc) return Promise.reject(new Error('paired through the helper service (21b): this test needs the page route; see 21c for the list'));
+	if (!saved) return Promise.reject(new Error('no saved pairing: run test 17 first'));
+	if (saved.svc) return Promise.reject(new Error('paired through the helper service (test 18): this test needs the page route; see test 19 for the list'));
 	return openSocket(saved.url).then((ws) => register(ws, saved.key, 8000, variantOf(saved.m)).then((r) => {
 		if (r.prompted) throw new Error('the TV asked for pairing again (the saved key was not accepted)');
 		return fn(ws);
@@ -136,12 +136,12 @@ const short = (url: string): string => url.replace('ws://', 'ws ').replace('wss:
 
 export const SSAP_TESTS: ProbeTest[] = [
 	{
-		id: 'ssapip', label: '18. SSAP: the TV\'s own address',
+		id: 'ssapip', label: '14. SSAP: the TV\'s own address',
 		description: 'Reads the TV\'s network address (needed to reach the remote-control service on itself).',
 		run: () => findIp().then((ip) => ip ? ok('TV address is ' + ip.replace(/\.\d+$/, '.x')) : no('the TV gave no address'), (e) => no(msg(e)))
 	},
 	{
-		id: 'ssapplain', label: '19. SSAP: plain connection (port 3000)',
+		id: 'ssapplain', label: '15. SSAP: plain connection (port 3000)',
 		description: 'Tries to open the remote-control port without encryption, on this TV\'s own address.',
 		run: () => findIp().catch(() => '').then((ip) => tryAll(endpoints(ip).filter((u) => u.startsWith('ws://')))).then((r) => ({
 			ok: r.some((x) => !x.err),
@@ -149,7 +149,7 @@ export const SSAP_TESTS: ProbeTest[] = [
 		}))
 	},
 	{
-		id: 'ssapsecure', label: '20. SSAP: encrypted connection (port 3001)',
+		id: 'ssapsecure', label: '16. SSAP: encrypted connection (port 3001)',
 		description: 'Tries the encrypted port. The TV uses its own certificate, so a web page may be refused.',
 		run: () => findIp().catch(() => '').then((ip) => tryAll(endpoints(ip).filter((u) => u.startsWith('wss://')))).then((r) => ({
 			ok: r.some((x) => !x.err),
@@ -157,13 +157,13 @@ export const SSAP_TESTS: ProbeTest[] = [
 		}))
 	},
 	{
-		id: 'ssappair', manual: true, label: '21. SSAP: pair with the TV (press OK)',
+		id: 'ssappair', manual: true, label: '17. SSAP: pair with the TV (press OK)',
 		description: 'Asks to connect. If the TV shows an "allow" message, press OK on the remote within 60 seconds. Needs "LG Connect Apps" on.',
 		run: () => {
 			const started = Date.now();
 			return findIp().catch(() => '').then((ip) => endpoints(ip).reduce((chain, url) => chain.then((found) => found ? found : openSocket(url).then(
 				(ws) => ({url, ws}), () => null as null | {url: string; ws: WebSocket})), Promise.resolve(null as null | {url: string; ws: WebSocket}))).then((found) => {
-				if (!found) return no('no remote-control port could be opened (see tests 19 and 20)');
+				if (!found) return no('no remote-control port could be opened (see tests 15 and 16)');
 				const saved = loadSaved();
 				const key = saved && saved.url === found.url ? saved.key : '';
 				const first: Variant = key ? variantOf(saved && saved.m) : 'new';
@@ -185,7 +185,7 @@ export const SSAP_TESTS: ProbeTest[] = [
 		}
 	},
 	{
-		id: 'ssapsvcpair', manual: true, label: '21b. SSAP: pair through the helper service (press OK)',
+		id: 'ssapsvcpair', manual: true, label: '18. SSAP: pair through the helper service (press OK)',
 		description: 'Hearth\'s helper service (in the app package) opens the remote-control port with other Origin headers. Press OK on the TV if it asks, within 60 seconds.',
 		run: () => {
 			const started = Date.now();
@@ -198,11 +198,11 @@ export const SSAP_TESTS: ProbeTest[] = [
 		}
 	},
 	{
-		id: 'ssapsvclist', label: '21c. SSAP: app list through the helper service',
-		description: 'Reads the list of apps through the helper service with the key saved by 21b.',
+		id: 'ssapsvclist', label: '19. SSAP: app list through the helper service',
+		description: 'Reads the list of apps through the helper service with the key saved by test 18.',
 		run: () => {
 			const saved = loadSaved();
-			if (!saved || !saved.svc) return Promise.resolve(no('no pairing through the helper service: run test 21b first'));
+			if (!saved || !saved.svc) return Promise.resolve(no('no pairing through the helper service: run test 18 first'));
 			return askViaService(saved.svc, saved.key, variantOf(saved.m), 'ssap://com.webos.applicationManager/listLaunchPoints').then((r) => {
 				if (!r) return no('the TV asked to pair again (the saved key was not accepted)');
 				const pts = r.launchPoints;
@@ -213,12 +213,12 @@ export const SSAP_TESTS: ProbeTest[] = [
 		}
 	},
 	{
-		id: 'ssapagain', label: '22. SSAP: reconnect without a prompt',
+		id: 'ssapagain', label: '20. SSAP: reconnect without a prompt',
 		description: 'Connects again with the saved key. It must not ask again.',
 		run: () => { const t = Date.now(); return withSession(() => Promise.resolve(Date.now() - t)).then((ms) => ok(`reconnected in ${ms} ms, no prompt`), (e) => no(msg(e))); }
 	},
 	{
-		id: 'ssaplist', label: '23. SSAP: list of all apps',
+		id: 'ssaplist', label: '21. SSAP: list of all apps',
 		description: 'Asks the TV for every app on its home screen (listLaunchPoints) through the remote-control service.',
 		run: () => withSession((ws) => request(ws, 'ssap://com.webos.applicationManager/listLaunchPoints')).then((r) => {
 			const pts = r.launchPoints;
@@ -229,7 +229,7 @@ export const SSAP_TESTS: ProbeTest[] = [
 		}, (e) => no(msg(e)))
 	},
 	{
-		id: 'ssapicons', label: '24. SSAP: showing the app icons',
+		id: 'ssapicons', label: '22. SSAP: showing the app icons',
 		description: 'Can the page show the icon pictures the list points to (first 4 apps)?',
 		run: () => withSession((ws) => request(ws, 'ssap://com.webos.applicationManager/listLaunchPoints')).then((r) => {
 			const pts = (Array.isArray(r.launchPoints) ? r.launchPoints : []).slice(0, 4) as Json[];
@@ -244,7 +244,7 @@ export const SSAP_TESTS: ProbeTest[] = [
 		}, (e) => no(msg(e)))
 	},
 	{
-		id: 'ssapinputs', label: '25. SSAP: TV inputs',
+		id: 'ssapinputs', label: '23. SSAP: TV inputs',
 		description: 'Reads the TV\'s input list through the remote-control service (extra, not required).',
 		run: () => withSession((ws) => request(ws, 'ssap://tv/getExternalInputList')).then((r) => {
 			const d = r.devices;

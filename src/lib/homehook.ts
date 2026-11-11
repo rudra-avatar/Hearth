@@ -7,6 +7,7 @@ import diagnoseSh from '../homehook/diagnose.sh?raw';
 import stockSh from '../homehook/stock.sh?raw';
 import watchSh from '../homehook/watch.sh?raw';
 import {exec} from './apps';
+import {detached} from './fdclean';
 import {classifyFailure, failureReason} from './failure';
 import {isWebOS} from './luna';
 import {t as tt} from '../i18n';
@@ -139,7 +140,7 @@ export function markAliveSoon (note?: string, repeat: boolean = true): void {
 	if (!isWebOS()) return;
 	const parts = [`touch '${ALIVE_FILE}'`];
 	if (note) parts.push(`echo "${logText(note)}" >> ${LOG_FILE}`);
-	if (repeat) parts.push(`( nohup sh -c "sleep 1; touch '${ALIVE_FILE}'; sleep 1; touch '${ALIVE_FILE}'" >/dev/null 2>&1 </dev/null & )`);
+	if (repeat) parts.push(detached(`sh -c "sleep 1; touch '${ALIVE_FILE}'; sleep 1; touch '${ALIVE_FILE}'"`));
 	exec(parts.join('; '), 4000).catch(() => undefined);
 }
 

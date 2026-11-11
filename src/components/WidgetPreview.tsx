@@ -8,8 +8,8 @@ import type {WeatherView} from '../lib/weather';
 const STRIP_W = 1000;      // the widget is drawn at full size in a strip this wide, then scaled to the free space
 const STRIP_H = 400;
 const SIZE = 190;          // the widget size shown here is fixed (the Widget size setting is not followed), so the preview is always as large as it can be
-const GAP = 16;            // clear space between the option list and the preview
-const EDGE = 20;           // clear space at the right of the screen
+const GAP = 20;            // clear space between the option list and the preview (p23a: 20, was 16; same as the help panel)
+const EDGE_PCT = 0.03125;  // p23a: clear space at the right of the screen = the Settings edge share (3.125%, 60 px at 1920; old: 20 px)
 const MIN_W = 160;         // narrower than this: no preview
 
 /** Settings -> Widget: a miniature of the home screen's widget, drawn from the live settings (P76).
@@ -23,7 +23,7 @@ export function WidgetPreview ({now, format, config, weather}: {now: Date; forma
 			const list = document.querySelector('.options');
 			const right = list ? layoutX(list.getBoundingClientRect().right) : 1465;
 			const left = Math.round(right + GAP);
-			const width = Math.floor(layoutSize().w - EDGE - left);
+			const width = Math.floor(layoutSize().w - Math.round(layoutSize().w * EDGE_PCT) - left);
 			setFree((was) => (was && was.left === left && was.width === width ? was : {left, width}));
 		};
 		measure();

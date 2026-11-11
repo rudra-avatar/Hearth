@@ -1,86 +1,37 @@
-// A short list of cities to pick from without typing (the picker can also search any place by name).
+// The city a fresh install starts with, and the picker's presets (W3: grouped by country, parsed only when the picker opens).
 // Coordinates are approximate city centres; the weather service does not need more.
 
 import type {City} from './weather';
+import {CITY_DATA} from './citydata';
 
-/** The city a fresh install (and "Reset Hearth visual settings to default") starts with. */
+/** The city a fresh install (and "Reset Hearth visual settings to default") starts with. The only city used at start-up. */
 export const DEFAULT_CITY: City = {name: 'Delhi', lat: 28.6139, lon: 77.2090, detail: 'India'};
 
-export const PRESET_CITIES: City[] = [
-	{name: 'Thiruvananthapuram', lat: 8.5241, lon: 76.9366, detail: 'Kerala, India'},
-	{name: 'Kochi', lat: 9.9312, lon: 76.2673, detail: 'Kerala, India'},
-	{name: 'Kozhikode', lat: 11.2588, lon: 75.7804, detail: 'Kerala, India'},
-	{name: 'Thrissur', lat: 10.5276, lon: 76.2144, detail: 'Kerala, India'},
-	{name: 'Kollam', lat: 8.8932, lon: 76.6141, detail: 'Kerala, India'},
-	{name: 'Kannur', lat: 11.8745, lon: 75.3704, detail: 'Kerala, India'},
-	{name: 'Bengaluru', lat: 12.9716, lon: 77.5946, detail: 'Karnataka, India'},
-	{name: 'Mysuru', lat: 12.2958, lon: 76.6394, detail: 'Karnataka, India'},
-	{name: 'Mangaluru', lat: 12.9141, lon: 74.8560, detail: 'Karnataka, India'},
-	{name: 'Chennai', lat: 13.0827, lon: 80.2707, detail: 'Tamil Nadu, India'},
-	{name: 'Coimbatore', lat: 11.0168, lon: 76.9558, detail: 'Tamil Nadu, India'},
-	{name: 'Madurai', lat: 9.9252, lon: 78.1198, detail: 'Tamil Nadu, India'},
-	{name: 'Hyderabad', lat: 17.3850, lon: 78.4867, detail: 'Telangana, India'},
-	{name: 'Visakhapatnam', lat: 17.6868, lon: 83.2185, detail: 'Andhra Pradesh, India'},
-	{name: 'Mumbai', lat: 19.0760, lon: 72.8777, detail: 'Maharashtra, India'},
-	{name: 'Pune', lat: 18.5204, lon: 73.8567, detail: 'Maharashtra, India'},
-	{name: 'Nagpur', lat: 21.1458, lon: 79.0882, detail: 'Maharashtra, India'},
-	{name: 'Panaji', lat: 15.4909, lon: 73.8278, detail: 'Goa, India'},
-	{name: 'Delhi', lat: 28.6139, lon: 77.2090, detail: 'India'},
-	{name: 'Jaipur', lat: 26.9124, lon: 75.7873, detail: 'Rajasthan, India'},
-	{name: 'Lucknow', lat: 26.8467, lon: 80.9462, detail: 'Uttar Pradesh, India'},
-	{name: 'Chandigarh', lat: 30.7333, lon: 76.7794, detail: 'India'},
-	{name: 'Ahmedabad', lat: 23.0225, lon: 72.5714, detail: 'Gujarat, India'},
-	{name: 'Surat', lat: 21.1702, lon: 72.8311, detail: 'Gujarat, India'},
-	{name: 'Bhopal', lat: 23.2599, lon: 77.4126, detail: 'Madhya Pradesh, India'},
-	{name: 'Indore', lat: 22.7196, lon: 75.8577, detail: 'Madhya Pradesh, India'},
-	{name: 'Kolkata', lat: 22.5726, lon: 88.3639, detail: 'West Bengal, India'},
-	{name: 'Bhubaneswar', lat: 20.2961, lon: 85.8245, detail: 'Odisha, India'},
-	{name: 'Patna', lat: 25.5941, lon: 85.1376, detail: 'Bihar, India'},
-	{name: 'Guwahati', lat: 26.1445, lon: 91.7362, detail: 'Assam, India'},
-	{name: 'Colombo', lat: 6.9271, lon: 79.8612, detail: 'Sri Lanka'},
-	{name: 'Kathmandu', lat: 27.7172, lon: 85.3240, detail: 'Nepal'},
-	{name: 'Dhaka', lat: 23.8103, lon: 90.4125, detail: 'Bangladesh'},
-	{name: 'Karachi', lat: 24.8607, lon: 67.0011, detail: 'Pakistan'},
-	{name: 'Lahore', lat: 31.5204, lon: 74.3587, detail: 'Pakistan'},
-	{name: 'Dubai', lat: 25.2048, lon: 55.2708, detail: 'United Arab Emirates'},
-	{name: 'Abu Dhabi', lat: 24.4539, lon: 54.3773, detail: 'United Arab Emirates'},
-	{name: 'Doha', lat: 25.2854, lon: 51.5310, detail: 'Qatar'},
-	{name: 'Riyadh', lat: 24.7136, lon: 46.6753, detail: 'Saudi Arabia'},
-	{name: 'Kuwait City', lat: 29.3759, lon: 47.9774, detail: 'Kuwait'},
-	{name: 'Muscat', lat: 23.5880, lon: 58.3829, detail: 'Oman'},
-	{name: 'Singapore', lat: 1.3521, lon: 103.8198, detail: 'Singapore'},
-	{name: 'Kuala Lumpur', lat: 3.1390, lon: 101.6869, detail: 'Malaysia'},
-	{name: 'Bangkok', lat: 13.7563, lon: 100.5018, detail: 'Thailand'},
-	{name: 'Jakarta', lat: -6.2088, lon: 106.8456, detail: 'Indonesia'},
-	{name: 'Manila', lat: 14.5995, lon: 120.9842, detail: 'Philippines'},
-	{name: 'Hong Kong', lat: 22.3193, lon: 114.1694, detail: 'China'},
-	{name: 'Shanghai', lat: 31.2304, lon: 121.4737, detail: 'China'},
-	{name: 'Beijing', lat: 39.9042, lon: 116.4074, detail: 'China'},
-	{name: 'Seoul', lat: 37.5665, lon: 126.9780, detail: 'South Korea'},
-	{name: 'Tokyo', lat: 35.6762, lon: 139.6503, detail: 'Japan'},
-	{name: 'Sydney', lat: -33.8688, lon: 151.2093, detail: 'Australia'},
-	{name: 'Melbourne', lat: -37.8136, lon: 144.9631, detail: 'Australia'},
-	{name: 'Auckland', lat: -36.8485, lon: 174.7633, detail: 'New Zealand'},
-	{name: 'London', lat: 51.5074, lon: -0.1278, detail: 'United Kingdom'},
-	{name: 'Dublin', lat: 53.3498, lon: -6.2603, detail: 'Ireland'},
-	{name: 'Paris', lat: 48.8566, lon: 2.3522, detail: 'France'},
-	{name: 'Amsterdam', lat: 52.3676, lon: 4.9041, detail: 'Netherlands'},
-	{name: 'Berlin', lat: 52.5200, lon: 13.4050, detail: 'Germany'},
-	{name: 'Madrid', lat: 40.4168, lon: -3.7038, detail: 'Spain'},
-	{name: 'Rome', lat: 41.9028, lon: 12.4964, detail: 'Italy'},
-	{name: 'Istanbul', lat: 41.0082, lon: 28.9784, detail: 'Turkey'},
-	{name: 'Moscow', lat: 55.7558, lon: 37.6173, detail: 'Russia'},
-	{name: 'Cairo', lat: 30.0444, lon: 31.2357, detail: 'Egypt'},
-	{name: 'Lagos', lat: 6.5244, lon: 3.3792, detail: 'Nigeria'},
-	{name: 'Nairobi', lat: -1.2921, lon: 36.8219, detail: 'Kenya'},
-	{name: 'Johannesburg', lat: -26.2041, lon: 28.0473, detail: 'South Africa'},
-	{name: 'Cape Town', lat: -33.9249, lon: 18.4241, detail: 'South Africa'},
-	{name: 'New York', lat: 40.7128, lon: -74.0060, detail: 'United States'},
-	{name: 'Los Angeles', lat: 34.0522, lon: -118.2437, detail: 'United States'},
-	{name: 'Chicago', lat: 41.8781, lon: -87.6298, detail: 'United States'},
-	{name: 'Toronto', lat: 43.6532, lon: -79.3832, detail: 'Canada'},
-	{name: 'Vancouver', lat: 49.2827, lon: -123.1207, detail: 'Canada'},
-	{name: 'Mexico City', lat: 19.4326, lon: -99.1332, detail: 'Mexico'},
-	{name: 'São Paulo', lat: -23.5505, lon: -46.6333, detail: 'Brazil'},
-	{name: 'Buenos Aires', lat: -34.6037, lon: -58.3816, detail: 'Argentina'}
-];
+/** At most this many presets per country (checked by scripts/test-cities.mjs). */
+export const MAX_CITIES_PER_COUNTRY = 50;
+
+export interface Country {
+	name: string;
+	cities: City[];
+}
+
+let parsed: Country[] | null = null;
+
+/** Parses one country's data string: 'name|lat|lon|region;...'. Entries with bad numbers are skipped. */
+export function parseCountry (country: string, data: string): Country {
+	const cities: City[] = [];
+	data.split(';').forEach((entry) => {
+		const p = entry.split('|');
+		const lat = parseFloat(p[1]);
+		const lon = parseFloat(p[2]);
+		if (!p[0] || isNaN(lat) || isNaN(lon)) return;
+		cities.push({name: p[0], lat, lon, detail: p[3] ? p[3] + ', ' + country : country});
+	});
+	return {name: country, cities};
+}
+
+/** All countries with their preset cities (parsed on first call, then kept; never called at start-up). */
+export function countries (): Country[] {
+	if (!parsed) parsed = CITY_DATA.map((c) => parseCountry(c[0], c[1]));
+	return parsed;
+}

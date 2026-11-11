@@ -11,7 +11,7 @@ const clip = (text: string, n = 230): string => (text.length > n ? text.slice(0,
 const KEYS = [37, 38, 39, 40];
 const now = (): number => (performance.now ? performance.now() : Date.now());
 
-interface Stats {
+export interface Stats {
 	frames: number;
 	avg: number;
 	worst: number;
@@ -24,7 +24,7 @@ interface Stats {
 }
 
 /** Measures frames and key-to-picture delay for totalMs, ignoring the first skipMs. */
-function measure (totalMs: number, skipMs: number): Promise<Stats> {
+export function measure (totalMs: number, skipMs: number): Promise<Stats> {
 	return new Promise<Stats>((resolve) => {
 		const gaps: number[] = [];
 		const delays: number[] = [];
@@ -78,7 +78,7 @@ function frameText (s: Stats, withKeys: boolean): ProbeResult {
 }
 
 /** R11: how many frames came at 60 fps (up to 18.5 ms), at about 30 fps and slower; median and slowest 5 %. */
-function fpsText (s: Stats): ProbeResult {
+export function fpsText (s: Stats): ProbeResult {
 	if (s.frames < 5) return {ok: false, text: 'FAILED: too few frames seen (the page was hidden?)'};
 	const g = s.gaps.slice().sort((a, b) => a - b);
 	const share = (from: number, to: number) => pct(g.filter((x) => x > from && x <= to).length, g.length);
@@ -100,28 +100,28 @@ function startup (): Promise<ProbeResult> {
 
 export const PERF_TESTS: ProbeTest[] = [
 	{
-		id: 'startup', label: '28. Start-up times and memory',
+		id: 'startup', label: '26. Start-up times and memory',
 		description: 'Shows when the script started, the first picture was drawn and the app list arrived (ms since the page began loading), plus memory. Best read right after Hearth was started.',
 		run: startup
 	},
 	{
-		id: 'frames-idle', manual: true, label: '29. Frame timer, nothing pressed (6 s)',
+		id: 'frames-idle', manual: true, label: '27. Frame timer, nothing pressed (6 s)',
 		description: 'Counts screen refreshes for 6 seconds without touching anything. Shows whether the clock, slideshow or fades make the picture stutter.',
 		run: () => measure(6000, 500).then((s) => frameText(s, false))
 	},
 	{
-		id: 'frames-keys', manual: true, label: '30. Frame timer and key delay, Settings (15 s)',
+		id: 'frames-keys', manual: true, label: '28. Frame timer and key delay, Settings (15 s)',
 		description: 'For 15 seconds press the arrow keys steadily to move up and down this list. Measures frame times and how long a key takes to show on screen.',
 		run: () => measure(15000, 0).then((s) => frameText(s, true))
 	},
 	{
-		id: 'frames-home', manual: true, label: '31. Frame timer and key delay, Home (25 s)',
+		id: 'frames-home', manual: true, label: '29. Frame timer and key delay, Home (25 s)',
 		description: 'Start it, then press Back to leave Settings. After 5 seconds move along the home row with the arrow keys until 25 seconds pass. Then open Settings > Tests for the answer.',
 		run: () => measure(25000, 5000).then((s) => frameText(s, true))
 	},
 	{
-		id: 'fps60', manual: true, label: '37. 60 FPS check, Home (25 s)',
-		description: 'Same steps as test 31. Shows the share of frames at 60 fps, at about 30 fps and slower, the median frame time and the slowest 5 %. Measures only.',
+		id: 'fps60', manual: true, label: '35. 60 FPS check, Home (25 s)',
+		description: 'Same steps as test 29. Shows the share of frames at 60 fps, at about 30 fps and slower, the median frame time and the slowest 5 %. Measures only.',
 		run: () => measure(25000, 5000).then(fpsText)
 	}
 ];

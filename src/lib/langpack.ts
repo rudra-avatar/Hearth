@@ -16,6 +16,8 @@ export const MAKE_LANGUAGE_FOLDER = `mkdir -p ${LANGUAGE_FOLDER} 2>/dev/null; ec
 export const PACK_MAX_BYTES = 400000;
 const NAME_MAX = 30;
 const TEXT_MAX = 1000;
+/** Keys whose text may be empty (a language without a plural ending, e.g. Thai). Same list in scripts/gen-bundled-languages.mjs and scripts/lang-check.mjs. */
+const EMPTY_OK = ['homekey.pluralSuffix'];
 const SHOWN_ERRORS = 5;
 
 export type PackCheck = ({ok: true} & PackData) | {ok: false; errors: string[]};
@@ -43,7 +45,7 @@ export function validatePack (text: string): PackCheck {
 	for (const key of Object.keys(raw)) {
 		if (!has(en, key)) { ignored++; continue; }
 		const v = raw[key];
-		if (typeof v !== 'string' || !v.length) { errors.push(`${key}: must be a non-empty text`); continue; }
+		if (typeof v !== 'string' || (!v.length && EMPTY_OK.indexOf(key) < 0)) { errors.push(`${key}: must be a non-empty text`); continue; }
 		if (v.length > TEXT_MAX || CONTROL.test(v)) { errors.push(`${key}: too long or has a control character`); continue; }
 		if (placeholders(v) !== placeholders((en as Record<string, string>)[key])) { errors.push(`${key}: the {placeholders} differ from English (${placeholders((en as Record<string, string>)[key]) || 'none'})`); continue; }
 		strings[key] = v;

@@ -31,9 +31,12 @@
 # settings (a file next to this script, one key=value per line): source (a folder or one picture; empty or missing =
 # the bundled photos), interval (seconds between pictures, 5 to 3600), shuffle (1 or 0), dim (1 or 0: a black
 # layer over the picture, about 60% brightness), poweroff (seconds of screen saver before the TV is switched off; 0 = never), care (1 on, 0 off: a thin frame and a slow drift for one picture, GIF or video), fill (0 fit the whole picture, 1 crop to fill the screen; pictures, GIFs and videos).
-# dimlevel (10 to 80: how dark Dim is, % opacity of the black layer; default 40).
+# dimlevel (10 to 80: how dark Dim is, % opacity of the black layer; default 40). driftms (4000 to 60000, default 60000; Tests tab only). overlay (0 or 1, default 0: the Q6 probe overlay; Tests tab only).
 # recursive (1: a folder's sub-folders are used too, all levels; 0: only the folder itself). There is no limit on the number of items.
 # source may also be @photos (the bundled photos), @video (the built-in video) or @photo:photo-NN (one bundled photo).
+# A source under /tmp/hearth-netfolder (the network folder, see public/netfolder/netfolder.sh) is connected first, here at
+# apply and in the boot job; when the share cannot be reached the saver default is used: the built-in video (the bundled
+# photos when that file is missing).
 
 DIR="${DIR:-/media/developer/launcher-screensaver}"
 APP="${APP:-/usr/palm/applications/com.webos.app.screensaver}"
@@ -55,10 +58,28 @@ MOUNT="${MOUNT_CMD:-mount}"
 UMOUNT="${UMOUNT_CMD:-umount}"
 NAP="${NAP:-sleep}"
 LOWPRI=""; command -v nice >/dev/null 2>&1 && LOWPRI="nice -n 19"   # the boot job must not compete with the Home button start-up (P52d)
+NETSH="${NETSH:-$LAUNCHER/netfolder/netfolder.sh}"          # the network folder script (Hearth's own)
+NETMNT="${NETMNT:-/tmp/hearth-netfolder}"                   # where it mounts the share
+NETFAIL="${NETFAIL:-$DIR/netfail}"                          # exists while the chosen share could not be reached at the last build
 WATCH_PID="${WATCH_PID:-$DIR/watch.pid}"                     # the power-off watcher (one process)
 POLL="${POLL:-5}"                                            # seconds between looks at the TV's power state
 
 log () { echo "$(date '+%H:%M:%S') $*" >> "$LOG" 2>/dev/null; }
+# >>> fdclean (the same lines in every helper; checked by scripts/test-fdclean.sh) >>>
+# #54: a helper started through the Homebrew service inherits its sockets (fds 3 and up) and a stuck registration can follow.
+# fdclean closes every fd above 2 in the process that runs it (use it in the background part, before `exec`); a shell that
+# cannot name a two-digit fd (dash) closes only fds 3 to 9. fdnote prints the count for the log.
+fdclean () {
+    _w=0; ( eval "exec 10>&-" ) 2>/dev/null && _w=1
+    for _f in /proc/self/fd/*; do
+        _n=${_f##*/}
+        case "$_n" in ''|*[!0-9]*|0|1|2) continue ;; esac
+        [ "${#_n}" -gt 1 ] && [ "$_w" = 0 ] && continue
+        eval "exec $_n>&-" 2>/dev/null
+    done
+}
+fdnote () { set -- /proc/self/fd/*; echo "fds=$#"; }
+# <<< fdclean <<<
 
 # the QML file the TV's screen saver app loads: the "main" of its manifest, else the usual names
 find_target () {
@@ -98,12 +119,29 @@ folder_lines () {
     find -L "$1" $depth -type f 2>/dev/null | grep -i -E '\.(jpe?g|png|gif|mp4|m4v|mov|mkv|webm)$' | sort | grep -v '/\.' | grep -v '["\#%?]' | sed -e 's/ /%20/g' -e 's|^|        "file://|' -e 's|$|",|'
 }
 
+# connects the network folder from its saved settings (on demand, nothing is kept at start-up). 0 = the share answers.
+# Where the TV has `timeout` the connect gives up after 25 s (an unreachable NAS must not hold the apply for long).
+net_connect () {
+    [ -f "$NETSH" ] || { log "network folder: its script is missing"; return 1; }
+    if command -v timeout >/dev/null 2>&1; then out=$(timeout 25 sh "$NETSH" mount 2>/dev/null); else out=$(sh "$NETSH" mount 2>/dev/null); fi
+    if printf '%s\n' "$out" | grep -q '^result=ok'; then log "network folder: connected"; return 0; fi
+    log "network folder: not connected ($(printf '%s\n' "$out" | sed -n 's/^result=//p' | tail -n 1))"
+    return 1
+}
+
 list_photos () {
     src=$(setting source)
     case "$src" in
         @photos) src="" ;;                                  # the bundled photos
         @video) src="$LAUNCHER/saver/builtin.mp4" ;;        # the built-in video
+        @probe) src="$LAUNCHER/saver/probe-light.mp4" ;;    # Q5 test only: a 1 s light video (Tests tab 49-51)
         @photo:photo-[0-9][0-9]) src="$LAUNCHER/wallpapers/${src#@photo:}.jpg" ;;   # one built-in photo (the wallpaper)
+    esac
+    # a source on the network folder: connect it first; not reachable = the saver default (the built-in video), and a mark
+    # for the boot job
+    rm -f "$NETFAIL"
+    case "$src" in
+        "$NETMNT"|"$NETMNT"/*) if ! net_connect; then : > "$NETFAIL"; src="$LAUNCHER/saver/builtin.mp4"; fi ;;
     esac
     part="$DIR/photos.part"
     : > "$part"
@@ -124,6 +162,7 @@ list_photos () {
 build_qml () {
     [ -f "$TEMPLATE" ] || return 1
     [ "$(setting source)" = "@video" ] && [ ! -f "$LAUNCHER/saver/builtin.mp4" ] && return 3
+    [ "$(setting source)" = "@probe" ] && [ ! -f "$LAUNCHER/saver/probe-light.mp4" ] && return 3
     list="$DIR/photos.tmp"
     list_photos > "$list"
     [ -s "$list" ] || { rm -f "$list"; return 2; }
@@ -133,8 +172,12 @@ build_qml () {
     care=$(num "$(setting care)" 1); [ "$care" -gt 1 ] && care=1
     fill=$(num "$(setting fill)" 0); [ "$fill" -gt 1 ] && fill=1
     dimlevel=$(num "$(setting dimlevel)" 40); [ "$dimlevel" -lt 10 ] && dimlevel=10; [ "$dimlevel" -gt 80 ] && dimlevel=80
+    # Q5 test only: the care drift step in ms (default 60000, one step a minute); the Tests tab sets 8000 to watch the slide
+    driftms=$(num "$(setting driftms)" 60000); [ "$driftms" -lt 4000 ] && driftms=4000; [ "$driftms" -gt 60000 ] && driftms=60000
+    # Q6 test only: 1 draws the probe overlay (Tests tab 49-53); never set in normal use
+    overlay=$(num "$(setting overlay)" 0); [ "$overlay" -gt 1 ] && overlay=1
     # the settings first (one sed), then the photo list in place of its marker line (no program started per line)
-    sed -e "s/__INTERVAL__/$interval/" -e "s/__SHUFFLE__/$shuffle/" -e "s/__DIM__/$dim/" -e "s/__CARE__/$care/" -e "s/__FILL__/$fill/" -e "s/__DIMLEVEL__/$dimlevel/" "$TEMPLATE" > "$QML.tmp" || return 1
+    sed -e "s/__INTERVAL__/$interval/" -e "s/__SHUFFLE__/$shuffle/" -e "s/__DIM__/$dim/" -e "s/__CARE__/$care/" -e "s/__FILL__/$fill/" -e "s/__DIMLEVEL__/$dimlevel/" -e "s/__DRIFTMS__/$driftms/" -e "s/__OVERLAY__/$overlay/" "$TEMPLATE" > "$QML.tmp" || return 1
     : > "$QML.new"
     while IFS= read -r line; do
         case "$line" in
@@ -286,6 +329,11 @@ power_state () {
 
 in_saver () { case "$1" in *[Ss]creen*[Ss]aver*) return 0 ;; *) return 1 ;; esac; }
 
+# #48 probe (log only): the app in front when the TV enters the saver (one luna-send, only on that change)
+foreground_app () {
+    "$LUNA" -n 1 luna://com.webos.service.applicationmanager/getForegroundAppInfo '{}' 2>/dev/null | tr -d '\n' | sed -n 's/.*"appId"[^"]*"\([^"]*\)".*/\1/p' | head -n 1
+}
+
 power_off_now () {
     st=$(power_state)
     in_saver "$st" || { log "power off skipped: the state is now '$st'"; return 0; }
@@ -310,7 +358,11 @@ watch_loop () {
     log "power-off watcher started: $secs s"
     while :; do
         st=$(power_state)
-        [ "$st" != "$last" ] && { log "power state: '$st'"; last="$st"; }
+        if [ "$st" != "$last" ]; then
+            log "power state: '$st'"
+            in_saver "$st" && log "saver start: app in front '$(foreground_app)' (was '$last')"
+            last="$st"
+        fi
         if in_saver "$st"; then
             t=$(now)
             [ "$since" -eq 0 ] && since="$t"
@@ -346,7 +398,7 @@ start_watcher () {
     fi
     stop_watcher
     [ "$secs" -gt 0 ] || return 0
-    if [ -n "$DRY_RUN" ]; then watch_loop "$secs"; else ( nohup sh "$0" watchjob >/dev/null 2>&1 </dev/null & ); fi
+    if [ -n "$DRY_RUN" ]; then watch_loop "$secs"; else ( { fdclean; exec nohup sh "$0" watchjob; } >/dev/null 2>&1 </dev/null & ); fi
 }
 
 cmd_watchjob () {
@@ -380,7 +432,7 @@ cmd_apply () {
 
 cmd_off () {
     log "off"
-    rm -f "$FLAG" "$LINK"
+    rm -f "$FLAG" "$LINK" "$NETFAIL"
     stop_watcher
     unmount_all
     restore_sam
@@ -399,6 +451,7 @@ clean_self () {
 }
 
 boot_job () {
+    log "boot job started ($(fdnote))"
     $NAP 20      # nothing here is needed in the first seconds of a start: the Home button work goes first (P52d)
     # the app storage can be slow to appear at start-up: look a few times before deciding Hearth is gone
     n=0
@@ -412,6 +465,14 @@ boot_job () {
         $NAP 15; n=$((n + 1))
         result=$(take | tail -n 1)
     done
+    # the chosen network folder may not be reachable this early (the network or the NAS comes up later): the built-in video
+    # plays meanwhile; look again every 20 s for 2 minutes and rebuild the list once the share answers
+    n=0
+    while [ "$result" = applied ] && [ -f "$NETFAIL" ] && [ "$n" -lt 6 ]; do
+        $NAP 20; n=$((n + 1))
+        net_connect && result=$(take | tail -n 1)
+    done
+    [ -f "$NETFAIL" ] && log "boot: network folder not reachable, the built-in video is used"
     log "boot: $result"
     [ "$result" = applied ] && start_watcher
     return 0
@@ -419,7 +480,7 @@ boot_job () {
 
 cmd_boot () {
     [ -f "$FLAG" ] || exit 0
-    if [ -n "$DRY_RUN" ]; then boot_job; else ( nohup $LOWPRI sh "$0" bootjob >/dev/null 2>&1 </dev/null & ); fi
+    if [ -n "$DRY_RUN" ]; then boot_job; else ( { fdclean; exec nohup $LOWPRI sh "$0" bootjob; } >/dev/null 2>&1 </dev/null & ); fi
 }
 
 cmd_show () {

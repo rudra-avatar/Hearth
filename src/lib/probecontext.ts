@@ -1,4 +1,4 @@
-// J: what test 37 (and 44) also writes about this TV's state: backdrop, wallpaper, helper, SAM, keep-ready, storage total. app.tsx supplies the function.
+// J: what test 35 (and 36) also writes about this TV's state: backdrop, wallpaper, helper, SAM, keep-ready, storage total. app.tsx supplies the function.
 let provider: (() => string) | null = null;
 export function setProbeContext (fn: (() => string) | null): void { provider = fn; }
 export function probeContext (): string {

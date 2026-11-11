@@ -37,6 +37,21 @@ BAR_PATTERN='*NL_HOME_SHOWN*'
 BAR_ON_LAUNCHER="*\"foregroundId\":\"$LAUNCHER_ID\"*"
 
 log () { { read _up _ < /proc/uptime; } 2>/dev/null; echo "$(date '+%H:%M:%S') up=${_up%%.*}s watcher: $*" >> "$LOG"; }   # P70e: no extra process for the uptime
+# >>> fdclean (the same lines in every helper; checked by scripts/test-fdclean.sh) >>>
+# #54: a helper started through the Homebrew service inherits its sockets (fds 3 and up) and a stuck registration can follow.
+# fdclean closes every fd above 2 in the process that runs it (use it in the background part, before `exec`); a shell that
+# cannot name a two-digit fd (dash) closes only fds 3 to 9. fdnote prints the count for the log.
+fdclean () {
+    _w=0; ( eval "exec 10>&-" ) 2>/dev/null && _w=1
+    for _f in /proc/self/fd/*; do
+        _n=${_f##*/}
+        case "$_n" in ''|*[!0-9]*|0|1|2) continue ;; esac
+        [ "${#_n}" -gt 1 ] && [ "$_w" = 0 ] && continue
+        eval "exec $_n>&-" 2>/dev/null
+    done
+}
+fdnote () { set -- /proc/self/fd/*; echo "fds=$#"; }
+# <<< fdclean <<<
 
 # "Keep Hearth ready" (on; its own script makes the file) makes every opening that starts the launcher ask for keepAlive,
 # so the TV keeps the launcher in memory when another app is opened (P69, one switch since P73).
@@ -231,7 +246,7 @@ echo $$ > "$PIDFILE"
 rm -f "$VLOCK" "$VFIX"
 # (a stop request is only noticed when the current command ends, so the launcher stops the watcher with kill -9 instead)
 trap 'pkill -P $$ 2>/dev/null; [ "$(cat "$PIDFILE" 2>/dev/null)" = "$$" ] && rm -f "$PIDFILE"; exit 0' TERM INT
-log "started (pid $$)"
+log "started (pid $$, $(fdnote))"
 
 if [ ! -d "$HOME_APP_DIR" ]; then
     # webOS 3: look at the end of the system log a few times a second. Reading the last lines

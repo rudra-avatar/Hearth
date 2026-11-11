@@ -1,5 +1,7 @@
 import {log} from '../lib/log';
-import {useCallback, useEffect, useMemo, useRef, useState} from 'preact/hooks';
+import {exec} from '../lib/apps';
+import {QUIET_OFF_COMMAND} from '../lib/quietoff';
+import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'preact/hooks';
 import {Clock} from '../components/Clock';
 import {Row} from '../components/Row';
 import type {TileModel} from '../components/Tile';
@@ -8,16 +10,22 @@ import {useOkPress} from '../hooks/useOkPress';
 import {useClock} from '../hooks/useClock';
 import type {TimeFormat} from '../lib/clock';
 import {clampPosition, favouriteSizes, favouriteSplit, initialPosition, movePosition, positionOf, rowOffsets, splitRows, type RowsPosition} from '../lib/rows';
-import {labelColorValue} from '../lib/clockcolor';
-import {fontFamily, type ClockFont} from '../lib/clockfont';
-import {initialStepState, stepDecision, type ScrollSpeed} from '../lib/scrollspeed';
+import {tileSizes, rowsScope, rowsClasses, rowsStyle, rowSide} from '../lib/homelook';
+import {edgeSpeedFactor, initialStepState, stepDecision, type ScrollSpeed} from '../lib/scrollspeed';
 import type {ClockConfig} from '../lib/storage';
 import type {WeatherView} from '../lib/weather';
-import {FONT, LAYOUT} from '../theme/tokens';
+import {LAYOUT} from '../theme/tokens';
 import {varScope} from '../lib/cssvars';
 import {moveGroup, movesFor} from '../lib/tileorder';
 import {createPointerGuard} from '../lib/pointerguard';
+import {tileSlot} from '../lib/tileslot';
+import {hoverSelected, hoverCancel} from '../lib/pointer';
 import {t as tt} from '../i18n';
+
+const ROWS_SHUT_MS = 520;       // p20 (user): Up, the second row goes away and the favourites row glides back down: slower and with a soft start (old: the opening glide, 360 ms ease-out, felt like springing back)
+const ROWS_FADE_MS = 160;        // p25a: the second row fades out this fast on Up (p30, user: shorter; old: 240)
+const ROWS_SHUT_EASE = 'cubic-bezier(0.45, 0, 0.25, 1)';
+const ROWS_GLIDE_MS = 360;       // p12: how long the favourites row glides when the second row opens or shuts (p13: was 240, user wanted it slightly slower; same as the new row's fade in global.css)
 
 export interface Appearance {
 	/** icon size, % of the standard size */
@@ -41,6 +49,8 @@ export interface Appearance {
 	quietDimSec: number;
 	/** quiet mode dim strength, % darkness (10-80) */
 	quietDimLevel: number;
+	/** QP: seconds after the apps hide before the TV is switched off (0 = never; rooted TVs) */
+	quietPowerOff: number;
 	/** OLED shift on */
 	oledShift: boolean;
 	/** px at 1080p */
@@ -116,6 +126,20 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 	const favN = split.favourites;
 	const [open, setOpen] = useState(false);
 	const everOpen = useRef(false);
+	const rowsRef = useRef<HTMLDivElement>(null);
+	const topBefore = useRef<number | null>(null);        // p12: where the favourites row was (screen pixels) before Down/Up changed the rows
+	const ghostFrom = useRef<{node: HTMLElement; top: number; left: number; width: number} | null>(null);    // p25a: the second row as it was, to fade it out while the favourites row glides down
+	const ghostEl = useRef<HTMLElement | null>(null);
+	const dropGhost = () => { const g = ghostEl.current; ghostEl.current = null; if (g && g.parentNode) g.parentNode.removeChild(g); };
+	const noteTop = (closing?: boolean) => {
+		dropGhost();
+		const box = rowsRef.current;
+		const el = box && box.children[0] as HTMLElement | undefined;
+		topBefore.current = el ? el.getBoundingClientRect().top : null;       // p25a: was offsetTop inside the bottom-anchored box = 0 before and after, so the glide never ran
+		ghostFrom.current = null;
+		const second = closing && box && box.children[1] as HTMLElement | undefined;
+		if (second) { const r = second.getBoundingClientRect(); ghostFrom.current = {node: second.cloneNode(true) as HTMLElement, top: r.top, left: r.left, width: r.width}; }
+	};
 	const sizes = favN ? favouriteSizes(favN, items.length, open) : splitRows(items.length, appearance.rows);
 	const offsets = rowOffsets(sizes);
 	const at = clampPosition(sizes, position);
@@ -124,6 +148,42 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 	const openRef = useRef(false);
 	const rowRef = useRef(0);
 	openRef.current = open;
+	// p12 (user, option B): the favourites row glides to its new place with a transform (compositor only) instead of the whole block fading in; the new row only fades (CSS)
+	useLayoutEffect(() => {
+		const before = topBefore.current;
+		topBefore.current = null;
+		const ghost = ghostFrom.current;
+		ghostFrom.current = null;
+		const box = rowsRef.current;
+		const el = box && box.children[0] as HTMLElement | undefined;
+		if (before === null || !el || !box) return;
+		const rect = el.getBoundingClientRect();
+		const scale = el.offsetHeight && rect.height ? rect.height / el.offsetHeight : 1;       // a fitted screen is scaled: transforms are in unscaled pixels
+		const delta = (before - rect.top) / scale;
+		if (!delta || delta > 600 || delta < -600) return;
+		const ms = open ? ROWS_GLIDE_MS : ROWS_SHUT_MS;
+		let fadeTimer = 0;
+		if (ghost && !open) {          // p25a: Up: the second row fades out where it was while the favourites row glides down (it used to vanish at once)
+			const b = box.getBoundingClientRect();
+			const g = ghost.node;
+			g.style.cssText = `position:absolute;margin:0;pointer-events:none;top:${(ghost.top - b.top) / scale}px;left:${(ghost.left - b.left) / scale}px;width:${ghost.width / scale}px;opacity:1;-webkit-transition:opacity ${ROWS_FADE_MS}ms ease-out;transition:opacity ${ROWS_FADE_MS}ms ease-out`;
+			box.appendChild(g);
+			ghostEl.current = g;
+			void g.offsetWidth;
+			g.style.opacity = '0';
+			fadeTimer = window.setTimeout(dropGhost, ROWS_FADE_MS + 80);
+		}
+		el.style.position = 'relative';
+		el.style.zIndex = '1';
+		el.style.transition = 'none';
+		el.style.transform = `translate3d(0, ${delta}px, 0)`;
+		void el.offsetWidth;
+		el.style.transition = `transform ${ms}ms ${open ? 'ease-out' : ROWS_SHUT_EASE}`;
+		el.style.transform = 'translate3d(0, 0, 0)';
+		const reset = () => { el.style.transition = ''; el.style.transform = ''; el.style.position = ''; el.style.zIndex = ''; };
+		const t = window.setTimeout(reset, ms + 60);
+		return () => { window.clearTimeout(t); window.clearTimeout(fadeTimer); reset(); dropGhost(); };
+	}, [open]);
 	if (open) everOpen.current = true;
 	rowRef.current = at.row;
 	const posRef = useRef(position);
@@ -146,10 +206,22 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 	const tileKeysRef = useRef(tileKeys);
 	tileKeysRef.current = tileKeys;
 
+	// The tile under the pointer gets the highlight (wake from quiet mode). Reads refs: it is called from an effect registered once.
+	const pickRef = useRef<(node: unknown) => void>(() => undefined);
+	pickRef.current = (node) => {
+		const slot = tileSlot(node);
+		if (!slot || moveRef.current || slot.row >= sizes.length || slot.col >= sizes[slot.row]) return;
+		pendingKey.current = null;
+		hoverSelected();
+		setPosition((p) => ({row: slot.row, cols: clampPosition(sizes, p).cols.map((c, i) => (i === slot.row ? slot.col : c))}));
+	};
+	useEffect(() => hoverCancel, []);
+
 	// Quiet mode: hide the apps after quietSec without a key; the first key (or pointer move) brings them back and is used up.
 	useEffect(() => {
 		const secs = appearance.quietSec;
 		const dimSecs = appearance.quietDimSec;
+		const offSecs = appearance.quietPowerOff;
 		quietRef.current = false;
 		setQuiet(false);
 		setDimmed(false);
@@ -158,28 +230,37 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 		let hidden = false;
 		let swallow = false;
 		let dimTimer = 0;
+		let offTimer = 0;
 		const arm = () => {
 			window.clearTimeout(timer);
 			window.clearTimeout(dimTimer);
+			window.clearTimeout(offTimer);
 			timer = window.setTimeout(() => {
 				hidden = true; quietRef.current = true; setQuiet(true);
 				if (moveRef.current && moveCb.current.onMoveExit) moveCb.current.onMoveExit();       // U2: quiet mode puts the picked-up tile down, saves the order and leaves the move mode
 				// the screen dims a set time after the apps hide
 				if (dimSecs) dimTimer = window.setTimeout(() => setDimmed(true), dimSecs * 1000);
+				// QP: the TV switches off a set time after the apps hide (rooted TVs; a failed call changes nothing)
+				if (offSecs) offTimer = window.setTimeout(() => { exec(QUIET_OFF_COMMAND, 15000).catch(() => undefined); }, offSecs * 1000);
 			}, secs * 1000);
 		};
-		const wake = () => { hidden = false; setQuiet(false); setDimmed(false); window.clearTimeout(dimTimer); };
+		const wake = () => { hidden = false; setQuiet(false); setDimmed(false); window.clearTimeout(dimTimer); window.clearTimeout(offTimer); };
 		const onDown = () => { if (hidden) { swallow = true; wake(); } arm(); };
 		const onUp = () => { if (swallow) window.setTimeout(() => { swallow = false; quietRef.current = false; }, 0); };
-		// Pointer: the waking move or press only wakes (it hovers and clicks nothing until the pointer rests); repeated moves at one spot are ignored.
+		// Pointer (2.1.6 M1): a waking move wakes the apps and selects the tile under the pointer once; nothing is held back after that.
+		// A waking press only wakes (its release and click are used up), also selecting the tile it points at. Repeated moves at one spot and
+		// tremor under 3 px are ignored (they neither wake nor keep awake); enter/over events never wake.
 		const guard = createPointerGuard();
 		const onPointer = (e: Event) => {
-			const m = e as MouseEvent;
-			if (e.type === 'mouseover' || e.type === 'mouseenter' || e.type === 'mouseup') { if (guard.blocks(e.type)) e.stopImmediatePropagation(); return; }   // never wake or keep awake, only guarded
-			if (e.type === 'mousemove' && guard.sameSpot(m.screenX, m.screenY)) return;
-			if (hidden) { guard.wake(e.type); wake(); quietRef.current = false; }
-			else if (e.type === 'mousemove') guard.move();
-			if (guard.blocks(e.type)) e.stopImmediatePropagation();
+			const type = e.type;
+			if (type === 'mouseover' || type === 'mouseenter') return;
+			if (type === 'mouseup') { if (guard.blocks(type)) e.stopImmediatePropagation(); return; }
+			if (type === 'mousemove') { const m = e as MouseEvent; if (guard.sameSpot(m.screenX, m.screenY) || !guard.farEnough(m.screenX, m.screenY)) return; }
+			if (hidden) {
+				guard.wake(type); wake(); quietRef.current = false;
+				if (type === 'mousemove' || type === 'mousedown') pickRef.current(e.target);
+			}
+			if (guard.blocks(type)) e.stopImmediatePropagation();
 			arm();
 		};
 		const PTR = ['mousemove', 'mouseover', 'mouseenter', 'mousedown', 'mouseup', 'click', 'wheel'];
@@ -190,13 +271,14 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 		return () => {
 			window.clearTimeout(timer);
 			window.clearTimeout(dimTimer);
+			window.clearTimeout(offTimer);
 			window.removeEventListener('keydown', onDown, true);
 			window.removeEventListener('keyup', onUp, true);
 			for (const type of PTR) window.removeEventListener(type, onPointer, true);
 			guard.stop();
 			quietRef.current = false;
 		};
-	}, [appearance.quietSec, appearance.quietDimSec, active, paused, wake]);
+	}, [appearance.quietSec, appearance.quietDimSec, appearance.quietPowerOff, active, paused, wake]);
 
 	// Quiet mode also hides the wallpaper's bottom fade (CSS: `.hearth-quiet .wallpaper__fade`).
 	useEffect(() => {
@@ -280,11 +362,13 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 			if (!d.move) return true;
 		}
 		if (favN > 0 && key === 'down' && !openRef.current && items.length > favN) {       // bring up the row of all the other apps
+			noteTop();
 			setOpen(true);
 			setPosition((p) => movePosition(favouriteSizes(favN, items.length, true), p, 'down'));
 			return true;
 		}
 		if (favN > 0 && key === 'up' && openRef.current && rowRef.current === 1) {          // back to the favourites alone
+			noteTop(true);
 			setOpen(false);
 			setPosition((p) => movePosition(favouriteSizes(favN, items.length, true), p, 'up'));
 			return true;
@@ -319,35 +403,23 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 	}, active);
 
 	// The row's sizes are set on the row itself (not on :root), so the Settings grid keeps its own.
-	const scale = appearance.iconScale / 100;
-	const tileSize = Math.round(LAYOUT.tileSize * scale);
-	const tileGap = Math.round(LAYOUT.tileGap * scale * appearance.iconGap / 100);
-	const rowVars = varScope('rows', {
-		'--icon-opacity': String(appearance.iconOpacity / 100),
-		'--label-color': labelColorValue(appearance.labelColor) || undefined,
-		'--layout-tile-size': `${tileSize}px`,
-		'--layout-tile-gap': `${tileGap}px`,
-		'--layout-tile-radius': `${Math.round(LAYOUT.tileRadius * scale)}px`,
-		'--font-tile-label': `${Math.min(30, Math.max(13, Math.round(FONT.tileLabel * scale * appearance.labelSize / 100)))}px`,
-		'--label-font': appearance.labelFont === 'default' ? undefined : fontFamily(appearance.labelFont as ClockFont),
-		'--label-weight': appearance.labelWeight === 400 ? undefined : String(appearance.labelWeight)
-	});
+	const {tileSize, tileGap} = tileSizes(appearance);
+	const rowVars = rowsScope(appearance);
 	// favourites: the container spans the screen, each row takes its own side margin; the favourites row alone sits at its own bottom margin, the open pair at the usual one
-	const bottom = favN > 0 && !open ? appearance.favBottomMargin : appearance.bottomMargin;
-	const sideOf = (r: number) => (favN > 0 && r === 0 ? appearance.favSideMargin : appearance.sideMargin);
-	const rowStyle = [`left:${favN > 0 ? 0 : appearance.sideMargin}px`, `right:${favN > 0 ? 0 : appearance.sideMargin}px`, `bottom:${bottom}px`, rowVars.css].filter(Boolean).join(';');
+	const sideOf = (r: number) => rowSide(appearance, favN, r);
+	const rowStyle = rowsStyle(appearance, favN, open, rowVars.css);
 	// move mode: arrows on the picked-up tile dim where it cannot go on (the ends of its own row, no looping)
 	const picked = moveMode && moveMode.picked && movable(moveMode.picked) ? moveMode.picked : null;
 	const pickedMoves = picked && tileKeys ? movesFor(moveGroup(tileKeys, favList, picked), picked) : null;
 	const pickedArrows = pickedMoves ? {left: pickedMoves.left, right: pickedMoves.right} : undefined;
 	const shiftVars = varScope('shift', shift ? {'--shift-x': `${shift.x}px`, '--shift-y': `${shift.y}px`} : {});
-	const classes = [rowVars.cls, 'rows', !appearance.showLabels && 'rows--no-labels', sizes.length > 1 && 'rows--multi', favN > 0 && 'rows--fav', favN > 0 && open && 'rows--fav-open', favN > 0 && !open && everOpen.current && 'rows--fav-shut', appearance.iconOpacity < 100 && 'rows--dim', quiet && 'rows--quiet', labelColorValue(appearance.labelColor) && 'rows--label-color', appearance.labelFont !== 'default' && 'rows--label-font', appearance.labelWeight !== 400 && 'rows--label-weight', appearance.tileShape !== 'rounded' && `rows--shape-${appearance.tileShape}`].filter(Boolean).join(' ');
+	const classes = rowsClasses(appearance, {multi: sizes.length > 1, favN, open, shut: everOpen.current, quiet}, rowVars.cls);
 
 	return (
 		<div class={`screen${active ? '' : ' screen--away'}${shift ? ' screen--shift' : ''}${shiftVars.cls ? ' ' + shiftVars.cls : ''}`} style={shiftVars.css || undefined}>
 			{moveMode && <div class="movehint"><div class="movehint__main">{tt('move.hint')}</div><div class="movehint__sub">{tt('move.hintBack')}</div></div>}
 			{appearance.clock.show && !moveMode && <Clock now={now} format={timeFormat} config={appearance.clock} weather={weather} />}
-			<div class={classes} style={rowStyle}>
+			<div ref={rowsRef} class={classes} style={rowStyle}>
 				{sizes.map((size, r) => {
 					const start = offsets[r];
 					return (
@@ -358,6 +430,7 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 							selected={at.cols[r]}
 							onSelect={(col) => { pendingKey.current = null; setPosition({row: r, cols: at.cols.map((c, i) => (i === r ? col : c))}); }}
 							onActivate={(col) => { if (!moveRef.current) onActivate(items[start + col]); }}
+							edgeSpeed={edgeSpeedFactor(appearance.scrollSpeed)}
 							tileSize={tileSize}
 							tileGap={tileGap}
 							viewportWidth={LAYOUT.screenWidth - 2 * sideOf(r)}

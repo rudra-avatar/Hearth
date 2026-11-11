@@ -14,13 +14,10 @@ import {SSAP_TESTS} from './probessap';
 import {KEY_TESTS} from './probekeys';
 import {PERF_TESTS} from './probeperf';
 import {MORE_TESTS} from './probemore';
-import {SAM_TESTS} from './probesam';
-import {HOME_TESTS} from './probehome';
 import {STORAGE_TESTS} from './probestorage';
-import {GUARD_TESTS} from './probeguard';
-import {STANDIN_TESTS} from './probestandin';
-import {NOROOT_TESTS} from './probenoroot';
 import {INSTALL_TESTS} from './probeinstall';
+import {MAPPER_TESTS} from './probemapper';
+import {SAVER_PROBE_TESTS} from './probesaver';
 
 export interface ProbeResult {
 	ok: boolean;
@@ -110,7 +107,7 @@ const BASE_TESTS: ProbeTest[] = [
 	listTest('devlist', '4. List apps: dev/listApps', 'Only the apps installed through Developer Mode.',
 		'luna://com.webos.applicationManager/dev/listApps', 'apps', (i) => String(i.title || i.id || ''), 'apps'),
 	{
-		id: 'appinfo', label: '5. Details of one app: getAppInfo',
+		id: 'appinfo', label: '2. Details of one app: getAppInfo',
 		description: 'Asks for the title and icon file of LG Home and of Hearth itself.',
 		run: () => Promise.all(['com.webos.app.home', APP_ID].map((id) => call('luna://com.webos.applicationManager/getAppInfo', {id}).then(
 			(r) => { const a = (r.appInfo || {}) as Json; return `${id.split('.').pop()}: ${a.title || '?'} / icon ${a.icon ? 'given' : 'none'}`; },
@@ -118,7 +115,7 @@ const BASE_TESTS: ProbeTest[] = [
 		))).then((lines) => ({ok: lines.every((l) => !/\(denied|\(no such|\(error|\(no answer|: \?/.test(l)), text: clip(lines.join(' | '), 230)}))
 	},
 	{
-		id: 'loadstatus', label: '6. Is an app installed: getAppLoadStatus',
+		id: 'loadstatus', label: '3. Is an app installed: getAppLoadStatus',
 		description: 'Checks every app in Hearth\'s built-in list, plus one made-up ID that must NOT be found (to prove the answers are real).',
 		run: () => {
 			const ids = APP_CATALOG.map((a) => a.id);
@@ -136,44 +133,44 @@ const BASE_TESTS: ProbeTest[] = [
 		}
 	},
 	{
-		id: 'foreground', label: '7. Which app is in front: getForegroundAppInfo',
+		id: 'foreground', label: '4. Which app is in front: getForegroundAppInfo',
 		description: 'Asks which app is on screen right now (it should say Hearth).',
 		run: () => call('luna://com.webos.applicationManager/getForegroundAppInfo', {}).then((r) => good(`${r.appId || 'unknown'}`), bad)
 	},
 	{
-		id: 'inputs', label: '8. TV inputs: getAllInputStatus',
+		id: 'inputs', label: '5. TV inputs: getAllInputStatus',
 		description: 'Reads the TV\'s input list (HDMI 1, 2 ...).',
 		run: () => call(LUNA.inputStatus, {}).then((r) => good(listText(r.devices, (i) => String(i.label || i.appId || ''), 'inputs')), bad)
 	},
 	{
-		id: 'sysinfo', label: '9. Firmware: getSystemInfo',
+		id: 'sysinfo', label: '6. Firmware: getSystemInfo',
 		description: 'The TV\'s model and firmware, from LG\'s system-property service.',
 		run: () => call('luna://com.webos.service.tv.systemproperty/getSystemInfo', {keys: ['modelName', 'firmwareVersion', 'sdkVersion']}).then((r) => good(`${r.modelName || '?'} · firmware ${r.firmwareVersion || '?'} · sdk ${r.sdkVersion || '?'}`), bad)
 	},
 	{
-		id: 'prefs', label: '10. TV settings: getPreferences',
+		id: 'prefs', label: '7. TV settings: getPreferences',
 		description: 'Reads the time format setting (used by the clock\'s "same as the TV").',
 		run: () => call(LUNA.preferences, {keys: ['timeFormat']}).then((r) => good(`timeFormat = ${JSON.stringify((r as Json).timeFormat)}`), bad)
 	},
 	{
-		id: 'settingsservice', label: '11. System settings: getSystemSettings',
+		id: 'settingsservice', label: '8. System settings: getSystemSettings',
 		description: 'Tries to read a system setting through the settings service (needed for things like the LG logo switch).',
 		run: () => call('luna://com.webos.settingsservice/getSystemSettings', {category: 'other', keys: ['lgLogoDisplay']}).then((r) => good(JSON.stringify(r.settings || r).slice(0, 100)), bad)
 	},
 	listTest('recent', '12. Recent apps: listRecents', 'The list behind LG\'s "recent apps" panel.',
 		'luna://com.webos.service.recent/listRecents', 'recents', (i) => String(i.title || i.appId || i.id || ''), 'recent apps'),
 	{
-		id: 'network', label: '13. Network: connection status',
+		id: 'network', label: '9. Network: connection status',
 		description: 'Whether the TV says it is online.',
 		run: () => call('luna://com.webos.service.connectionmanager/getStatus', {}).then((r) => good(`internet ${(r.isInternetConnectionAvailable as boolean) === true ? 'available' : String(r.isInternetConnectionAvailable)}; wired ${(r.wired as Json || {}).state || '-'}, wifi ${(r.wifi as Json || {}).state || '-'}`), bad)
 	},
 	{
-		id: 'weather', label: '14. Weather download',
+		id: 'weather', label: '10. Weather download',
 		description: 'Downloads a tiny forecast from Open-Meteo, as the weather line does (no Homebrew service).',
 		run: () => fetchText(forecastUrl(28.61, 77.21), false).then((t) => good(`${t.length} bytes received`), bad)
 	},
 	{
-		id: 'icons', label: '15. Reading app icon files',
+		id: 'icons', label: '11. Reading app icon files',
 		description: 'Can a web app show the picture files of apps stored on the TV? (Hearth\'s own icon is the control.)',
 		run: () => Promise.all([imageLoads('icon.png')].concat(ICON_PATHS.map((p) => imageLoads('file://' + p[1])))).then((res) => {
 			const names = ['Hearth\'s own'].concat(ICON_PATHS.map((p) => p[0]));
@@ -182,12 +179,12 @@ const BASE_TESTS: ProbeTest[] = [
 		})
 	},
 	{
-		id: 'homebrew', label: '16. Homebrew Channel service',
+		id: 'homebrew', label: '12. Homebrew Channel service',
 		description: 'Does the TV answer the Homebrew Channel\'s shell service (this is what "rooted" means for Hearth)?',
 		run: () => call(NOROOT_MOCK ? 'luna://mock.noroot.service/none' : LUNA.homebrewExec, {command: 'id -u'}).then((r) => good(`answered; this shell runs as user ${String(r.stdoutString || '?').trim()} (0 = root)`), bad)
 	},
 	{
-		id: 'storage', label: '17. Saving settings',
+		id: 'storage', label: '13. Saving settings',
 		description: 'Can Hearth save and read back its settings in the TV\'s web storage?',
 		run: () => {
 			try { window.localStorage.setItem('hearth-probe', 'x'); const v = window.localStorage.getItem('hearth-probe'); window.localStorage.removeItem('hearth-probe'); return Promise.resolve(v === 'x' ? good('settings can be saved') : {ok: false, text: 'FAILED: wrote but could not read back'}); } catch (e) { return Promise.resolve(bad(e)); }
@@ -201,7 +198,7 @@ function testOrder (t: ProbeTest): [number, string] {
 	return m ? [parseInt(m[1], 10), m[2]] : [9999, ''];
 }
 
-export const PROBE_TESTS: ProbeTest[] = BASE_TESTS.concat(SSAP_TESTS, KEY_TESTS, PERF_TESTS, MORE_TESTS, SAM_TESTS, HOME_TESTS, STORAGE_TESTS, GUARD_TESTS, STANDIN_TESTS, NOROOT_TESTS, INSTALL_TESTS)
+export const PROBE_TESTS: ProbeTest[] = BASE_TESTS.concat(SSAP_TESTS, KEY_TESTS, PERF_TESTS, MORE_TESTS, STORAGE_TESTS, INSTALL_TESTS, MAPPER_TESTS, SAVER_PROBE_TESTS)
 	.map((t, i) => ({t, i, k: testOrder(t)}))
 	.sort((a, b) => a.k[0] - b.k[0] || (a.k[1] < b.k[1] ? -1 : a.k[1] > b.k[1] ? 1 : 0) || a.i - b.i)
 	.map((x) => x.t);
@@ -238,7 +235,7 @@ export function probeOptions (state: ProbeState): OptionItem[] {
 	const rows: OptionItem[] = [{
 		id: RUN_ALL_ID,
 		label: 'Run all tests',
-		description: `${running ? 'Running… ' : ''}${done ? `Done ${done} of ${PROBE_TESTS.length}. ` : 'Runs the tests that need no action (21, 26, 29-31, 33, 35, 37, 44 and 45 are started one by one). Nothing is changed on the TV. '}✓ worked, ✗ did not: ${summaryText(state)}`,
+		description: `${running ? 'Running… ' : ''}${done ? `Done ${done} of ${PROBE_TESTS.length}. ` : 'Runs the tests that need no action (17, 18, 24, 27-29, 31, 33, 35, 36, 40, 42, 45, 46, 48 and 49-52 are started one by one). Nothing is changed on the TV. '}✓ worked, ✗ did not: ${summaryText(state)}`,
 		valueText: running ? 'Running' : done ? 'Run again' : 'Run'
 	}];
 	PROBE_TESTS.forEach((t) => {

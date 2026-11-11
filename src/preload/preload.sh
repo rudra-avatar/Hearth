@@ -38,6 +38,21 @@ DONE="${DONE:-/tmp/launcher-preload.done}"                # set once the TV star
 LOWPRI=""; command -v nice >/dev/null 2>&1 && LOWPRI="nice -n 19"   # the boot job must not compete with the Home button start-up
 
 log () { echo "$(date '+%H:%M:%S') $*" >> "$LOG" 2>/dev/null; }
+# >>> fdclean (the same lines in every helper; checked by scripts/test-fdclean.sh) >>>
+# #54: a helper started through the Homebrew service inherits its sockets (fds 3 and up) and a stuck registration can follow.
+# fdclean closes every fd above 2 in the process that runs it (use it in the background part, before `exec`); a shell that
+# cannot name a two-digit fd (dash) closes only fds 3 to 9. fdnote prints the count for the log.
+fdclean () {
+    _w=0; ( eval "exec 10>&-" ) 2>/dev/null && _w=1
+    for _f in /proc/self/fd/*; do
+        _n=${_f##*/}
+        case "$_n" in ''|*[!0-9]*|0|1|2) continue ;; esac
+        [ "${#_n}" -gt 1 ] && [ "$_w" = 0 ] && continue
+        eval "exec $_n>&-" 2>/dev/null
+    done
+}
+fdnote () { set -- /proc/self/fd/*; echo "fds=$#"; }
+# <<< fdclean <<<
 
 # an app id is letters, digits, dot, dash and underscore only (it goes into JSON and a file name)
 valid_id () {
@@ -117,6 +132,7 @@ cmd_restore () {
 }
 
 boot_job () {
+    log "boot job started ($(fdnote))"
     # the app storage can be slow to appear at start-up: look a few times before deciding Hearth is gone
     rounds=0
     while [ ! -f "$LAUNCHER/appinfo.json" ] && [ "$rounds" -lt 6 ]; do $NAP 5; rounds=$((rounds + 1)); done
@@ -152,7 +168,7 @@ cmd_once () {
 
 cmd_boot () {
     has_off || exit 0
-    if [ -n "$DRY_RUN" ]; then boot_job; else ( nohup $LOWPRI sh "$0" bootjob >/dev/null 2>&1 </dev/null & ); fi
+    if [ -n "$DRY_RUN" ]; then boot_job; else ( { fdclean; exec nohup $LOWPRI sh "$0" bootjob; } >/dev/null 2>&1 </dev/null & ); fi
 }
 
 cmd_status () {

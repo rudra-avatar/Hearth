@@ -31,6 +31,21 @@ FILTER="$REMAP/keyfilter.js"
 ENTRY="{\"handler\":\"hearthRemap\",\"file\":\"$FILTER\"}"
 
 log () { echo "$(date '+%H:%M:%S') $*" >> "$LOG"; }
+# >>> fdclean (the same lines in every helper; checked by scripts/test-fdclean.sh) >>>
+# #54: a helper started through the Homebrew service inherits its sockets (fds 3 and up) and a stuck registration can follow.
+# fdclean closes every fd above 2 in the process that runs it (use it in the background part, before `exec`); a shell that
+# cannot name a two-digit fd (dash) closes only fds 3 to 9. fdnote prints the count for the log.
+fdclean () {
+    _w=0; ( eval "exec 10>&-" ) 2>/dev/null && _w=1
+    for _f in /proc/self/fd/*; do
+        _n=${_f##*/}
+        case "$_n" in ''|*[!0-9]*|0|1|2) continue ;; esac
+        [ "${#_n}" -gt 1 ] && [ "$_w" = 0 ] && continue
+        eval "exec $_n>&-" 2>/dev/null
+    done
+}
+fdnote () { set -- /proc/self/fd/*; echo "fds=$#"; }
+# <<< fdclean <<<
 config () { "$LUNA" -n 1 "luna://com.webos.service.config/$1" "$2" </dev/null 2>/dev/null; }
 snapshots () { ls "$SNAPDIR"/configd_*_before_setConfigs.json 2>/dev/null; }
 # configd keeps a copy of all its settings (~90 KB, in memory) in /tmp each time they change, and never deletes it:
@@ -57,7 +72,7 @@ if [ "$mode" = boot ]; then
     sh "$0" on
     # P61b2: a filter put in at boot was not acted on by the TV (user: after a restart the mapping did nothing until Off, then On);
     # so once the TV has settled the chain is reloaded: out, then in, which is what that Off and On did
-    ( nohup sh -c "sleep 30; sh '$0' reload >/dev/null; sleep 90; sh '$0' check >/dev/null" >/dev/null 2>&1 </dev/null & )
+    ( { fdclean; exec nohup sh -c "sleep 30; sh '$0' reload >/dev/null; sleep 90; sh '$0' check >/dev/null"; } >/dev/null 2>&1 </dev/null & )
     exit 0
 fi
 

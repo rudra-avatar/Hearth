@@ -45,7 +45,6 @@ export const STORAGE_KEY = 'customlauncher-config-v1';
 
 /** Wallpaper / slideshow settings. */
 export const WALLPAPER = {
-	releaseAfterMs: 30000,        // the launcher keeps its wallpaper this long after going to the background, so Home shows it at once
 	fadeMs: 1400,                 // cross-fade between pictures (keep in sync with global.css)
 	maxPixels: 25000000,          // pictures larger than this are skipped (too heavy for the TV)
 	probeTimeoutMs: 15000,

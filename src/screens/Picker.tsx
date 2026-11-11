@@ -2,8 +2,12 @@ import {WALLPAPER} from '../config/constants';
 import {exec} from '../lib/apps';
 import {MAKE_FOLDER_COMMAND, THEME_FOLDER} from '../lib/themecmd';
 import {LANGUAGE_FOLDER, MAKE_LANGUAGE_FOLDER} from '../lib/langpack';
-import {useCallback, useEffect, useRef, useState} from 'preact/hooks';
+import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'preact/hooks';
 import {PickerIcon} from '../components/Glyph';
+import {NetFolderForm} from './NetFolderForm';
+import {isWebOS} from '../lib/luna';
+import {mountNetFolder, netReasonText, readNetFolder} from '../lib/netfolder';
+import {NETFOLDER_MOUNT, type NetFolder} from '../lib/netfoldercmd';
 import {failureText, whySuffix} from '../lib/failure';
 import {useKeys, clamp, type NavKey} from '../hooks/useKeys';
 import {t as tt} from '../i18n';
@@ -36,7 +40,7 @@ interface Props {
 	onClose: () => void;
 }
 
-type RowKind = 'theme' | 'gradient' | 'photos' | 'video' | 'root' | 'folder' | 'picture' | 'slideshow' | 'info' | 'retry';
+type RowKind = 'net' | 'netsetup' | 'theme' | 'gradient' | 'photos' | 'video' | 'root' | 'folder' | 'picture' | 'slideshow' | 'info' | 'retry';
 
 interface PickerRow {
 	key: string;
@@ -49,6 +53,9 @@ interface PickerRow {
 }
 
 const VISIBLE_ROWS = 9;
+/** One row's height plus the gap below it (`.picker__row`: 84 + 12 px) and the fewest rows ever shown. */
+const ROW_PX = 96;
+const MIN_ROWS = 3;
 const themesFolderRow = (): StorageRoot => ({label: tt('picker.themesFolder'), path: THEME_FOLDER});       // read when the picker opens, so the language in use counts (T2b)
 const languagesFolderRow = (): StorageRoot => ({label: tt('picker.languagesFolder'), path: LANGUAGE_FOLDER});
 const JSON_FILE = /\.json$/i;
@@ -100,7 +107,7 @@ function pictureCount (entries: DirEntry[]): number {
 	return entries.filter((e) => !e.isDir).length;
 }
 
-function buildRows (path: string | null, roots: StorageRoot[], entries: DirEntry[], failed: boolean, saver = false, userFolder: StorageRoot | null = null, theme = false, language = false): PickerRow[] {
+function buildRows (path: string | null, roots: StorageRoot[], entries: DirEntry[], failed: boolean, saver = false, userFolder: StorageRoot | null = null, theme = false, language = false, net: NetFolder | null = null, showNet = false): PickerRow[] {
 	const first: PickerRow = saver
 		? {key: 'gradient', kind: 'gradient', label: tt('picker.sameAsTheWallpaper'), detail: tt('picker.theScreenSaverFollows')}
 		: {key: 'gradient', kind: 'gradient', label: tt('picker.builtInBackground'), detail: tt('picker.noPictureChangeWhich')};
@@ -119,6 +126,12 @@ function buildRows (path: string | null, roots: StorageRoot[], entries: DirEntry
 		roots.forEach((r) => rows.push({key: `root:${r.path}`, kind: 'root', label: r.label, detail: r.path, path: r.path}));
 		if (!roots.some((r) => r.path !== INTERNAL_ROOT.path)) {
 			rows.push({key: 'no-usb', kind: 'info', label: tt('picker.noUsbDriveFound'), detail: tt('picker.plugOneInThen')});
+		}
+		if (showNet) {
+			if (net) {
+				rows.push({key: 'net', kind: 'net', label: tt('picker.networkFolder'), detail: tt('picker.networkFolderSet', {where: `${net.host}/${net.share}`}), path: NETFOLDER_MOUNT});
+				rows.push({key: 'netsetup', kind: 'netsetup', label: tt('picker.networkFolderChange'), detail: tt('picker.networkFolderChangeDetail')});
+			} else rows.push({key: 'netsetup', kind: 'netsetup', label: tt('picker.networkFolderNone'), detail: tt('picker.networkFolderNoneDetail')});
 		}
 		return rows;
 	}
@@ -161,8 +174,19 @@ export function Picker ({forIcon, forSaver, forTheme, onTheme, forLanguage, onLa
 	const [attempt, setAttempt] = useState(0);
 	const [busy, setBusy] = useState(false);
 	const remembered = useRef<Record<string, number>>({});
+	// the network folder: saved or not, its setup screen, a connect in progress (Back gives it up) and the last message
+	const showNet = isWebOS();
+	const [net, setNet] = useState<NetFolder | null>(null);
+	const [form, setForm] = useState(false);
+	const [connecting, setConnecting] = useState(false);
+	const [message, setMessage] = useState<{text: string; error: boolean} | null>(null);
+	const netTry = useRef(0);
+	// How many rows fit under the title, note and path: the top level (with its warning note) has room for fewer than a folder,
+	// and rows below the screen could not be reached (the list showed 9 rows whatever the room). Measured once per change of screen.
+	const areaRef = useRef<HTMLDivElement>(null);
+	const [fit, setFit] = useState(VISIBLE_ROWS);
 
-	const rows = buildRows(path, roots, entries, !loading && error !== '', !!forSaver, forIcon ? null : forLanguage ? languagesFolderRow() : forTheme ? themesFolderRow() : forSaver ? SAVER_FOLDER : WALLPAPER_FOLDER, !!forTheme || !!forLanguage, !!forLanguage).filter((r) => !forIcon || (r.kind !== 'gradient' && r.kind !== 'photos' && r.kind !== 'video' && r.kind !== 'slideshow'));
+	const rows = buildRows(path, roots, entries, !loading && error !== '', !!forSaver, forIcon ? null : forLanguage ? languagesFolderRow() : forTheme ? themesFolderRow() : forSaver ? SAVER_FOLDER : WALLPAPER_FOLDER, !!forTheme || !!forLanguage, !!forLanguage, net, showNet).filter((r) => !forIcon || (r.kind !== 'gradient' && r.kind !== 'photos' && r.kind !== 'video' && r.kind !== 'slideshow'));
 	const pathKey = path === null ? '' : path;
 
 	// The advised folders are made when a picker for wallpaper or saver opens (once ever; a deleted folder stays deleted).
@@ -174,6 +198,7 @@ export function Picker ({forIcon, forSaver, forTheme, onTheme, forLanguage, onLa
 		if (path === null) {
 			setLoading(true);
 			setError('');
+			if (showNet) readNetFolder().then((n) => { if (!cancelled) setNet(n); }, () => undefined);
 			listRoots().then(
 				(r) => { if (!cancelled) { setRoots(r); setLoading(false); } },
 				(e) => { if (!cancelled) { setRoots([]); setError(failureText(e, tt('picker.readTheStorage'))); setLoading(false); } }
@@ -198,7 +223,7 @@ export function Picker ({forIcon, forSaver, forTheme, onTheme, forLanguage, onLa
 
 	const goUp = () => {
 		if (path === null) { onClose(); return; }
-		const atRoot = roots.some((r) => r.path === path);
+		const atRoot = roots.some((r) => r.path === path) || path === NETFOLDER_MOUNT;
 		const target = atRoot ? null : parentPath(path);
 		const restore = remembered.current[target === null ? '' : target] || 0;
 		remembered.current[pathKey] = 0;
@@ -209,8 +234,24 @@ export function Picker ({forIcon, forSaver, forTheme, onTheme, forLanguage, onLa
 
 	const activate = (i: number) => {
 		const row = rows[i];
-		if (!row || loading || busy) return;
+		if (!row || loading || busy || connecting) return;
+		setMessage(null);
 		switch (row.kind) {
+			case 'net': {
+				const attempt = ++netTry.current;
+				setConnecting(true);
+				mountNetFolder().then((r) => {
+					if (attempt !== netTry.current) return;        // Back gave it up
+					setConnecting(false);
+					if (r.ok) goTo(NETFOLDER_MOUNT, 0); else setMessage({text: tt('picker.networkFolderFailed', {why: netReasonText(r)}), error: true});
+				}, (e) => {
+					if (attempt !== netTry.current) return;
+					setConnecting(false);
+					setMessage({text: failureText(e, tt('picker.networkFolderFailed', {why: ''})), error: true});
+				});
+				break;
+			}
+			case 'netsetup': setForm(true); break;
 			case 'gradient': onChoose({mode: 'gradient'}); break;
 			case 'photos': onChoose({mode: 'photos'}); break;
 			case 'video': if (onBuiltinVideo) onBuiltinVideo(); break;
@@ -229,23 +270,35 @@ export function Picker ({forIcon, forSaver, forTheme, onTheme, forLanguage, onLa
 			case 'up': setIndex((i) => clamp(i - 1, 0, Math.max(0, rows.length - 1))); break;
 			case 'down': setIndex((i) => clamp(i + 1, 0, Math.max(0, rows.length - 1))); break;
 			case 'enter': activate(index); break;
-			case 'back': if (!busy) goUp(); break;
+			case 'back': if (connecting) { netTry.current++; setConnecting(false); } else if (!busy) goUp(); break;
 			default: break;
 		}
 		return true;
-	}, [rows.length, index, path, roots, loading, entries, busy]);
+	}, [rows.length, index, path, roots, loading, entries, busy, connecting]);
 
-	useKeys(handleKey, true);
+	useKeys(handleKey, !form);
 
-	const start = clamp(index - Math.floor(VISIBLE_ROWS / 2), 0, Math.max(0, rows.length - VISIBLE_ROWS));
-	const visible = rows.slice(start, start + VISIBLE_ROWS);
-	const iconFor = (row: PickerRow) => row.kind === 'gradient' ? 'default' : row.kind === 'photos' || row.kind === 'video' ? 'slideshow' : row.kind === 'retry' ? 'info' : row.kind === 'theme' ? 'app' : row.kind === 'root' ? (row.path === INTERNAL_ROOT.path || row.path === WALLPAPER_FOLDER.path || row.path === SAVER_FOLDER.path || row.path === THEME_FOLDER || row.path === LANGUAGE_FOLDER ? 'folder' : 'drive') : row.kind;
+	useLayoutEffect(() => {
+		const el = areaRef.current;
+		const box = el ? el.parentElement : null;
+		if (!el || !box) return;
+		const n = Math.max(MIN_ROWS, Math.min(VISIBLE_ROWS, Math.floor((box.clientHeight - el.offsetTop) / ROW_PX)));
+		if (n !== fit) setFit(n);
+	}, [path, message, loading, error, connecting, busy, form, rows.length, fit]);
+
+	const start = clamp(index - Math.floor(fit / 2), 0, Math.max(0, rows.length - fit));
+	const visible = rows.slice(start, start + fit);
+	const iconFor = (row: PickerRow) => row.kind === 'gradient' ? 'default' : row.kind === 'photos' || row.kind === 'video' ? 'slideshow' : row.kind === 'retry' || row.kind === 'netsetup' ? 'info' : row.kind === 'net' ? 'drive' : row.kind === 'theme' ? 'app' : row.kind === 'root' ? (row.path === INTERNAL_ROOT.path || row.path === WALLPAPER_FOLDER.path || row.path === SAVER_FOLDER.path || row.path === THEME_FOLDER || row.path === LANGUAGE_FOLDER ? 'folder' : 'drive') : row.kind;
+
+	if (form) {
+		return <NetFolderForm saved={net} onClose={() => setForm(false)} onDone={(text) => { setForm(false); setIndex(0); setAttempt((n) => n + 1); setMessage({text, error: false}); }} />;
+	}
 
 	return (
 		<div class="screen screen--picker">
 			<div class="settings">
 				<h1 class="settings__title">{forLanguage ? tt('picker.loadALanguage') : forTheme ? tt('picker.loadATheme') : forIcon ? tt('picker.chooseAPictureForThe') : forSaver ? tt('picker.chooseScreenSaverPictures') : tt('picker.chooseWallpaper')}</h1>
-				<p class="settings__hint">{busy ? (forLanguage ? tt('picker.loadingTheLanguage') : tt('picker.loadingTheTheme')) : forLanguage ? (path === null ? tt('picker.pickWhereTheLanguage') : tt('picker.okOpensAFolderLanguage')) : forTheme ? (path === null ? tt('picker.pickWhereTheThemeFile') : tt('picker.okOpensAFolderOr')) : path === null ? HINTS.roots : HINTS.folder}</p>
+				<p class="settings__hint">{connecting ? tt('picker.networkFolderConnecting') : busy ? (forLanguage ? tt('picker.loadingTheLanguage') : tt('picker.loadingTheTheme')) : forLanguage ? (path === null ? tt('picker.pickWhereTheLanguage') : tt('picker.okOpensAFolderLanguage')) : forTheme ? (path === null ? tt('picker.pickWhereTheThemeFile') : tt('picker.okOpensAFolderOr')) : path === null ? HINTS.roots : HINTS.folder}</p>
 				{path === null && forSaver && (
 					<div class="picker__note">
 						<div class="picker__note-title">{SAVER_WARNING()[0]}</div>
@@ -273,7 +326,8 @@ export function Picker ({forIcon, forSaver, forTheme, onTheme, forLanguage, onLa
 					</div>
 				)}
 				<div class="picker__path">{path === null ? tt('picker.locations') : shortPath(path)}</div>
-				<div class="picker">
+				{message && <div class={`picker__status${message.error ? ' picker__status--error' : ''}`}>{message.text}</div>}
+				<div class="picker" ref={areaRef}>
 					{loading && <div class="picker__status">{tt('picker.loading')}</div>}
 					{!loading && error && <div class="picker__status picker__status--error">{error}</div>}
 					{!loading && visible.map((row, n) => {

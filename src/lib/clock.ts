@@ -3,6 +3,14 @@ import {t as tt, td} from '../i18n';
 
 export type TimeFormat = '12h' | '24h';
 
+/** 2.1.6 p2: the date and weather text sizes follow the clock size. Floor 20 px (was 26 / 24); above 140 px the share grows
+ *  (date 20% -> 24%, weather 17% -> 20% at 240) so the big clock does not dwarf them. Old values: floors 26 / 24, shares 20% / 17% flat. */
+const share = (size: number, base: number, extra: number): number => (size > 140 ? base + extra * (size - 140) / 100 : base);
+export const dateFontPx = (size: number): number => Math.max(20, Math.round(size * share(size, 0.2, 0.04)));
+export const weatherFontPx = (size: number): number => Math.max(20, Math.round(size * share(size, 0.17, 0.03)));
+/** The number the Widget size row shows: the saved px minus 40 (saved values stay as they are). */
+export const sizeLabel = (storedPx: number): number => storedPx - 40;
+
 
 export function greeting (date: Date): string {
 	const h = date.getHours();

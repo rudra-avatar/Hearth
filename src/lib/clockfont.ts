@@ -82,10 +82,10 @@ export function restoreThemeFonts (): void {
 	} catch (e) { /* no theme fonts */ }
 }
 
-/** LA3: the bundled Arabic font is inserted before the final generic family, so Arabic weekday/month names have glyphs in every typeface. */
+/** LA3, p27a: the bundled Arabic and Thai fonts are inserted before the final generic family, so Arabic and Thai weekday/month names have glyphs in every typeface. */
 const withArabic = (family: string): string => {
 	const at = family.lastIndexOf(',');
-	return at < 0 || family.indexOf('Noto Sans Arabic') >= 0 ? family : family.slice(0, at) + ', "Noto Sans Arabic"' + family.slice(at);
+	return at < 0 || family.indexOf('Noto Sans Arabic') >= 0 ? family : family.slice(0, at) + ', "Noto Sans Arabic", "Noto Sans Thai"' + family.slice(at);
 };
 
 export function fontFamily (id: ClockFont): string {

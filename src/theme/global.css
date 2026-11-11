@@ -13,6 +13,10 @@
 @font-face { font-family: 'Noto Sans Arabic'; font-style: normal; font-weight: 400; font-display: swap; unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFC; src: url('../assets/noto-sans-arabic-400.woff2') format('woff2'); }
 @font-face { font-family: 'Noto Sans Arabic'; font-style: normal; font-weight: 700; font-display: swap; unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFC; src: url('../assets/noto-sans-arabic-700.woff2') format('woff2'); }
 
+/* p27a: Thai for menu texts and the widget; fetched only when a Thai letter is drawn (the TV's own fonts may lack Thai). */
+@font-face { font-family: 'Noto Sans Thai'; font-style: normal; font-weight: 400; font-display: swap; unicode-range: U+0E01-0E5B, U+200B-200D, U+25CC; src: url('../assets/noto-sans-thai-400.woff2') format('woff2'); }
+@font-face { font-family: 'Noto Sans Thai'; font-style: normal; font-weight: 700; font-display: swap; unicode-range: U+0E01-0E5B, U+200B-200D, U+25CC; src: url('../assets/noto-sans-thai-700.woff2') format('woff2'); }
+
 /* Fonts for the clock (Look → Clock font). The browser fetches a file only when the clock uses it. */
 @font-face { font-family: 'Poppins'; font-style: normal; font-weight: 200; font-display: block; src: url('../assets/poppins-latin-200.woff2') format('woff2'); }
 @font-face { font-family: 'Poppins'; font-style: normal; font-weight: 300; font-display: block; src: url('../assets/poppins-latin-300.woff2') format('woff2'); }
@@ -111,6 +115,9 @@ html, body {
 	transition: opacity 1400ms ease-in-out;     /* keep in sync with WALLPAPER.fadeMs */
 }
 .wallpaper__layer--on { opacity: var(--wallpaper-opacity, 1); }
+/* 2.1.6 p18: the wallpaper (the container and both picture layers) sits on its own graphics layer in every bundle, so the TV does not
+   redraw it when the pointer hovers over tiles (TV test 61: smoother). Prefixed first: the legacy bundle's browser (Chromium 38). */
+.wallpaper, .wallpaper__layer { -webkit-transform: translateZ(0); transform: translateZ(0); will-change: transform; }
 /* 2.0.2 Picture size = Fit: the whole picture is shown, the background shows where the shapes differ. */
 .wallpaper--fit { background-size: 100% 100%, contain, 100% 100%; }
 .wallpaper--fit .wallpaper__layer { background-size: contain; }
@@ -174,8 +181,7 @@ html, body {
 	color: var(--color-widget-ink);   /* P95a: Follow theme (was --color-text-primary, near white on every theme); a plain colour is set inline and wins */
 	text-align: center;
 	white-space: nowrap;
-	transform: translateX(-50%);
-	pointer-events: none;
+	pointer-events: none;     /* p9: centring is a whole-pixel margin set in Clock.tsx (no translateX(-50%)) */
 	--clock-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);   /* the slight drop shadow; the Widget shadow switch sets it to none */
 	z-index: 0;
 }
@@ -183,8 +189,8 @@ html, body {
 /* 2.0.3 (R1): soft dark (or light, for dark ink) gradient behind the widget; the colour and strength are inline, the shape is here. No blur, no filter. */
 .clock__scrim { position: absolute; left: -50%; top: -80%; width: 200%; height: 260%; z-index: -1; pointer-events: none; }
 /* Widget alignment: the clock's position is its centre (default), its left edge or its right edge */
-.clock--left { text-align: left; transform: none; }
-.clock--right { text-align: right; transform: translateX(-100%); }
+.clock--left { text-align: left; }
+.clock--right { text-align: right; }
 .clock--left .clock__weather { justify-content: flex-start; }
 .clock--right .clock__weather { justify-content: flex-end; }
 .clock--dark .clock__time, .clock--dark .clock__period, .clock--dark .clock__date, .clock--dark .clock__weather { text-shadow: none; }
@@ -235,17 +241,13 @@ html, body {
 /* Quiet mode: the apps are hidden until a key is pressed. */
 .rows--quiet { opacity: 0; }
 /* Favourites: Down / Up swap between the favourites row alone and the pair. The rows change place at once while the whole block is invisible and then fades in (opacity only: no gliding, no overshoot). */
-.rows--fav-open { -webkit-animation: hearth-rows-a 0.3s ease-out; animation: hearth-rows-a 0.3s ease-out; }
-.rows--fav-shut { -webkit-animation: hearth-rows-b 0.3s ease-out; animation: hearth-rows-b 0.3s ease-out; }
+/* p12 (user, option B): the favourites row glides (Home.tsx, transform) and only the new row fades in; the favourites row never disappears. p13 (user): slower, 0.24 s -> 0.36 s (glide in Home.tsx 240 -> 360 ms, the same). */
+.rows--fav-open .row + .row { -webkit-animation: hearth-rows-a 0.24s ease-out; animation: hearth-rows-a 0.24s ease-out; }   /* p30 (user): the fade-in is shorter than the glide (old: 0.36s, the same as the glide) */
 @-webkit-keyframes hearth-rows-a { from { opacity: 0; } to { opacity: 1; } }
 @keyframes hearth-rows-a { from { opacity: 0; } to { opacity: 1; } }
-@-webkit-keyframes hearth-rows-b { from { opacity: 0; } to { opacity: 1; } }
-@keyframes hearth-rows-b { from { opacity: 0; } to { opacity: 1; } }
 /* OLED shift: the clock and the apps move by a few pixels (set on .screen as --shift-x / --shift-y). */
 .screen--shift .rows { transform: translate3d(var(--shift-x), var(--shift-y), 0); }
-.screen--shift .clock { transform: translateX(-50%) translate3d(var(--shift-x), var(--shift-y), 0); }
-.screen--shift .clock.clock--left { transform: translate3d(var(--shift-x), var(--shift-y), 0); }
-.screen--shift .clock.clock--right { transform: translateX(-100%) translate3d(var(--shift-x), var(--shift-y), 0); }
+.screen--shift .clock { transform: translate3d(var(--shift-x), var(--shift-y), 0); }
 
 .row { margin-bottom: var(--layout-row-gap); }
 .row:last-child { margin-bottom: 0; }
@@ -309,6 +311,7 @@ html, body {
 	height: var(--layout-tile-size);
 	transform: scale(1);
 	transition: transform var(--motion-focus-ms) ease-out;
+	pointer-events: none;     /* 2.1.6 M2: the pointer hits the tile's own box, which never grows; the enlarged focused frame no longer covers its neighbour */
 }
 .tile--focused .tile__frame {
 	transform: scale(var(--motion-focus-scale));
@@ -414,6 +417,7 @@ html, body {
 	left: 18%; top: 18%;
 	width: 64%; height: 64%;
 	object-fit: contain;
+	-webkit-filter: brightness(2.4);     /* p5: Chromium 38 (legacy bundle) has no unprefixed filter */
 	filter: brightness(2.4);
 }
 .tile__glyph {
@@ -436,7 +440,13 @@ html, body {
 	font-size: 64px;
 	font-weight: 600;
 	color: #fff;
+	transform: scale(1);
+	transition: transform var(--motion-focus-ms) ease-out;
 }
+/* p9 (c, user B): the letter keeps its own size while the frame grows (counter-scale; same timing as the frame) */
+.tile--focused .tile__monogram { transform: scale(var(--motion-focus-scale-inv)); }
+.tile--lifted .tile__monogram, .tile--lifted.tile--focused .tile__monogram { transform: scale(var(--motion-lift-scale-inv)); }
+.look-minimal .tile--focused .tile__monogram { transform: scale(0.819672); }   /* 1 / 1.22, like the minimal look's frame */
 
 .tile__label {
 	/* up to two lines, using a little of the gutter either side, so long input names fit */
@@ -470,10 +480,12 @@ html, body {
 
 .settings {
 	position: absolute;
-	left: var(--layout-edge-padding);
-	right: var(--layout-edge-padding);
+	left: 0;
+	right: 0;
+	padding: 0 3.125%;      /* p23a: same share on both sides, 60 px at 1920 (old: left/right var(--layout-edge-padding) = 140 px) */
+	box-sizing: border-box;
 	top: var(--layout-header-top);
-	bottom: 60px;
+	bottom: 5.5%;           /* p22: was 60px */
 }
 .settings__title {
 	margin: 0;
@@ -494,6 +506,9 @@ html, body {
 	flex-direction: row;
 	margin: 36px 0 28px;
 }
+/* p14: the main tab bar is a window of fixed width (Settings.tsx PANEL_W); the pills slide inside it (old pills: padding 10px 24px, margin-right 16px, letter-spacing 0.1em; Debug/Tests-tab bar already used the tight values below) */
+.settings__tabwin { margin: 30px 0 22px -8px; padding: 6px 8px; box-sizing: border-box; overflow: hidden; }
+.settings__tabwin .settings__tabs { margin: 0; position: relative; -webkit-transition: -webkit-transform var(--motion-focus-ms) ease-out; transition: transform var(--motion-focus-ms) ease-out; }
 .settings__toolbar {
 	display: flex;
 	flex-direction: row;
@@ -502,39 +517,43 @@ html, body {
 	min-height: 64px;
 }
 .settings__toolbar .settings__button { margin-left: 0; margin-right: 22px; flex: none; }
-.settings__about { position: absolute; left: auto; right: calc(48px - var(--layout-edge-padding)); bottom: -44px; margin: 0; white-space: nowrap; text-align: right; font-size: 20px; letter-spacing: 0.02em; color: var(--color-text-muted); opacity: 0.8; }
-.settings__log { padding: 8px 0; max-height: 700px; overflow: hidden; }
+.settings__about { position: absolute; left: auto; right: 3.125%; bottom: -44px; margin: 0; white-space: nowrap; text-align: right; font-size: 20px; letter-spacing: 0.02em; color: var(--color-text-muted); opacity: 0.8; }
+.settings__log { padding: 8px 0; max-height: 74.7%; overflow: hidden; }       /* p22c: of the Settings area, 700 px at 1080 high; old: 700px */
 .settings__log-title { font-size: var(--font-option-label); color: var(--color-text-primary); margin-bottom: 14px; }
 .settings__log-line { font-family: "Roboto Mono", monospace; font-size: 22px; line-height: 1.45; color: var(--color-text-secondary); white-space: pre; }
-.settings__log--dense { max-height: 700px; overflow: hidden; }
+.settings__log--dense { max-height: 74.7%; overflow: hidden; }
 .settings__log--dense .settings__log-title { margin-bottom: 10px; }
 .settings__log--dense .settings__log-line { font-size: 20px; line-height: 1.3; }
 .settings__log-cols { display: flex; flex-direction: row; }
 .settings__log-col--main { flex: none; }
 .settings__log-col--side { flex: none; margin-left: 40px; }
 .settings__log-sub { font-family: "Roboto Mono", monospace; font-size: 20px; line-height: 1.3; color: var(--color-text-primary); }
-.settings__note { margin: 0; font-size: var(--font-tile-label); line-height: 1.35; color: var(--color-text-muted); max-width: 900px; }
+/* p22c: help panel (no `top`: it starts where the option list starts; `left` is set in Settings from the list width) */
+.help { position: absolute; right: 3.125%; padding-top: 8px; pointer-events: none; }
+.help__box { padding: 26px 24px; border-radius: var(--layout-tile-radius); background: rgba(0, 0, 0, 0.35); box-shadow: 0 0 0 1px var(--color-outline); }
+.help__title { font-size: var(--font-option-label); color: var(--color-text-primary); margin-bottom: 14px; }
+.help__body { white-space: pre-line; font-size: var(--font-option-description); line-height: 1.45; color: var(--color-text-secondary); }
+.settings__note { margin: 0; font-size: var(--font-tile-label); line-height: 1.35; color: var(--color-text-muted); max-width: 54.9%; }
 .tab {
-	margin-right: 16px;
-	padding: 10px 24px;
+	margin-right: 10px;
+	padding: 10px 16px;
 	border-radius: 999px;
 	font-size: var(--font-settings-tab);
 	font-weight: 500;
-	letter-spacing: 0.1em;
+	letter-spacing: 0.05em;
 	text-transform: uppercase;
 	white-space: nowrap;          /* LF1b: a longer label widens the pill, never a second line (old: none) */
 	flex: none;
 	line-height: 1.21;          /* LF1b: same row height for every font, Arabic included (old: normal) */
 	color: var(--color-text-muted);
 	box-shadow: 0 0 0 3px var(--color-outline);
-	transition: color var(--motion-focus-ms) ease-out, box-shadow var(--motion-focus-ms) ease-out, background var(--motion-focus-ms) ease-out;
+	transition: color var(--motion-focus-ms) ease-out, box-shadow var(--motion-focus-ms) ease-out, background var(--motion-focus-ms) ease-out, opacity var(--motion-focus-ms) ease-out;
 }
 .tab--active { color: var(--color-text-primary); box-shadow: 0 0 0 3px var(--color-outline-strong); }
 .tab--focused, .tab--active.tab--focused { color: var(--color-text-primary); box-shadow: 0 0 0 5px var(--color-tile-border-focus); }
 .tab--locked { opacity: 0.35; }
 .settings__tabs--sub { margin: -4px 0 26px; }
-.settings__tabs--tight .tab, .settings__tabs--snug .tab { padding: 10px 16px; margin-right: 10px; letter-spacing: 0.05em; white-space: nowrap; }          /* 8 tabs (Debug and Tests shown): keep every label on one line */
-.settings__tabs--sub .tab { font-size: calc(var(--font-settings-tab) * 0.8); padding: 8px 20px; margin-right: 14px; }
+.settings__tabs--sub .tab { font-size: calc(var(--font-settings-tab) * 0.8); padding: 8px 20px; margin-right: 14px; letter-spacing: 0.1em; }
 
 /* the row of buttons under the tabs */
 .settings__button {
@@ -561,8 +580,9 @@ html, body {
 
 .grid__viewport {
 	overflow: hidden;
-	height: 650px;
-	padding: 16px 0;
+	height: 69.4%;           /* p22c: of the Settings area (936.6 px at 1080 high), 650 px there; old: 650px */
+	padding: 16px 8px;       /* p29: 8 px each side for the focus border (old: 16px 0) */
+	margin-left: -8px;       /* p29 (user): tiles start at the same left edge as the Settings rows and tab pills */
 }
 /* Flex-wrap instead of CSS grid: older webOS web views (Chrome 53) have no grid. A line of tiles
    (plus their right-hand gaps) fill one line, so the next one wraps, as the grid did. */
@@ -571,7 +591,7 @@ html, body {
 	flex-direction: row;
 	flex-wrap: wrap;
 	width: calc(var(--layout-grid-columns) * (var(--layout-tile-size) + var(--layout-tile-gap)));
-	margin: 0 auto;
+	margin: 0;               /* p29: was 0 auto (centred); now left-aligned with the Settings rows */
 	transition: transform var(--motion-scroll-ms) cubic-bezier(0.2, 0.7, 0.2, 1);
 	will-change: transform;
 }
@@ -678,7 +698,7 @@ html, body {
 }
 .option__value {
 	flex: 0 0 auto;
-	max-width: 520px;
+	max-width: 44%;           /* p22c: of the row's inside width (about 520 px in a group); old: 520px */
 	font-size: var(--font-option-label);
 	text-align: right;
 	color: var(--color-text-secondary);
@@ -702,8 +722,8 @@ html, body {
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
-.picker { width: 1300px; margin-top: 24px; }
-.picker__note { width: 1300px; margin-top: 24px; padding: 18px 28px; border-radius: 20px; background: var(--color-picker-tile); box-sizing: border-box; }
+.picker { width: 79.3%; margin-top: 24px; }
+.picker__note { width: 79.3%; margin-top: 24px; padding: 18px 28px; border-radius: 20px; background: var(--color-picker-tile); box-sizing: border-box; }
 .picker__note-title { font-size: 22px; color: var(--color-text-primary); margin-bottom: 8px; }
 .picker__note-para + .picker__note-para { margin-top: 12px; }
 .picker__note-line { font-size: 19px; line-height: 1.45; color: var(--color-text-secondary); }
@@ -779,13 +799,12 @@ html, body {
 .recents__closeall { margin-left: 24px; white-space: nowrap; flex: none; }
 .recents__closeall--off { opacity: 0.35; }
 .recents__status { padding-top: 34px; text-align: center; font-size: 24px; font-weight: 300; color: var(--color-text-muted); }
-.screen--dialog { background: rgba(0, 0, 0, 0.72); }
+.screen--dialog { background: rgba(0, 0, 0, 0.72); display: flex; align-items: center; justify-content: center; }   /* p9: centred by flex, not translate(-50%, -50%) */
 .dialog {
-	position: absolute;
-	left: 50%; top: 50%;
-	width: 900px;
+	position: relative;
+	flex: none;
+	width: 54.9%;            /* p22: was 900px */
 	padding: 40px 44px 32px;
-	transform: translate(-50%, -50%);
 	border-radius: 28px;
 	background: var(--color-picker-bg);
 	box-shadow: 0 0 0 2px var(--color-picker-edge), 0 30px 80px rgba(0, 0, 0, 0.6);
@@ -838,7 +857,7 @@ html, body {
 .toast--error { color: var(--color-danger); }
 
 /* P61c: remote drawing on the Remote control pages */
-.remote-draw { position: absolute; right: 70px; top: 90px; height: 880px; width: 300px; }
+.remote-draw { position: absolute; right: 3.6%; top: 8.3%; height: 81.5%; width: 15.6%; }   /* p22: percent of the screen (was 70/90/880/300 px) */
 .remote-draw__body { fill: var(--color-picker-tile); stroke: var(--color-picker-edge); stroke-width: 3; }
 .remote-draw__shape > * { fill: inherit; stroke: none; }
 .remote-draw__key .remote-draw__shape { fill: var(--color-picker-tile-focus); }
@@ -850,20 +869,27 @@ html, body {
 .remote-draw__ring > *, .remote-draw__mapped > * { fill: none; stroke: #f5c518; stroke-width: 5; }
 .remote-draw__mapped > * { stroke-width: 2.5; stroke: var(--color-text-secondary); }
 .remote-draw__name { fill: var(--color-text-muted); text-anchor: middle; font-size: 13px; }
-.picker__credit { width: 1300px; margin-top: 8px; font-size: 15px; line-height: 1.4; color: var(--color-text-muted); }
+.picker__credit { width: 79.3%; margin-top: 8px; font-size: 15px; line-height: 1.4; color: var(--color-text-muted); }
 
 /* Settings -> Widget: miniature of the widget only (P76d). Left, width and height come from WidgetPreview (free space right of the option list). */
-.widget-preview { position: absolute; top: 540px; z-index: 5; pointer-events: none; }
+/* p30: while a Widget position row is highlighted the full home preview shows instead (Settings sets this class on <html>) */
+.hearth-fullprev .widget-preview { display: none; }
+.widget-preview { position: absolute; top: 50%; z-index: 5; pointer-events: none; }   /* p22c: top was 540px */
+/* p23b: the home preview under the help text (16:9 box, the strip inside is drawn at 1920x1080 and scaled to the box width) */
+.homeprev { position: relative; width: 100%; padding-top: 56.25%; margin-top: 20px; overflow: hidden; border-radius: 12px; background: #000; box-shadow: 0 0 0 1px var(--color-outline); }
+.homeprev__strip { position: absolute; left: 0; top: 0; -webkit-transform-origin: 0 0; transform-origin: 0 0; overflow: hidden; }
+.homeprev__bg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 0; }
+.homeprev__screen { background: none; }
 .widget-preview__strip { position: absolute; left: 0; top: 0; -webkit-transform-origin: 0 0; transform-origin: 0 0; }
 
 /* ---------- Check for updates (R2-a): version list on the left, summary on the right ---------- */
-.upd { display: flex; flex-direction: row; width: 1300px; margin-top: 24px; }
-.upd__list { flex: 0 0 480px; margin-right: 28px; }
+.upd { display: flex; flex-direction: row; width: 79.3%; margin-top: 24px; }
+.upd__list { flex: 0 0 36.9%; margin-right: 2.2%; }
 .upd__panel { flex: 1 1 auto; min-height: 408px; padding: 28px 36px; border-radius: 20px; background: var(--color-picker-tile); box-sizing: border-box; }
 .upd__title { font-size: 30px; color: var(--color-text-primary); }
 .upd__sub { margin: 6px 0 22px; font-size: var(--font-option-description); color: var(--color-text-muted); }
 .upd__line { position: relative; padding-left: 28px; margin-bottom: 14px; font-size: 24px; line-height: 1.35; color: var(--color-text-primary); }
-.upd__bar { margin: 28px 0 14px; width: 700px; height: 14px; border-radius: 7px; background: var(--color-picker-tile); overflow: hidden; }
+.upd__bar { margin: 28px 0 14px; width: 97%; height: 14px; border-radius: 7px; background: var(--color-picker-tile); overflow: hidden; }
 .upd__fill { height: 100%; border-radius: 7px; background: var(--color-text-primary); transition: width 0.4s linear; }
 .upd__step { font-size: var(--font-option-description); color: var(--color-text-muted); }
 .upd__line::before { content: ''; position: absolute; left: 4px; top: 0.55em; width: 9px; height: 9px; border-radius: 50%; background: var(--color-text-secondary); }

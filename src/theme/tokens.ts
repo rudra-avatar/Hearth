@@ -140,7 +140,7 @@ export const THEMES: Record<ThemeName, Colors> = {
 };
 
 export const FONT = {
-	family: '"Inter Variable", "Noto Sans Arabic", "LG Smart UI", "Helvetica Neue", Arial, sans-serif',
+	family: '"Inter Variable", "Noto Sans Arabic", "Noto Sans Thai", "LG Smart UI", "Helvetica Neue", Arial, sans-serif',
 	rowLabel: 20,
 	tileLabel: 19,
 	settingsTitle: 40,
@@ -169,7 +169,9 @@ export const MOTION = {
 	focusMs: 160,
 	scrollMs: 260,
 	focusScale: 1.12,
+	focusScaleInv: 0.892857, // p9 (c): 1 / focusScale, keeps a monogram letter at its own size inside the growing frame (CSS cannot divide inside scale())
 	liftScale: 1.2,         // the tile picked up in the home row's move mode
+	liftScaleInv: 0.833333, // 1 / liftScale
 	unfocusedRowOpacity: 0.55
 } as const;
 

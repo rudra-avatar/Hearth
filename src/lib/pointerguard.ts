@@ -1,12 +1,14 @@
-// Quiet mode, pointer wake guard (idea of PR #46): a Magic Remote movement or press that wakes the hidden apps only wakes them.
-// Until the pointer has rested SETTLE_MS (at most MAX_MS after the wake) it hovers and clicks nothing; a waking press also uses up
-// its own release and click. A mousemove at the same screen position as the last one is synthetic (the TV repeats it): it neither wakes nor keeps awake.
+// Quiet mode, pointer wake guard (idea of PR #46, reduced 2.1.6 M1): a Magic Remote movement wakes the hidden apps and nothing more is
+// held back: the pointer hovers at once. Only a waking PRESS is used up (its mousedown, mouseup and click), so OK on a hidden tile only wakes.
+// A mousemove at the same screen position as the last one is synthetic (the TV repeats it): it neither wakes nor keeps awake; so is a
+// move of less than MOVE_PX from the last counted point (hand tremor). The press flag cannot stick: it ends with the click, 400 ms after
+// a release that made no click (the press was dragged off the tile), and after 10 s at the latest.
 
-export const SETTLE_MS = 400;
-export const MAX_MS = 1500;
+export const MOVE_PX = 3;
+export const UP_GRACE_MS = 400;
+export const PRESS_MAX_MS = 10000;
 
-/** events that are swallowed while the guard is waking */
-const BLOCKED = ['mousemove', 'mouseover', 'mouseenter', 'mousedown', 'mouseup', 'click'];
+const PRESS = ['mousedown', 'mouseup', 'click'];
 
 export interface Timers {
 	set: (fn: () => void, ms: number) => unknown;
@@ -18,10 +20,10 @@ const REAL: Timers = {set: (fn, ms) => setTimeout(fn, ms), clear: (id) => clearT
 export interface PointerGuard {
 	/** true when this mousemove is at the same screen position as the previous one (synthetic); otherwise remembers the position */
 	sameSpot(x: number, y: number): boolean;
+	/** true when the pointer is MOVE_PX or more away from the last counted point (the first call counts); counts the point then */
+	farEnough(x: number, y: number): boolean;
 	/** the pointer woke the apps (kind = the event type) */
 	wake(kind: string): void;
-	/** a real pointer movement while awake: the pointer has not rested yet */
-	move(): void;
 	/** true when the event must not reach the tiles */
 	blocks(kind: string): boolean;
 	/** stop all timers */
@@ -29,46 +31,46 @@ export interface PointerGuard {
 }
 
 export function createPointerGuard(timers: Timers = REAL): PointerGuard {
-	let waking = false;
-	let pressWake = false;       // the wake was a press: its mouseup and click are used up after the guard ends
-	let settle: unknown = null;
-	let max: unknown = null;
+	let pressWake = false;       // the wake was a press: its mousedown, mouseup and click are used up
+	let cap: unknown = null;
+	let grace: unknown = null;
 	let lastX = -1;
 	let lastY = -1;
 	let seen = false;
-	const end = () => {
-		waking = false;
-		if (settle !== null) timers.clear(settle);
-		if (max !== null) timers.clear(max);
-		settle = null; max = null;
+	let anchorX = 0;
+	let anchorY = 0;
+	let anchored = false;
+	const clearTimers = () => {
+		if (cap !== null) timers.clear(cap);
+		if (grace !== null) timers.clear(grace);
+		cap = null; grace = null;
 	};
+	const endPress = () => { pressWake = false; clearTimers(); };
 	return {
 		sameSpot(x, y) {
 			const same = seen && x === lastX && y === lastY;
 			seen = true; lastX = x; lastY = y;
 			return same;
 		},
-		wake(kind) {
-			end();
-			waking = true;
-			pressWake = kind === 'mousedown' || kind === 'click';
-			settle = timers.set(end, SETTLE_MS);
-			max = timers.set(end, MAX_MS);
+		farEnough(x, y) {
+			if (anchored && Math.abs(x - anchorX) < MOVE_PX && Math.abs(y - anchorY) < MOVE_PX) return false;
+			anchored = true; anchorX = x; anchorY = y;
+			return true;
 		},
-		move() {
-			if (!waking) return;
-			if (settle !== null) timers.clear(settle);
-			settle = timers.set(end, SETTLE_MS);
+		wake(kind) {
+			endPress();
+			pressWake = kind === 'mousedown' || kind === 'click';
+			if (pressWake) cap = timers.set(endPress, PRESS_MAX_MS);
 		},
 		blocks(kind) {
-			if (BLOCKED.indexOf(kind) === -1) return false;
-			if (waking) return true;
-			if (pressWake && (kind === 'mouseup' || kind === 'click')) {
-				if (kind === 'click') pressWake = false;
-				return true;
+			if (!pressWake || PRESS.indexOf(kind) === -1) return false;
+			if (kind === 'click') { endPress(); return true; }
+			if (kind === 'mouseup') {
+				if (grace !== null) timers.clear(grace);
+				grace = timers.set(endPress, UP_GRACE_MS);
 			}
-			return false;
+			return true;
 		},
-		stop() { end(); pressWake = false; }
+		stop() { endPress(); }
 	};
 }

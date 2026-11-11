@@ -43,7 +43,22 @@ RUNNING_URI="luna://com.webos.applicationManager/running"
 HOME_ID="com.webos.app.home"
 LAUNCH_URI="luna://com.webos.applicationManager/launch"
 
-log () { echo "$(date '+%H:%M:%S') up=$(cut -d. -f1 /proc/uptime 2>/dev/null)s keep: $*" >> "$LOG"; }
+log () { { read _up _ < /proc/uptime; } 2>/dev/null; echo "$(date '+%H:%M:%S') up=${_up%%.*}s keep: $*" >> "$LOG"; }   # H: uptime without an extra process
+# >>> fdclean (the same lines in every helper; checked by scripts/test-fdclean.sh) >>>
+# #54: a helper started through the Homebrew service inherits its sockets (fds 3 and up) and a stuck registration can follow.
+# fdclean closes every fd above 2 in the process that runs it (use it in the background part, before `exec`); a shell that
+# cannot name a two-digit fd (dash) closes only fds 3 to 9. fdnote prints the count for the log.
+fdclean () {
+    _w=0; ( eval "exec 10>&-" ) 2>/dev/null && _w=1
+    for _f in /proc/self/fd/*; do
+        _n=${_f##*/}
+        case "$_n" in ''|*[!0-9]*|0|1|2) continue ;; esac
+        [ "${#_n}" -gt 1 ] && [ "$_w" = 0 ] && continue
+        eval "exec $_n>&-" 2>/dev/null
+    done
+}
+fdnote () { set -- /proc/self/fd/*; echo "fds=$#"; }
+# <<< fdclean <<<
 
 set_state () { echo "$1" > "$DIR/state" 2>/dev/null; }
 
@@ -267,7 +282,7 @@ remove_all () {
 run () {
     if hearth_gone; then log "Hearth is not installed: removing the keep-ready files"; remove_all; return 0; fi
     is_on || return 0
-    log "run: on"
+    log "run: on ($(fdnote))"
     set_state working
     patch_memlist || { log "run: the memory list was not changed (state $(cat "$DIR/state" 2>/dev/null)), no watcher"; return 1; }
     is_on || { log "run: switched off meanwhile, this run ends"; return 0; }   # P70c: two runs started side by side
@@ -294,7 +309,7 @@ case "${1:-boot}" in
         ln -sf "$DIR/keepready.sh" "$LINK" 2>/dev/null
         stop_watcher
         log "apply: on"
-        ( nohup sh "$DIR/keepready.sh" run >/dev/null 2>&1 </dev/null & )
+        ( { fdclean; exec nohup sh "$DIR/keepready.sh" run; } >/dev/null 2>&1 </dev/null & )
         echo "result=ok"
         ;;
     status)
@@ -307,7 +322,7 @@ case "${1:-boot}" in
         echo "on=$o watcher=$w linked=$k memlist=$m relaunch=$rl state=$st"
         ;;
     run) run ;;
-    boot) ( nohup sh "$0" run >/dev/null 2>&1 </dev/null & ) ;;     # P75b: a new process, so its $$ is the pid the watcher records (inside ( ) $$ is the parent's, which exits at once: the pid file named a dead process and the next apply could not stop this watcher)
+    boot) ( { fdclean; exec nohup sh "$0" run; } >/dev/null 2>&1 </dev/null & ) ;;     # P75b: a new process, so its $$ is the pid the watcher records (inside ( ) $$ is the parent's, which exits at once: the pid file named a dead process and the next apply could not stop this watcher)
     discover) discover ;;
     *) echo "usage: keepready.sh apply on [relaunch]|off | status | boot | run | discover"; exit 1 ;;
 esac

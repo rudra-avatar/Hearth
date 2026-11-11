@@ -11,6 +11,8 @@
 import {WALLPAPER} from '../config/constants';
 import {exec, shellQuote} from './apps';
 import {isWebOS} from './luna';
+import {ensureNetFolder} from './netfolder';
+import {inNetFolder} from './netfoldercmd';
 import {setRootVars} from './cssvars';
 import {t as tt} from '../i18n';
 
@@ -48,6 +50,11 @@ export function ensureUserFolders (): Promise<void> {
 
 export function isSafePath (path: string): boolean {
 	return path.charAt(0) === '/' && !CONTROL_CHARS.test(path);
+}
+
+/** A path inside the network folder: connect it first (the TV drops the mount at every restart). Other paths: nothing. */
+function netReady (path: string): Promise<void> {
+	return inNetFolder(path) ? ensureNetFolder() : Promise.resolve();
 }
 
 export function isPicture (name: string): boolean {
@@ -151,7 +158,7 @@ export function parseListing (output: string, gifs = false, zips = false, ext?: 
 export function listDir (path: string, gifs = false, zips = false, ext?: RegExp): Promise<DirEntry[]> {
 	if (!isWebOS()) return Promise.resolve(mockListing(path));
 	if (!isSafePath(path)) return Promise.reject(new Error('Unsafe path'));
-	return exec(`ls -1p -- ${shellQuote(path)} 2>/dev/null`).then((out) => parseListing(out, gifs, zips, ext));
+	return netReady(path).then(() => exec(`ls -1p -- ${shellQuote(path)} 2>/dev/null`)).then((out) => parseListing(out, gifs, zips, ext));
 }
 
 /** Full paths of every picture in `path` and in all folders inside it (no limit). The list is made in a temporary file on the TV
@@ -173,7 +180,7 @@ export function listImagesDeep (path: string): Promise<string[]> {
 			return page(from + DEEP_PAGE, total);
 		});
 	};
-	return exec(`find -L ${shellQuote(path)} -type f \\( ${DEEP_NAMES} \\) 2>/dev/null | sort > ${DEEP_FILE}; wc -l < ${DEEP_FILE}`).then((n) => {
+	return netReady(path).then(() => exec(`find -L ${shellQuote(path)} -type f \\( ${DEEP_NAMES} \\) 2>/dev/null | sort > ${DEEP_FILE}; wc -l < ${DEEP_FILE}`)).then((n) => {
 		const total = parseInt(n.trim(), 10) || 0;
 		return page(1, total);
 	}).then((list) => exec(`rm -f ${DEEP_FILE}; true`).then(() => list, () => list));
@@ -246,7 +253,7 @@ export function readFileChunks (path: string, run: Run = exec): Promise<Uint8Arr
 	const quoted = shellQuote(path);
 	const chunk = WALLPAPER.chunkBytes;
 
-	return run(`wc -c < ${quoted}`).then((out) => {
+	return (run === exec ? netReady(path) : Promise.resolve()).then(() => run(`wc -c < ${quoted}`)).then((out) => {
 		const size = parseInt(out.trim(), 10);
 		if (!(size > 0)) throw pictureError('unreadable', "Can't read that picture");
 		if (size > WALLPAPER.maxBytes) {
@@ -410,6 +417,18 @@ export function endEarlyStatic (): void {
 	window.clearTimeout(earlyTimer);
 	earlyStatic = null;
 	setRootVars({'--wallpaper-image': 'none', '--wallpaper-veil': 'none'});
+}
+
+// p31b: the picture last shown by a folder slideshow without shuffle (shuffle keeps its own deck), so a restart carries on after it instead of at the first file
+const LAST_KEY = 'hearth-wallpaper-last-v1';
+export function readLastShown (id: string): string | null {
+	try {
+		const v: unknown = JSON.parse(localStorage.getItem(LAST_KEY) || 'null');
+		return v && typeof v === 'object' && 'id' in v && 'path' in v && (v as {id: unknown}).id === id && typeof (v as {path: unknown}).path === 'string' ? (v as {path: string}).path : null;
+	} catch { return null; }
+}
+export function writeLastShown (id: string, path: string): void {
+	try { localStorage.setItem(LAST_KEY, JSON.stringify({id, path})); } catch { /* storage full: the slideshow starts at the first file next time */ }
 }
 
 export function writeWallpaperCache (id: string, data: string): boolean {

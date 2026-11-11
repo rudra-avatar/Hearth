@@ -2,11 +2,15 @@
 // entry for a job, and which buttons may not be mapped. See extrakeys.ts for setting and removing them.
 
 import {isKeybind, isHomeCode, isProtected, keyLabel, recordedCode, validCode, type Keybind, type Keybinds} from './homekeycore';
+import {keyActionCommand} from './keyactcmd';
 import {LGHOME_COMMAND} from './lghomecmd';
 import type {RemapAction} from './remapcmd';
 import {t as tt} from '../i18n';
 
 const KEY = 'customlauncher-extrakeys-v1';
+
+/** p25b, dropped in p33g: the Magic Remote's pointer signal (input code 1198). A leftover Hearth entry for it is removed by `pointergone.ts`; the button list and count leave it out. */
+export const POINTER_CODE = 1198;
 
 /** Hearth's extra buttons: the button number, and what it did before (null: nothing). */
 export type ExtraRecord = Record<string, {previous: Keybind | null}>;
@@ -38,7 +42,7 @@ export function writeExtra (record: ExtraRecord): void {
 
 /** How many extra buttons Hearth set (for the settings row). */
 export function extraCount (): number {
-	return Object.keys(readExtra()).length;
+	return Object.keys(readExtra()).filter((k) => Number(k) !== POINTER_CODE).length;
 }
 
 /** The key-hook entry for a job. */
@@ -46,13 +50,15 @@ export function actionToBind (action: RemapAction): Keybind {
 	if (action.t === 'app') return {action: 'launch', id: action.id};
 	if (action.t === 'mute') return {action: 'replace', keycode: 113};
 	if (action.t === 'lghome') return {action: 'exec', command: LGHOME_COMMAND};
+	if (action.t === 'key') return {action: 'replace', keycode: action.code};
+	if (action.t === 'act') return {action: 'exec', command: keyActionCommand(action.id)};
 	return {action: 'ignore'};
 }
 
 /** The buttons Hearth set that are still in the file, with their entries. */
 export function mappedExtras (binds: Keybinds): {code: number; bind: Keybind}[] {
 	const record = readExtra();
-	return Object.keys(record).filter((k) => !!binds[k]).map((k) => ({code: Number(k), bind: binds[k]})).sort((a, b) => a.code - b.code);
+	return Object.keys(record).filter((k) => !!binds[k] && Number(k) !== POINTER_CODE).map((k) => ({code: Number(k), bind: binds[k]})).sort((a, b) => a.code - b.code);
 }
 
 /** Why a button may not be mapped here, or ''. */

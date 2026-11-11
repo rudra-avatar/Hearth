@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from 'preact/hooks';
 import {PickerIcon} from '../components/Glyph';
 import {useKeys, clamp, type NavKey} from '../hooks/useKeys';
-import {PRESET_CITIES} from '../lib/cities';
+import {countries, type Country} from '../lib/cities';
 import {searchCities} from '../lib/weathernet';
 import {themeCities} from '../lib/theme';
 import type {City} from '../lib/weather';
@@ -16,7 +16,7 @@ interface Props {
 
 interface CityRow {
 	key: string;
-	kind: 'search' | 'back' | 'city' | 'info';
+	kind: 'search' | 'back' | 'city' | 'info' | 'country';
 	label: string;
 	detail?: string;
 	city?: City;
@@ -32,14 +32,21 @@ export function CityPicker ({allowShell, onChoose, onClose}: Props) {
 	const [busy, setBusy] = useState(false);
 	const [failed, setFailed] = useState(false);
 	const [index, setIndex] = useState(0);
+	const [country, setCountry] = useState<Country | null>(null);   // W3: the country whose cities are shown (null: the country list)
+	const countryIndex = useRef(0);                                  // where the country list was left
 	const input = useRef<HTMLInputElement>(null);
 
 	const rows: CityRow[] = [];
 	if (results === null) {
-		rows.push({key: 'search', kind: 'search', label: tt('citypicker.searchForACity'), detail: tt('citypicker.typeItsNameWith')});
+		if (country === null) rows.push({key: 'search', kind: 'search', label: tt('citypicker.searchForACity'), detail: tt('citypicker.typeItsNameWith')});
 		const fromTheme = themeCities();          // P81: the loaded theme's cities are added to the list (first)
-		fromTheme.forEach((c) => rows.push({key: 't' + c.name + c.lat, kind: 'city', label: c.name, detail: c.detail, city: c}));
-		PRESET_CITIES.filter((p) => !fromTheme.some((t) => t.name === p.name && Math.abs(t.lat - p.lat) < 0.01)).forEach((c) => rows.push({key: c.name + c.lat, kind: 'city', label: c.name, detail: c.detail, city: c}));
+		if (country === null) fromTheme.forEach((c) => rows.push({key: 't' + c.name + c.lat, kind: 'city', label: c.name, detail: c.detail, city: c}));
+		if (country === null) {
+			countries().forEach((c) => rows.push({key: 'k' + c.name, kind: 'country', label: c.name, detail: c.cities.slice(0, 3).map((x) => x.name).join(', ') + (c.cities.length > 3 ? ' …' : '')}));
+		} else {
+			rows.push({key: 'cback', kind: 'back', label: tt('citypicker.backToTheList')});
+			country.cities.filter((p) => !fromTheme.some((t) => t.name === p.name && Math.abs(t.lat - p.lat) < 0.01)).forEach((c) => rows.push({key: c.name + c.lat, kind: 'city', label: c.name, detail: c.detail, city: c}));
+		}
 	} else {
 		rows.push({key: 'search', kind: 'search', label: tt('citypicker.searchAgain')});
 		rows.push({key: 'back', kind: 'back', label: tt('citypicker.backToTheList')});
@@ -69,6 +76,8 @@ export function CityPicker ({allowShell, onChoose, onClose}: Props) {
 		const row = rows[i];
 		if (!row) return;
 		if (row.kind === 'search') { setIndex(i); setTyping(true); }
+		else if (row.kind === 'country') { countryIndex.current = i; setCountry(countries().filter((c) => 'k' + c.name === row.key)[0] || null); setIndex(1); }
+		else if (row.kind === 'back' && results === null) { setCountry(null); setIndex(countryIndex.current); }
 		else if (row.kind === 'back') { setResults(null); setIndex(0); }
 		else if (row.kind === 'city' && row.city) onChoose(row.city);
 	};
@@ -78,11 +87,11 @@ export function CityPicker ({allowShell, onChoose, onClose}: Props) {
 			case 'up': setIndex((i) => clamp(i - 1, 0, Math.max(0, rows.length - 1))); break;
 			case 'down': setIndex((i) => clamp(i + 1, 0, Math.max(0, rows.length - 1))); break;
 			case 'enter': activate(index); break;
-			case 'back': if (results !== null) { setResults(null); setIndex(0); } else onClose(); break;
+			case 'back': if (results !== null) { setResults(null); setIndex(0); } else if (country !== null) { setCountry(null); setIndex(countryIndex.current); } else onClose(); break;
 			default: break;
 		}
 		return true;
-	}, [rows.length, index, results, busy, failed]);
+	}, [rows.length, index, results, busy, failed, country]);
 
 	useKeys(handleKey, !typing);
 
@@ -100,7 +109,7 @@ export function CityPicker ({allowShell, onChoose, onClose}: Props) {
 			<div class="settings">
 				<h1 class="settings__title">{tt('citypicker.chooseACity')}</h1>
 				<p class="settings__hint">{typing ? 'Type a city, then press OK or Enter · Back cancels' : tt('citypicker.okChoosesACityBack')}</p>
-				<div class="picker__path">{results === null ? tt('citypicker.popularCities') : tt('citypicker.searchResults')}</div>
+				<div class="picker__path">{results !== null ? tt('citypicker.searchResults') : country !== null ? country.name : tt('citypicker.popularCities')}</div>
 				<div class="picker">
 					{visible.map((row, n) => {
 						const i = start + n;
@@ -112,7 +121,7 @@ export function CityPicker ({allowShell, onChoose, onClose}: Props) {
 								onMouseEnter={() => { if (!typing) setIndex(i); }}
 								onClick={() => { setIndex(i); activate(i); }}
 							>
-								<PickerIcon kind={row.kind === 'search' ? 'search' : row.kind === 'info' ? 'info' : row.kind === 'back' ? 'folder' : 'pin'} />
+								<PickerIcon kind={row.kind === 'search' ? 'search' : row.kind === 'info' ? 'info' : row.kind === 'back' || row.kind === 'country' ? 'folder' : 'pin'} />
 								<div class="picker__text">
 									{editing
 										? <input ref={input} class="picker__input" type="text" placeholder={tt('citypicker.cityName')} maxLength={60} onKeyDown={onFieldKey} />

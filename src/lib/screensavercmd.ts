@@ -10,7 +10,7 @@ import {t as tt} from '../i18n';
 export {lastLine, parseExit, withStatus};
 
 /** Bump when the script or the QML change: the launcher then rewrites the installed copy. */
-export const SAVER_VERSION = '20';
+export const SAVER_VERSION = '27';
 export const SAVER_DIR = '/media/developer/launcher-screensaver';
 export const SAVER_LINK = '/var/lib/webosbrew/init.d/49-launcher-screensaver';
 
@@ -39,6 +39,10 @@ export interface SaverSettings {
 	recursive: boolean;
 	/** how dark Dim is, % (10-80) */
 	dimLevel: number;
+	/** Tests tab only (Q5): the care drift step in ms; left out of the file when not set */
+	driftMs?: number;
+	/** Tests tab only (Q6): draw the probe overlay; left out of the file when not set */
+	overlay?: boolean;
 }
 
 const SAFE_PATH = /^[\x20-\x7e]+$/;
@@ -47,7 +51,7 @@ const SAFE_PATH = /^[\x20-\x7e]+$/;
 export function settingsText (s: SaverSettings): string {
 	const source = s.source && SAFE_PATH.test(s.source) && s.source.indexOf("'") === -1 ? s.source : '';
 	const interval = Math.max(5, Math.min(3600, Math.round(s.interval) || 60));
-	return `source=${source}\ninterval=${interval}\nshuffle=${s.shuffle ? 1 : 0}\ndim=${s.dim ? 1 : 0}\ncare=${s.care === 0 ? 0 : 1}\nfill=${s.fill === 1 ? 1 : 0}\npoweroff=${Math.max(0, Math.min(86400, Math.round(s.powerOff) || 0))}\nrecursive=${s.recursive ? 1 : 0}\ndimlevel=${Math.max(10, Math.min(80, Math.round(s.dimLevel) || 40))}\n`;
+	return `source=${source}\ninterval=${interval}\nshuffle=${s.shuffle ? 1 : 0}\ndim=${s.dim ? 1 : 0}\ncare=${s.care === 0 ? 0 : 1}\nfill=${s.fill === 1 ? 1 : 0}\npoweroff=${Math.max(0, Math.min(86400, Math.round(s.powerOff) || 0))}\nrecursive=${s.recursive ? 1 : 0}\ndimlevel=${Math.max(10, Math.min(80, Math.round(s.dimLevel) || 40))}\n${s.driftMs ? `driftms=${Math.max(4000, Math.min(60000, Math.round(s.driftMs)))}\n` : ''}${s.overlay ? 'overlay=1\n' : ''}`;
 }
 
 export interface SaverFiles {

@@ -6,13 +6,14 @@ import {PHOTO_IDS, photoUrl, nextPhoto, takeEarlyPhoto} from '../lib/backgrounds
 import type {WallpaperConfig} from '../lib/storage';
 import {
 	clearWallpaperCache, listImages, loadPicture, readWallpaperCache, releasePicture, createShuffleOrder,
-	wallpaperCacheId, writeWallpaperCache, takeEarlyStatic, endEarlyStatic
+	wallpaperCacheId, writeWallpaperCache, takeEarlyStatic, endEarlyStatic, readLastShown, writeLastShown
 } from '../lib/wallpaper';
 import {t as tt} from '../i18n';
+import {inputIdle} from '../lib/inputidle';
+import {inNetFolder} from '../lib/netfoldercmd';
 
-/** R9 (Each visit, interval 0): away this long = a new picture on return; delay of the picture change after a restart */
-const AWAY_CHANGE_MS = 60000;
-const RESTART_CHANGE_MS = 8000;
+/** R9 (Each visit, interval 0): away this long = a new picture on return. p31b/p31c (user, overrides W1 for Each visit): the change starts at once, no wait for a quiet moment; after a restart the saved picture shows first and the change starts as soon as the first frames are drawn */
+const AWAY_CHANGE_MS = 60000;         // R9: back in front after this long = a new picture (p31c: the 1 minute stays; p31b tried 3000, the user wanted only the quiet wait gone)
 let restartHandled = false;
 
 interface Props {
@@ -77,8 +78,14 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 		let unsaved = false;                   // the copy isn't in the cache yet
 		let cacheKnown = false;                // the cache already holds a picture for this choice
 		let shownAt = Date.now();              // when the picture on screen appeared
+		let cancelWait: (() => void) | null = null;    // W1: a change waiting for a quiet moment
+		// p31 (Each visit): a due change stays pending until a new picture is really on screen. Before, it was lost when the page went hidden while it
+		// waited for a quiet moment, when the folder list could not be read (the shell answers late after a TV start) or when a picture was still loading.
+		let pending = false;
+		let dueAt = 0;
+		let retries = 0;
 
-		const stopTimer = () => { window.clearTimeout(timer); timer = 0; };
+		const stopTimer = () => { window.clearTimeout(timer); timer = 0; if (cancelWait) { cancelWait(); cancelWait = null; } };
 
 		const saveCache = () => {
 			if (unsaved && snapshot && writeWallpaperCache(cacheId, snapshot)) unsaved = false;
@@ -150,15 +157,29 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 			shownAt = Date.now();
 		};
 
-		// A failure keeps whatever picture is already showing (say, the USB drive was unplugged).
+		// A failure keeps whatever picture is already showing (say, the USB drive was unplugged). Not for the network folder
+		// (user 2026-11-08): when the share cannot be reached the default background shows, not a picture left from before; the
+		// saved choice stays and is tried again at the next start or return.
+		const retryLater = () => {          // p31: a due Each visit change that failed or found the loader busy is tried again, 10 s, 30 s, 90 s; a return to the front tries too
+			if (!pending || disposed || document.hidden || retries >= 3) return;
+			const ms = [10000, 30000, 90000][retries++];
+			log(`wallpaper: each visit, change not done yet, next try in ${ms / 1000} s`);
+			window.clearTimeout(timer);
+			timer = window.setTimeout(() => advance(), ms);
+		};
+
 		const fail = (text: string) => {
 			failed = true;
 			busy = false;
 			if (!told) { told = true; report.current(text); }
+			retryLater();
+			if (inNetFolder(config.path)) { stopTimer(); clearWallpaperCache(); cacheKnown = false; hideAll(); }
 		};
 
 		const advance = () => {
 			if (disposed) return;
+			if (busy) { retryLater(); return; }
+			if (files.length === 1) { pending = false; return; }
 			if (files.length) { next(0); return; }
 			listImages(config.path, config.recursive).then(
 				(list) => {
@@ -166,17 +187,37 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 					if (!list.length) { fail(tt('wallpaper.noPicturesFoundInThat')); return; }
 					files = list;
 					order = config.shuffle ? createShuffleOrder(files, cacheId) : null;
-					if (files.length === 1) return;          // a one-picture folder: nothing to rotate
+					if (!order && config.mode === 'folder') { const was = readLastShown(cacheId); const at = was ? files.indexOf(was) : -1; if (at >= 0) position = at; }          // p31b: carry on after the picture shown last
+					if (files.length === 1) { pending = false; return; }          // a one-picture folder: nothing to rotate
 					next(0);
 				},
 				() => { if (!disposed) fail(tt('wallpaper.couldnTReadTheWallpaper')); }
 			);
 		};
 
+		/** W1: a change of picture waits until nothing was pressed or moved for a few seconds (the decode and the fade must not run while someone navigates) */
+		const advanceQuiet = () => {
+			if (cancelWait) cancelWait();
+			cancelWait = inputIdle().whenQuiet((waited) => {
+				cancelWait = null;
+				if (disposed) return;
+				if (waited > 600) log(`wallpaper: change waited ${waited} ms for a quiet moment`);
+				advance();
+			});
+		};
+
+		const due = (why: string) => {          // p31: an Each visit change is due (restart, or back after a minute away)
+			if (!pending) { pending = true; dueAt = Date.now(); }
+			retries = 0;
+			log(`wallpaper: each visit, change due (${why})`);
+			stopTimer();
+			advance();          // p31b (user): at once, no quiet wait
+		};
+
 		const schedule = () => {
 			stopTimer();
 			const rotates = config.mode === 'folder' && (files.length === 0 || files.length > 1);
-			if (rotates && config.intervalSec > 0 && !document.hidden) timer = window.setTimeout(advance, config.intervalSec * 1000);
+			if (rotates && config.intervalSec > 0 && !document.hidden) timer = window.setTimeout(advanceQuiet, config.intervalSec * 1000);
 		};
 
 		const next = (attempt: number) => {
@@ -186,6 +227,7 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 			position = (position + 1) % files.length;
 			const path = order ? order.take() : files[position];
 			if (!path) { fail(tt('wallpaper.noPicturesFoundInThat')); return; }
+			if (!order && config.mode === 'folder') writeLastShown(cacheId, path);          // p31b: a restart carries on after this one
 			loadPicture(path).then(
 				(loaded) => {
 					busy = false;
@@ -193,6 +235,7 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 					failed = false;
 					if (order) order.shown(path);
 					show(loaded.url);
+					if (pending) { pending = false; retries = 0; log(`wallpaper: each visit, new picture shown ${Date.now() - dueAt} ms after it was due`); }
 					snapshot = loaded.snapshot;
 					unsaved = !!loaded.snapshot;
 					if (!cacheKnown) { saveCache(); cacheKnown = !unsaved; }    // the first picture is cached at once
@@ -220,14 +263,16 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 			const cached = takeEarlyStatic(cacheId) || readWallpaperCache(cacheId);       // main.tsx may have read it already (P56)
 			if (cached) {                                          // instant: no shell work at all
 				show(cached, true);                 // already known: no fade-in at start-up
-				window.requestAnimationFrame(() => window.requestAnimationFrame(endEarlyStatic));
+				window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+					endEarlyStatic();
+					if (config.mode === 'folder' && config.intervalSec === 0 && atRestart && !disposed) { if (document.hidden) { pending = true; dueAt = Date.now(); } else due('restart, first frames drawn'); }          // hidden: done on the first return          // p31c (user): Each visit after a restart: the saved picture shows first, the new one follows at once
+				}));
 				snapshot = cached;
 				unsaved = false;
 				cacheKnown = true;
 				// the saved shuffle order picks the next picture after one interval: nothing is loaded at start-up
 				if (config.mode === 'folder') {
 					schedule();
-					if (config.intervalSec === 0 && atRestart) timer = window.setTimeout(advance, RESTART_CHANGE_MS);   // R9 Each visit: a new picture after a restart, once the first screen is calm
 				}
 				return;
 			}
@@ -238,6 +283,7 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 					if (!list.length) { fail(tt('wallpaper.noPicturesFoundInThat')); return; }
 					files = list;
 					order = config.shuffle ? createShuffleOrder(files, cacheId) : null;
+					if (!order && config.mode === 'folder') { const was = readLastShown(cacheId); const at = was ? files.indexOf(was) : -1; if (at >= 0) position = at; }          // p31b: carry on after the picture shown last
 					next(0);
 				},
 				() => { if (!disposed) fail(tt('wallpaper.couldnTReadTheWallpaper')); }
@@ -246,26 +292,30 @@ export function Wallpaper ({config, opacity = 100, onProblem}: Props) {
 
 		const onVisibility = () => {
 			if (config.mode === 'gradient') return;
-			if (document.hidden) { hiddenAt = Date.now(); stopTimer(); saveCache(); return; }
+			if (document.hidden) { if (!hiddenAt) hiddenAt = Date.now(); stopTimer(); saveCache(); if (pending) log('wallpaper: each visit, change was waiting when the page went hidden'); return; }
 			const away = hiddenAt ? Date.now() - hiddenAt : 0;
 			hiddenAt = 0;
 			if (failed) start();                                   // the USB drive may be back
 			else if (config.mode === 'folder' && config.intervalSec === 0) {
-				if (away >= AWAY_CHANGE_MS) advance();             // R9 Each visit: a new picture after 1+ min away
+				if (pending) due('still pending on return');       // p31: a change that was cut short or failed before is done now
+				else if (away >= AWAY_CHANGE_MS) due(`back after ${Math.round(away / 1000)} s`);        // R9 Each visit: a new picture when back after AWAY_CHANGE_MS (p31b: at once)
+				else if (away > 0) log(`wallpaper: each visit, back after ${Math.round(away / 1000)} s (under ${AWAY_CHANGE_MS / 1000} s): same picture`);
 			} else if (config.mode === 'folder') {
 				// carry on where the interval left off: coming back to the front must not start a fade of its own
 				stopTimer();
-				timer = window.setTimeout(advance, Math.max(1500, config.intervalSec * 1000 - (Date.now() - shownAt)));
+				timer = window.setTimeout(advanceQuiet, Math.max(1500, config.intervalSec * 1000 - (Date.now() - shownAt)));
 			}
 		};
 
 		start();
 		document.addEventListener('visibilitychange', onVisibility);
+		document.addEventListener('hearth-visibility', onVisibility);          // p31: sent by the 1 s check in app.tsx when the TV skipped the event
 		return () => {
 			disposed = true;
 			stopTimer();
 			saveCache();
 			document.removeEventListener('visibilitychange', onVisibility);
+			document.removeEventListener('hearth-visibility', onVisibility);
 		};
 	}, [config.mode, config.path, config.recursive, config.intervalSec, config.shuffle]);
 
@@ -290,6 +340,7 @@ export function PhotoShow ({intervalSec, shuffle, paused, fit}: {intervalSec: nu
 	const wrap = useRef<HTMLDivElement>(null);
 	const firstPhoto = useRef(takeEarlyPhoto()).current;       // chosen and already loading since main.tsx, else random
 	const away = useRef(0);
+	const pending = useRef(false);          // p31: an Each visit change is due and no new photo is on screen yet (a re-run of the effect used to lose it)
 	const state = useRef({front: -1, index: firstPhoto >= 0 ? firstPhoto : Math.floor(Math.random() * PHOTO_IDS.length), busy: false});
 
 	useEffect(() => { clearWallpaperCache(); }, []);
@@ -303,8 +354,10 @@ export function PhotoShow ({intervalSec, shuffle, paused, fit}: {intervalSec: nu
 		let warm = 0;
 		let img: HTMLImageElement | null = null;
 		let back = false;                                      // R9 Each visit: back in front after 1+ min away
+		let cancelWait: (() => void) | null = null;            // W1: a change waiting for a quiet moment
 		if (paused) { if (!away.current) away.current = Date.now(); }
-		else if (away.current) { back = intervalSec === 0 && Date.now() - away.current >= AWAY_CHANGE_MS; away.current = 0; }
+		else if (away.current) { if (intervalSec === 0 && Date.now() - away.current >= AWAY_CHANGE_MS) pending.current = true; away.current = 0; }
+		back = intervalSec === 0 && pending.current && !paused;
 
 		const show = (url: string) => {
 			const back = st.front === 0 ? 1 : 0;
@@ -346,16 +399,26 @@ export function PhotoShow ({intervalSec, shuffle, paused, fit}: {intervalSec: nu
 		const load = (then: () => void) => {
 			st.busy = true;
 			const url = photoUrl(st.index);
+			const t0 = performance.now();
 			img = new Image();
-			img.onload = () => { st.busy = false; if (!disposed) { show(url); then(); } };
+			const go = () => { st.busy = false; if (!disposed) { log(`wallpaper: photo ready in ${Math.round(performance.now() - t0)} ms`); show(url); pending.current = false; then(); } };
+			// W1: where the browser can decode ahead (Chromium 64+), the photo is decoded before its layer is made; else the 0.01 opacity trick below
+			img.onload = () => { const i = img as HTMLImageElement & {decode?: () => Promise<void>}; if (typeof i.decode === 'function') i.decode().then(go, go); else go(); };
 			img.onerror = () => { st.busy = false; if (!disposed) then(); };
 			img.src = url;
 		};
 
+		// W1: the change itself waits until nothing was pressed or moved for a few seconds
+		const change = () => { st.index = nextPhoto(st.index, shuffle); load(schedule); };
 		const tick = () => {
 			if (disposed) return;
-			st.index = nextPhoto(st.index, shuffle);
-			load(schedule);
+			if (cancelWait) cancelWait();
+			cancelWait = inputIdle().whenQuiet((waited) => {
+				cancelWait = null;
+				if (disposed) return;
+				if (waited > 600) log(`wallpaper: photo change waited ${waited} ms for a quiet moment`);
+				change();
+			});
 		};
 		const schedule = () => { window.clearTimeout(timer); if (!paused && intervalSec > 0) timer = window.setTimeout(tick, intervalSec * 1000); };
 
@@ -372,11 +435,12 @@ export function PhotoShow ({intervalSec, shuffle, paused, fit}: {intervalSec: nu
 			void f.offsetWidth;
 			f.style.transition = ''; o.style.transition = '';
 		}
-		if (st.front < 0) load(schedule); else if (back) tick(); else schedule();
+		if (st.front < 0) load(schedule); else if (back) { log('wallpaper: each visit, back in front: a new photo at once'); if (!st.busy) change(); } else schedule();          // p31b (user): no quiet wait for Each visit
 		return () => {
 			disposed = true;
 			window.clearTimeout(timer);
 			window.clearTimeout(warm);
+			if (cancelWait) { cancelWait(); cancelWait = null; }
 			if (img) { img.onload = null; img.onerror = null; }
 		};
 	}, [intervalSec, shuffle, paused]);

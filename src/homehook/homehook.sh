@@ -76,7 +76,22 @@ do_start () {
     if [ "$c" -gt 0 ]; then : > "$MARK"; echo "ready=$c"; echo result=started; else echo result=failed; fi
 }
 
-log () { echo "$(date +%H:%M:%S) up=$(cut -d. -f1 /proc/uptime 2>/dev/null)s $*" >> "$LOGF" 2>/dev/null; }
+log () { { read _up _ < /proc/uptime; } 2>/dev/null; echo "$(date +%H:%M:%S) up=${_up%%.*}s $*" >> "$LOGF" 2>/dev/null; }   # H: uptime without an extra process
+# >>> fdclean (the same lines in every helper; checked by scripts/test-fdclean.sh) >>>
+# #54: a helper started through the Homebrew service inherits its sockets (fds 3 and up) and a stuck registration can follow.
+# fdclean closes every fd above 2 in the process that runs it (use it in the background part, before `exec`); a shell that
+# cannot name a two-digit fd (dash) closes only fds 3 to 9. fdnote prints the count for the log.
+fdclean () {
+    _w=0; ( eval "exec 10>&-" ) 2>/dev/null && _w=1
+    for _f in /proc/self/fd/*; do
+        _n=${_f##*/}
+        case "$_n" in ''|*[!0-9]*|0|1|2) continue ;; esac
+        [ "${#_n}" -gt 1 ] && [ "$_w" = 0 ] && continue
+        eval "exec $_n>&-" 2>/dev/null
+    done
+}
+fdnote () { set -- /proc/self/fd/*; echo "fds=$#"; }
+# <<< fdclean <<<
 
 # Hearth is gone only when the apps folder is there and our appinfo.json is not (checked twice, so a slow mount cannot fool it).
 hearth_gone () {
@@ -123,7 +138,7 @@ boot_job () {
     other="$(cat "$JOBPID" 2>/dev/null)"
     if [ -n "$other" ] && [ "$other" != "$$" ] && kill -0 "$other" 2>/dev/null; then log "boot: a job is already running ($other)"; return 0; fi
     echo $$ > "$JOBPID"
-    log "boot: key engine start-up began"
+    log "boot: key engine start-up began ($(fdnote))"
     if hearth_gone; then cleanup; return 0; fi
     if [ -f "$MARK" ] && [ "$(ready_count)" -gt 0 ]; then log "boot: a hook is already running"; return 0; fi
     if ! have_files; then log "boot: files missing in $DIR"; return 0; fi
@@ -159,7 +174,7 @@ boot_job () {
     log "boot: finished watching; ready=$(ready_count)"
 }
 
-do_boot () { ( nohup sh "$0" bootjob >/dev/null 2>&1 </dev/null & ); }
+do_boot () { ( { fdclean; exec nohup sh "$0" bootjob; } >/dev/null 2>&1 </dev/null & ); }
 
 case "${1:-boot}" in
     status) do_status ;;

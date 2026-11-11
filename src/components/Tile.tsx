@@ -36,7 +36,7 @@ interface Props {
 	checked?: boolean;
 	/** greyed out (settings picker: not on the home screen) */
 	dimmed?: boolean;
-	onHover?: () => void;
+	onHover?: (e: MouseEvent) => void;
 	onActivate?: () => void;
 }
 
@@ -58,7 +58,7 @@ export class Tile extends Component<Props> {
 			a !== b && (a.key !== b.key || a.label !== b.label || a.imageUrl !== b.imageUrl || a.glyphImageUrl !== b.glyphImageUrl || a.sourceIcon !== b.sourceIcon || a.glyph !== b.glyph || a.color !== b.color || a.disconnected !== b.disconnected || a.pending !== b.pending || a.note !== b.note);
 	}
 
-	private hover = () => { if (this.props.onHover) this.props.onHover(); };
+	private hover = (e: MouseEvent) => { if (this.props.onHover) this.props.onHover(e); };
 	private activate = () => { if (this.props.onActivate) this.props.onActivate(); };
 
 	render () {

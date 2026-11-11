@@ -7,7 +7,7 @@ const clip = (text: string, n = 760): string => (text.length > n ? text.slice(0,
 
 export const STORAGE_TESTS: ProbeTest[] = [
 	{
-		id: 'storage-room', manual: true, label: '44. Storage size and room left',
+		id: 'storage-room', manual: true, label: '36. Storage size and room left',
 		description: 'Shows how full Hearth\'s browser store is and how much room is left (writes one temporary entry and removes it; takes a few seconds). Send the answer.',
 		run: (): Promise<ProbeResult> => {
 			try {

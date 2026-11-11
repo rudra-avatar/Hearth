@@ -1,4 +1,4 @@
-// Probe tests 32-36 (Tests tab only, 2.0.3 D): what the TV offers for (a) other ways to map remote buttons, (b) a
+// Probe tests 30-34 (Tests tab only, 2.0.3 D): what the TV offers for (a) other ways to map remote buttons, (b) a
 // self-update. Nothing is installed or changed; the only file written is a temporary one in /tmp, removed at the end.
 // 32: key devices. 33: raw key events (down / repeat / up per key) for 22 s. 34: tools on the TV (python, wget, curl, sha256).
 // 35: download the release .ipk from GitHub and compare its SHA-256 with repo/apps.json (no install).
@@ -117,12 +117,12 @@ function brew (): Promise<ProbeResult> {
 
 export const MORE_TESTS: ProbeTest[] = [
 	{
-		id: 'inputdev', label: '32. Key devices',
+		id: 'inputdev', label: '30. Key devices',
 		description: 'Lists /dev/input/event* with each device\'s name, the TV\'s architecture and word size. Reads only. Needs a rooted TV.',
 		run: () => exec(DEVICES, 8000).then((out) => { const l = lines(out); return l.length > 1 ? {ok: true, text: clip('OK: ' + l.join(' | '))} : {ok: false, text: 'NOTHING FOUND: no key devices listed'}; }, fail)
 	},
 	{
-		id: 'rawkeys', manual: true, label: '33. Raw key events (22 s)',
+		id: 'rawkeys', manual: true, label: '31. Raw key events (22 s)',
 		description: 'Start it, then within 22 seconds: press Home once briefly, hold Home for 3 seconds, press OK, Back and a colour key. Shows down, repeat and up counts per key code and device, plus what Input Hook logged for Home. Reads only. Needs a rooted TV.',
 		run: () => exec(KEYS_START, 8000).then(() => new Promise<void>((resolve) => window.setTimeout(resolve, (KEY_WINDOW_S + 1) * 1000))).then(() => exec(KEYS_READ, 15000)).then((out) => {
 			const s = summariseKeys(out);
@@ -130,17 +130,17 @@ export const MORE_TESTS: ProbeTest[] = [
 		}, fail)
 	},
 	{
-		id: 'tools', label: '34. Tools on the TV',
+		id: 'tools', label: '32. Tools on the TV',
 		description: 'Checks for python, wget, curl, sha256sum, openssl, unzip and tar, and the Python version. Reads only. Needs a rooted TV.',
 		run: () => exec(TOOLS, 8000).then((out) => { const l = lines(out); return l.length ? {ok: true, text: clip('OK: ' + l.join(' | '))} : {ok: false, text: 'NOTHING: no answer'}; }, fail)
 	},
 	{
-		id: 'download', manual: true, label: '35. Download the release and check it',
+		id: 'download', manual: true, label: '33. Download the release and check it',
 		description: 'Reads the release list from GitHub, downloads the newest release .ipk (about 19 MB) to a temporary file, compares its SHA-256 with the list, then deletes it. Nothing is installed. Needs a rooted TV and internet; takes up to 2 minutes.',
 		run: download
 	},
 	{
-		id: 'brewroute', label: '36. Homebrew install route',
+		id: 'brewroute', label: '34. Homebrew install route',
 		description: 'Checks that root commands run and which install methods the Homebrew service and the TV offer (an empty test call, nothing is installed). Needs a rooted TV.',
 		run: brew
 	}

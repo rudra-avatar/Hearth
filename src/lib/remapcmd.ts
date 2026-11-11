@@ -21,7 +21,9 @@ export const REMAP_CONFIG = 'tld.my.customlauncher.remap';
 export type RemapAction =
 	| {t: 'app'; id: string}
 	| {t: 'mute'}
-	| {t: 'lghome'}   // only in "Map additional keys" (key hook); the key filter of the other method does not know it
+	| {t: 'lghome'}   // only in "Map additional keys" (key hook)
+	| {t: 'key'; code: number}   // K1: the button acts as another button (key hook `replace`)
+	| {t: 'act'; id: string}     // K1: a TV action (keyact.sh, key hook `exec`), see keyactcmd.ts
 	| {t: 'none'};
 
 export interface RemapConfig {
@@ -137,7 +139,11 @@ export function setButton (remap: RemapConfig, name: string, action: RemapAction
 
 export function sameAction (a: RemapAction | null | undefined, b: RemapAction | null | undefined): boolean {
 	if (!a || !b) return !a && !b;
-	return a.t === b.t && (a.t !== 'app' || (b.t === 'app' && a.id === b.id));
+	if (a.t !== b.t) return false;
+	if (a.t === 'app') return b.t === 'app' && a.id === b.id;
+	if (a.t === 'key') return b.t === 'key' && a.code === b.code;
+	if (a.t === 'act') return b.t === 'act' && a.id === b.id;
+	return true;
 }
 
 /** What the key filter is handed (and what map.json holds). `capture`: Hearth is waiting for a button press. */

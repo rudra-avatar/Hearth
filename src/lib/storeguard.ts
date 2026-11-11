@@ -5,7 +5,7 @@
 export interface Store { getItem (k: string): string | null; setItem (k: string, v: string): void; removeItem (k: string): void; key (i: number): string | null; readonly length: number }
 
 export const FREE_ORDER: ReadonlyArray<readonly string[]> = [
-	['hearth-probe-fill'],          // J: a leftover of test 44 (only if the page was killed during it)
+	['hearth-probe-fill'],          // J: a leftover of test 36 (only if the page was killed during it)
 	['hearth-mono-v3'],
 	['hearth-ssap-icondata-v1'],
 	['customlauncher-weather-v1'],

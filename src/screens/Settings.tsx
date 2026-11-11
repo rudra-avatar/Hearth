@@ -1,11 +1,16 @@
+import type {ComponentChildren} from 'preact';
 import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'preact/hooks';
 import {Grid} from '../components/Grid';
 import {OptionList, type OptionItem} from '../components/OptionList';
+import {HelpPanel} from '../components/HelpPanel';
+import {homePreviewFor, widgetPositionRow} from '../lib/homepreview';
+import {helpForTab, helpForOption} from '../lib/helptext';
 import type {TileModel} from '../components/Tile';
 import {useKeys, clamp, type NavKey} from '../hooks/useKeys';
 import {useOkPress} from '../hooks/useOkPress';
 import {LAYOUT} from '../theme/tokens';
 import {t as tt} from '../i18n';
+import {edgeDirection, edgeDepth} from '../lib/pointer';
 
 export interface SettingsTab {
 	id: string;
@@ -16,7 +21,7 @@ export interface SettingsTab {
 	shown: TileModel[];
 	/** a "Refresh list" button */
 	refresh?: boolean;
-	/** an "Order by last opened" switch (while on, the home row's move mode is not offered) */
+	/** a "Most used" switch (while on, the home row's move mode is not offered) */
 	recent?: {on: boolean};
 	/** a "Favourites" button: pick which of the shown items are favourites */
 	fav?: boolean;
@@ -32,13 +37,15 @@ export interface SettingsTab {
 	edit?: boolean;
 	/** a line of explanation under the buttons (grid tabs) */
 	note?: string;
+	/** p22c: a live preview sits in the room right of the list (Widget tab, widget on); p23c: help shows with it too */
+	preview?: boolean;
 }
 
 interface Props {
 	tabs: SettingsTab[];
 	active: boolean;
 	onToggle: (tabId: string, key: string) => void;
-	/** the "Order by last opened" switch */
+	/** the "Most used" switch */
 	onRecent?: () => void;
 	onOption: (optionId: string) => void;
 	/** the "Refresh list" button on the Apps tab */
@@ -60,7 +67,23 @@ interface Props {
 	onCollapse?: (id?: string) => void;
 	/** small print at the bottom right (versions, root state) */
 	about?: string;
+	/** p23b: draws the home preview (called only while a preview row is highlighted, so nothing is mounted otherwise) */
+	homePreview?: () => ComponentChildren;
 }
+
+/** p14: the option list and the tab bar are this wide on every tab, so the room right of them (the Widget tab's preview) is always reserved. */
+/** p20 (user): a share of the Settings area instead of 1325 px (the area is 1640 px wide at 1920, so 80.8% is the same size there; old: 1325 px) */
+/** p23a (user): the Settings area is 3.125% (60 px at 1920) from both screen edges (old: 140 px, list 80.8% of 1640 = 1325 px); the list is 73.33% of the area (1320 px at 1920), the help/preview column takes the rest. */
+const EDGE_PCT = 3.125;
+const LIST_PCT = 73.3333;
+const GAP_PCT = 1.0417;      // 20 px at 1920
+const PANEL_W = `${LIST_PCT}%`;
+/** left edge of the help panel, as a share of the whole screen (the panel is positioned in the padded Settings box) */
+const HELP_LEFT = `${(EDGE_PCT + LIST_PCT * (100 - 2 * EDGE_PCT) / 100 + GAP_PCT).toFixed(3)}%`;
+
+/** p29 (user): the tab bar scrolls with the Magic Remote pointer in its outer 20% (same zone as the home row), slowly: window widths per second, MIN at the inner border, MAX at the very edge. */
+const TAB_EDGE_SPEED_MIN = 0.12;
+const TAB_EDGE_SPEED_MAX = 0.45;
 
 /** Focus is on the tabs row (a tab, or a button) or in the tab's content. */
 type Zone = 'tabs' | 'subs' | 'refresh' | 'fav' | 'remove' | 'recent' | 'content';
@@ -80,7 +103,7 @@ const HINT = {
  *  Grid tabs, select mode: everything available; OK adds/removes an item.
  *  Grid tabs: hold OK on a tile to edit its name and icon (Apps, Sources).
  */
-export function Settings ({tabs, active, onToggle, onRecent, onOption, onRefresh, favourites, onFavourite, onUninstallPick, onEdit, onAdjust, onClose, onTab, onCollapse, about}: Props) {
+export function Settings ({tabs, active, onToggle, onRecent, onOption, onRefresh, favourites, onFavourite, onUninstallPick, onEdit, onAdjust, onClose, onTab, onCollapse, about, homePreview}: Props) {
 	const [tabIndex, setTabIndex] = useState(0);
 	const [subIndex, setSubIndex] = useState(0);
 	const [zone, setZone] = useState<Zone>('tabs');
@@ -207,8 +230,9 @@ export function Settings ({tabs, active, onToggle, onRecent, onOption, onRefresh
 		}
 
 		if (onOptions) {
-			if (key === 'up') { if (optionIndex === 0) setZone('tabs'); else setOptionIndex(optionIndex - 1); }
-			else if (key === 'down') setOptionIndex(clamp(optionIndex + 1, 0, count - 1));
+			const loops = !!current && current.id === 'tests';          // p14: the Tests rows loop (Up on the first = the last, Down on the last = the first)
+			if (key === 'up') { if (optionIndex === 0) { if (loops && count > 1) setOptionIndex(count - 1); else setZone('tabs'); } else setOptionIndex(optionIndex - 1); }
+			else if (key === 'down') setOptionIndex(loops && count > 1 && optionIndex >= count - 1 ? 0 : clamp(optionIndex + 1, 0, count - 1));
 			else if ((key === 'left' || key === 'right') && options[optionIndex] && options[optionIndex].stepper) {
 				onAdjust(options[optionIndex].id, key === 'left' ? -1 : 1);
 			}
@@ -230,25 +254,95 @@ export function Settings ({tabs, active, onToggle, onRecent, onOption, onRefresh
 
 	useKeys(handleKey, active);
 
-	const hint = onPages ? tt('settings.photographThePageChangePage') : onOptions ? HINT.options : pickKind === 'remove' ? HINT.removing : picking ? HINT.picking : hasEdit ? HINT.edit : HINT.select;
+	const hint = onPages ? tt('settings.photographThePageChangePage') : onOptions ? (current && current.id === 'tests' ? tt('settings.testsLeaveHint') : HINT.options) : pickKind === 'remove' ? HINT.removing : picking ? HINT.picking : hasEdit ? HINT.edit : HINT.select;
 	const labels = tabs.map((t) => t.label);
 	const focusedId = useRef('');
-	// The rows panel is as wide as the tab bar (first tab's left edge to the last tab's right edge, plus the focus border).
+	// p14: the tab bar is a window of fixed width; the pills slide so the focused one is always whole in view, pills that do not fit are hidden
 	const tabsRef = useRef<HTMLDivElement>(null);
-	const [panelWidth, setPanelWidth] = useState<number | undefined>(undefined);
+	const winRef = useRef<HTMLDivElement>(null);
+	const tabShiftRef = useRef(0);
+	const [, setTabShift] = useState(0);
 	const labelKey = labels.join('|');
-	const [snug, setSnug] = useState(false);          // LF1b: the tab labels (a longer language) do not fit one row: use the tighter spacing
-	useLayoutEffect(() => { setSnug(false); }, [labelKey]);
-	useLayoutEffect(() => {
-		const bar = tabsRef.current;
-		const first = bar && bar.children[0] as HTMLElement | undefined;
-		const last = bar && bar.children[bar.children.length - 1] as HTMLElement | undefined;
+	// p29: pointer edge scroll of the tab bar (free pixels, no tile selects; pills clip at the window edge)
+	const edgeRef = useRef({dir: 0, depth: 0});
+	const rafRef = useRef(0);
+	const lastRef = useRef(0);
+	const pointerSelRef = useRef(-1);          // p33f (F2): the tab a pointer pick moved to (-1 = none), so a stale pick cannot swallow a later key-driven slide
+	const stopTabScroll = () => {
+		edgeRef.current.dir = 0;
+		if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = 0; }
+		const track = tabsRef.current;
+		if (track) { track.style.transition = ''; track.style.webkitTransition = ''; }
+		setTabShift(tabShiftRef.current);
+	};
+	const tabScrollFrame = (now: number) => {
+		rafRef.current = 0;
+		const win = winRef.current;
+		const track = tabsRef.current;
+		const e = edgeRef.current;
+		if (!win || !track || !e.dir) return;
+		const kids = track.children;
+		const first = kids[0] as HTMLElement | undefined;
+		const last = kids[kids.length - 1] as HTMLElement | undefined;
 		if (!first || !last) return;
-		const room = bar && bar.parentElement ? bar.parentElement.clientWidth : 1700;          // never wider than the settings area (the extra Debug and Tests tabs made the bar too wide)
-		if (bar && !snug && tabCount <= 7 && bar.scrollWidth > room + 1) { setSnug(true); return; }          // measured with normal spacing first; the next pass measures the tight one
-		const w = Math.min(last.offsetLeft + last.offsetWidth - first.offsetLeft + 16, room);
-		if (w >= 600) setPanelWidth((p) => (p === w ? p : w));
-	}, [labelKey, snug]);          // eslint-disable-line react-hooks/exhaustive-deps
+		const room = win.clientWidth - 16;
+		const max = Math.max(0, last.offsetLeft - first.offsetLeft + last.offsetWidth - room);
+		const dt = Math.max(0, Math.min(0.1, (now - lastRef.current) / 1000));   // clamp: a rAF time can precede the event time
+		lastRef.current = now;
+		const speed = (TAB_EDGE_SPEED_MIN + (TAB_EDGE_SPEED_MAX - TAB_EDGE_SPEED_MIN) * e.depth) * win.clientWidth;
+		const next = Math.max(0, Math.min(max, tabShiftRef.current + e.dir * speed * dt));
+		if (next !== tabShiftRef.current) {
+			tabShiftRef.current = next;
+			const v = `translateX(${-next}px)`;
+			track.style.transform = v; track.style.webkitTransform = v;
+		}
+		if ((e.dir > 0 && next < max) || (e.dir < 0 && next > 0)) rafRef.current = requestAnimationFrame(tabScrollFrame);
+	};
+	const onTabsMove = (ev: MouseEvent) => {
+		if (picking) return;
+		const win = winRef.current;
+		if (!win) return;
+		const r = win.getBoundingClientRect();
+		const dir = edgeDirection(ev.clientX, r);
+		const e = edgeRef.current;
+		e.dir = dir; e.depth = edgeDepth(ev.clientX, r);
+		if (!dir) { if (rafRef.current) stopTabScroll(); return; }
+		if (!rafRef.current) {
+			const track = tabsRef.current;
+			if (track) {          // no slide animation while the pointer drives it; every pill shows (clipped by the window)
+				track.style.transition = 'none'; track.style.webkitTransition = 'none';
+				for (let i = 0; i < track.children.length; i++) { const k = track.children[i] as HTMLElement; k.style.opacity = ''; k.style.pointerEvents = ''; }
+			}
+			lastRef.current = performance.now();
+			rafRef.current = requestAnimationFrame(tabScrollFrame);
+		}
+	};
+	useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
+	useLayoutEffect(() => {
+		const win = winRef.current;
+		const track = tabsRef.current;
+		const kids = track ? track.children : null;
+		const first = kids && kids[0] as HTMLElement | undefined;
+		const el = kids && kids[tabIndex] as HTMLElement | undefined;
+		if (!win || !kids || !first || !el) return;
+		const byPointer = pointerSelRef.current === tabIndex; pointerSelRef.current = -1;
+		if (byPointer) return;          // p29: a pill picked with the pointer keeps the bar where it is
+		const room = win.clientWidth - 16;          // 8 px padding each side (room for the focus border)
+		const at = (e: HTMLElement) => e.offsetLeft - first.offsetLeft;
+		const l = at(el);
+		const r = l + el.offsetWidth;
+		let next = tabShiftRef.current;
+		if (tabIndex === 0 || r <= room) next = 0;
+		else if (l < next) next = l;
+		else if (r > next + room) next = r - room;
+		for (let i = 0; i < kids.length; i++) {
+			const k = kids[i] as HTMLElement;
+			const whole = at(k) >= next - 1 && at(k) + k.offsetWidth <= next + room + 1;
+			k.style.opacity = whole ? '' : '0';
+			k.style.pointerEvents = whole ? '' : 'none';
+		}
+		if (next !== tabShiftRef.current) { tabShiftRef.current = next; setTabShift(next); }
+	}, [tabIndex, labelKey]);
 	useEffect(() => {          // a group opening or closing moves rows: keep the focus on the same row
 		const was = focusedId.current;
 		if (!was || !onOptions) return;
@@ -262,21 +356,42 @@ export function Settings ({tabs, active, onToggle, onRecent, onOption, onRefresh
 		if (!(zone === 'content' && f && ((f.header && f.open) || f.grouped))) onCollapse(current.id);
 	}, [zone, optionIndex, options, tabIndex]);          // eslint-disable-line react-hooks/exhaustive-deps
 
+	// p22c: help for what is highlighted (the tab pill, or the row or group in the list). p23c (user): also while a preview shows (Widget tab), the texts are short.
+	let helpTitle = '';
+	let helpBody = '';
+	if (onOptions && current) {
+		if (zone === 'tabs') { helpTitle = current.label; helpBody = helpForTab(current.id); }
+		else if (zone === 'content') {
+			const o = options[optionIndex];
+			if (o) { helpTitle = o.label; helpBody = helpForOption(o.id); }
+		}
+	}
+	// p23b: the home preview under the help text, only while a row listed in lib/homepreview.ts is highlighted in the list
+	const previewOn = !!(homePreview && onOptions && current && zone === 'content' && options[optionIndex] && homePreviewFor(options[optionIndex].id));
+	const fullPrev = previewOn && widgetPositionRow(options[optionIndex].id);
+	useEffect(() => {          // p30: the Widget tab's widget-only strip hides while the full preview shows (CSS on <html>)
+		const cl = document.documentElement.classList;
+		if (fullPrev) cl.add('hearth-fullprev'); else cl.remove('hearth-fullprev');
+		return () => { cl.remove('hearth-fullprev'); };
+	}, [fullPrev]);
+
 	return (
 		<div class="screen screen--settings">
 			<div class="settings">
 				<h1 class="settings__title">{tt('settings.settings')}</h1>
-				<p class="settings__hint">{hint}</p>
-				<div class={tabCount > 7 ? 'settings__tabs settings__tabs--tight' : snug ? 'settings__tabs settings__tabs--snug' : 'settings__tabs'} ref={tabsRef}>
-					{labels.map((label, i) => (
-						<div
-							key={label}
-							class={['tab', i === tabIndex && 'tab--active', picking && i !== tabIndex && 'tab--locked', zone === 'tabs' && i === tabIndex && 'tab--focused'].filter(Boolean).join(' ')}
-							onMouseEnter={() => { if (!picking) { setZone('tabs'); selectTab(i); } }}
-						>
-							{label}
-						</div>
-					))}
+				<p class="settings__hint">{hint} · {tt('settings.homeLeaveHint')}</p>
+				<div class="settings__tabwin" ref={winRef} style={{width: PANEL_W}} onMouseMove={onTabsMove} onMouseLeave={() => { if (rafRef.current || edgeRef.current.dir) stopTabScroll(); }}>
+					<div class="settings__tabs" ref={tabsRef} style={{transform: `translateX(${-tabShiftRef.current}px)`, WebkitTransform: `translateX(${-tabShiftRef.current}px)`}}>
+						{labels.map((label, i) => (
+							<div
+								key={label}
+								class={['tab', i === tabIndex && 'tab--active', picking && i !== tabIndex && 'tab--locked', zone === 'tabs' && i === tabIndex && 'tab--focused'].filter(Boolean).join(' ')}
+								onMouseEnter={() => { if (!picking && !edgeRef.current.dir) { if (i !== tabIndex) pointerSelRef.current = i; setZone('tabs'); selectTab(i); } }}
+							>
+								{label}
+							</div>
+						))}
+					</div>
 				</div>
 				{hasSubs && (
 					<div class="settings__tabs settings__tabs--sub">
@@ -325,7 +440,7 @@ export function Settings ({tabs, active, onToggle, onRecent, onOption, onRefresh
 								onMouseEnter={() => setZone('recent')}
 								onClick={() => { if (onRecent) onRecent(); }}
 							>
-								{recentOn ? tt('settings.orderByLastOpenedOn') : tt('settings.orderByLastOpenedOff')}
+								{recentOn ? tt('settings.mostUsedOn') : tt('settings.mostUsedOff')}
 							</div>
 						)}
 						{tab.note && !picking && <p class="settings__note">{tab.note}</p>}
@@ -357,6 +472,7 @@ export function Settings ({tabs, active, onToggle, onRecent, onOption, onRefresh
 						</div>
 					</div>
 				)}
+				{(helpBody || previewOn) && <HelpPanel title={helpTitle} body={helpBody} left={HELP_LEFT}>{previewOn && homePreview ? homePreview() : null}</HelpPanel>}
 				{onOptions && (
 					<OptionList
 						options={options}
@@ -364,7 +480,7 @@ export function Settings ({tabs, active, onToggle, onRecent, onOption, onRefresh
 						selected={optionIndex}
 						onSelect={(i) => { setZone('content'); setOptionIndex(i); }}
 						onActivate={(i) => { setZone('content'); onOption(options[i].id); }}
-						width={panelWidth}
+						width={PANEL_W}
 					/>
 				)}
 				{about && <p class="settings__about">{about}</p>}

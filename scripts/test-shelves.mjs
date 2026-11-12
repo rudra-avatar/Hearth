@@ -119,6 +119,15 @@ eq([p.readSet('nope'), p.readSet(null), p.readSet('{"origin":1,"at":2}')], [null
 eq(p.readSet(JSON.stringify({origin: 's', at: 1, lists: {r: Array.from({length: 40}, (_, i) => item(String(i)))}})).lists.r.length, p.SHELF_MAX, 'at most SHELF_MAX items per list');
 eq(p.shelfCacheKey('plxnative'), 'customlauncher-shelves-plxnative-v1', 'each source has its own saved copy');
 
+// ---- posters that did not load ----
+const SRC = 'http://h:1/photo/:/transcode?width=176&url=%2Ft';
+eq(p.posterSrc(SRC, 200, 0), SRC, 'a poster that never failed keeps its address');
+eq(p.posterSrc(SRC, 200, 200), '', 'failed in this fetch: no address, the title is drawn instead of a broken picture');
+eq(p.posterSrc(SRC, 300, 200), SRC + '&hearthRetry=200', 'after a new fetch it is asked for again, with a marker so the failure is not reused');
+eq(p.posterSrc(SRC, 400, 200), SRC + '&hearthRetry=200', 'the marker stays the same on later fetches: a poster that came back is not reloaded each time');
+eq(p.posterSrc('http://h:1/p.jpg', 300, 200), 'http://h:1/p.jpg?hearthRetry=200', 'an address without a query gets ? instead of &');
+eq(p.posterSrc('', 300, 200), '', 'no poster stays no poster');
+
 // ---- opening an item in its app ----
 const source = (appId) => ({id: 'x', appId, appName: 'Example', launch: (it) => ({example: {id: it.key}})});
 const open = (src) => new Promise((resolve) => { let said = null; p.openItem(src, item('42'), (why) => { said = why; }); setTimeout(() => resolve(said), 30); });

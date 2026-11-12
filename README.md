@@ -258,11 +258,12 @@ To remove Hearth, turn off *Replace LG Home with SAM* or *Replace LG Home (helpe
   - *Quiet mode*: hide after, dim after, dim strength, OLED shift
   - *Favourites* margins and the *Recent apps* panel size
   - **Reset Hearth visual settings to default**
-- **Widget:**
-  - *Show widget*
+- **Widgets:**
+  - *Show the clock widget*
   - *Time and date*
   - *Widget look*: size, font, thickness, position, alignment, colour, shadow, backdrop, opacity
   - *Weather*: on or off, unit, city, city name, today's high and low
+  - *PlxNative*: Continue watching and Recently added rows below the home row, account, server, play or open details
 - **Wallpaper:** the picture or slideshow, interval, shuffle, opacity and bottom fade.
 - **Screen saver (rooted):**
   - the saver on or off and what it plays

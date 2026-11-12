@@ -236,7 +236,7 @@ export function probeOptions (state: ProbeState): OptionItem[] {
 	const rows: OptionItem[] = [{
 		id: RUN_ALL_ID,
 		label: 'Run all tests',
-		description: `${running ? 'Running… ' : ''}${done ? `Done ${done} of ${PROBE_TESTS.length}. ` : 'Runs the tests that need no action (17, 18, 24, 27-29, 31, 33, 35, 36, 40, 42, 45, 46, 48 and 49-52 are started one by one). Nothing is changed on the TV. '}✓ worked, ✗ did not: ${summaryText(state)}`,
+		description: `${running ? 'Running… ' : ''}${done ? `Done ${done} of ${PROBE_TESTS.length}. ` : 'Runs the tests that need no action (17, 18, 24, 27-29, 31, 33, 35, 36, 40, 42, 45, 46, 48, 49-52 and 60-63 are started one by one). Nothing is changed on the TV. '}✓ worked, ✗ did not: ${summaryText(state)}`,
 		valueText: running ? 'Running' : done ? 'Run again' : 'Run'
 	}];
 	PROBE_TESTS.forEach((t) => {

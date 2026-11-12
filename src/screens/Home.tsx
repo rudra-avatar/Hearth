@@ -495,7 +495,7 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 	return (
 		<div class={`screen${active ? '' : ' screen--away'}${shift ? ' screen--shift' : ''}${shiftVars.cls ? ' ' + shiftVars.cls : ''}`} style={shiftVars.css || undefined}>
 			{moveMode && <div class="movehint"><div class="movehint__main">{tt('move.hint')}</div><div class="movehint__sub">{tt('move.hintBack')}</div></div>}
-			<div ref={stageRef} class="home-stage" style={lift ? {transform: `translate3d(0, ${-lift}px, 0)`} : undefined}>
+			<div ref={stageRef} class={nShelves > 0 ? 'home-stage home-stage--shelves' : 'home-stage'} style={lift && nShelves > 0 ? {transform: `translate3d(0, ${-lift}px, 0)`} : undefined}>
 			{appearance.clock.show && !moveMode && <Clock now={now} format={timeFormat} config={appearance.clock} weather={weather} />}
 			<div ref={rowsRef} class={classes} style={rowStyle}>
 				{sizes.map((size, r) => {

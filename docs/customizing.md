@@ -16,6 +16,6 @@ All of Hearth's choices live in **Hearth Settings**. Find it as the last tile on
 | [Custom themes](theme/theme-guide.md) | Make a whole new look in a zip file |
 | [Language files](language_packs.md) | Add your own language |
 
-**How Settings work.** The tabs are at the top: *Apps & Sources, Essentials, Look, Widget, Wallpaper, Screen saver, System*. Press **Left** and **Right** on the tab bar to change tab. Some rows sit in **groups** (a folder of rows). Press **OK** to open a group. Press **Back** to close it. Rows that do not work on your TV are **grey**, and they tell you why. Press **OK** on a row to step through its choices, or **Left/Right** to change a number.
+**How Settings work.** The tabs are at the top: *Apps & Sources, Essentials, Look, Widgets, Wallpaper, Screen saver, System*. Press **Left** and **Right** on the tab bar to change tab. Some rows sit in **groups** (a folder of rows). Press **OK** to open a group. Press **Back** to close it. Rows that do not work on your TV are **grey**, and they tell you why. Press **OK** on a row to step through its choices, or **Left/Right** to change a number.
 
 ![Settings, Apps & Sources](screenshots/settings-apps.jpg)

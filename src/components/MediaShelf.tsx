@@ -1,4 +1,5 @@
-import type {ShelfView} from '../lib/shelves';
+import {useState} from 'preact/hooks';
+import {posterSrc, type ShelfView} from '../lib/shelves';
 
 /** Poster size and gap at 1080p (layout px). Small enough for two shelves under the home row, large enough to read from the sofa. */
 export const POSTER_W = 176;
@@ -23,13 +24,16 @@ export function MediaShelf ({shelf, focused, selected, width, onSelect, onActiva
 	const total = shelf.items.length * STEP - POSTER_GAP;
 	const max = Math.max(0, total - width);
 	const offset = Math.max(0, Math.min(max, (selected - 1) * STEP));
+	// posters that did not load (server off, item gone): the fetch (rev) they failed in, by item key; see posterSrc
+	const [failed, setFailed] = useState<Record<string, number>>({});
+	const fail = (key: string) => setFailed((f) => (f[key] === shelf.rev ? f : {...f, [key]: shelf.rev}));
 	return (
 		<section class={`shelf${focused ? ' shelf--focused' : ''}`}>
 			<h2 class="shelf__title">{shelf.title}</h2>
 			<div class="shelf__viewport" style={{width: `${width}px`}}>
 				<div class="shelf__track" style={{transform: `translate3d(${-offset}px, 0, 0)`}}>
 					{shelf.items.map((item, i) => {
-						const src = shelf.image(item);
+						const src = posterSrc(shelf.image(item), shelf.rev, failed[item.key] || 0);
 						return (
 							<div
 								key={item.key}
@@ -39,7 +43,7 @@ export function MediaShelf ({shelf, focused, selected, width, onSelect, onActiva
 								onClick={() => onActivate(i)}
 							>
 								<div class="poster__frame" style={{width: `${POSTER_W}px`, height: `${POSTER_H}px`}}>
-									{src ? <img class="poster__image" src={src} alt="" /> : <div class="poster__fallback">{item.title}</div>}
+									{src ? <img key={src} class="poster__image" src={src} alt="" onError={() => fail(item.key)} /> : <div class="poster__fallback">{item.title}</div>}
 									{item.progress > 0 && <div class="poster__progress"><div class="poster__progress-bar" style={{width: `${Math.round(item.progress * 100)}%`}} /></div>}
 									<div class="poster__ring" />
 								</div>

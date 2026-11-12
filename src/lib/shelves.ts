@@ -151,10 +151,23 @@ export interface ShelfView {
 	id: string;
 	title: string;
 	items: ShelfItem[];
+	/** when the items were fetched (ShelfSet.at): a poster that failed is tried again once this changes */
+	rev: number;
 	/** the poster address ('' = none: the title is drawn instead) */
 	image: (item: ShelfItem) => string;
 	/** OK on an item */
 	open: (item: ShelfItem) => void;
+}
+
+/** The poster address to use. `failedAt` is the `rev` (fetch) in which the poster last failed, 0 for never.
+ *  - never failed: the address as it is (no reload on later fetches)
+ *  - failed in this fetch: '' (the title is drawn on the tile instead of a broken picture)
+ *  - failed in an earlier fetch: the address with a marker naming that fetch, so the TV asks the server again instead of keeping
+ *    the failure; the marker stays the same until the poster fails again, so a poster that came back is not reloaded each time. */
+export function posterSrc (src: string, rev: number, failedAt: number): string {
+	if (!src || !failedAt) return src;
+	if (failedAt === rev) return '';
+	return src + (src.indexOf('?') === -1 ? '?' : '&') + 'hearthRetry=' + failedAt;
 }
 
 /** Forgets a source's saved shelves (after signing out). */

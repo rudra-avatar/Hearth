@@ -91,6 +91,7 @@ export function useShelves (source: ShelfSource, {wakes, onExpired, onOpenError}
 				id: source.id + ':' + l.id,
 				title: l.title,
 				items,
+				rev: data.at,
 				image: (item) => latest.current.source.image(item, POSTER_W, POSTER_H),
 				open: (item) => { const s = latest.current.source; log(`shelves ${s.id}: open in ${s.appName} (${item.type})`); openItem(s, item, (why) => latest.current.onOpenError(why, s.appName)); }
 			});

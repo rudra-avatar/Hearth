@@ -36,9 +36,11 @@ function classicScriptTag (): Plugin {
 // HEARTH_WEATHER=0 builds without the weather widget (the code is removed from the bundle).
 const env = (globalThis as unknown as {process?: {env: Record<string, string | undefined>}}).process;
 const WEATHER = !(env && env.env.HEARTH_WEATHER === '0');
+// HEARTH_PLEX=0 builds without the Plex shelves.
+const PLEX = !(env && env.env.HEARTH_PLEX === '0');
 
 export default defineConfig({
-	define: {__LEGACY__: JSON.stringify(LEGACY), __WEATHER__: JSON.stringify(WEATHER), __NOROOT__: JSON.stringify(!!(env && env.env.HEARTH_NOROOT === '1')), __PROBE__: JSON.stringify(!!(env && env.env.HEARTH_PROBE === '1'))},
+	define: {__LEGACY__: JSON.stringify(LEGACY), __WEATHER__: JSON.stringify(WEATHER), __PLEX__: JSON.stringify(PLEX),__NOROOT__: JSON.stringify(!!(env && env.env.HEARTH_NOROOT === '1')), __PROBE__: JSON.stringify(!!(env && env.env.HEARTH_PROBE === '1'))},
 	base: './',            // the app is loaded from a local file path on the TV
 	plugins: [preact(), classicScriptTag()],
 	build: {

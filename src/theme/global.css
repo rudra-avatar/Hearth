@@ -893,3 +893,98 @@ html, body {
 .upd__fill { height: 100%; border-radius: 7px; background: var(--color-text-primary); transition: width 0.4s linear; }
 .upd__step { font-size: var(--font-option-description); color: var(--color-text-muted); }
 .upd__line::before { content: ''; position: absolute; left: 4px; top: 0.55em; width: 9px; height: 9px; border-radius: 50%; background: var(--color-text-secondary); }
+
+/* ---------- media shelves (components/MediaShelf.tsx; any source, lib/shelves.ts) ----------
+   The clock and the home row sit on a stage; the shelves wait just below the screen. Down from the home row slides the
+   stage up (transform only, so the TV composites it without repainting) and the shelves come into view under the apps. */
+.home-stage {
+	position: absolute;
+	left: 0; top: 0;
+	width: 100%; height: 100%;
+}
+/* only while a shelf shows: without shelves the stage is a plain box (no own layer, no stacking context), so Home is drawn as before */
+.home-stage--shelves {
+	transition: transform 420ms cubic-bezier(0.2, 0.7, 0.2, 1);
+	will-change: transform;
+}
+.shelves {
+	position: absolute;
+	top: 100%;
+	padding-top: 36px;
+}
+.shelves--quiet { opacity: 0; }
+.shelf { margin-bottom: 30px; }
+.shelf__title {
+	margin: 0 0 14px;
+	font-size: 26px;
+	font-weight: 500;
+	letter-spacing: 0.04em;
+	color: var(--color-text-muted);
+	text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+	transition: color var(--motion-focus-ms) ease-out;
+}
+.shelf--focused .shelf__title { color: var(--color-text-primary); }
+.shelf__viewport {
+	overflow: hidden;
+	padding: 16px 24px;       /* room for the focused poster's scale and ring */
+	margin: -16px -24px;
+	opacity: 0.72;
+	transition: opacity var(--motion-focus-ms) ease-out;
+}
+.shelf--focused .shelf__viewport { opacity: 1; }
+.shelf__track {
+	display: flex;
+	flex-direction: row;
+	transition: transform var(--motion-scroll-ms) cubic-bezier(0.2, 0.7, 0.2, 1);
+	will-change: transform;
+}
+.poster { flex: 0 0 auto; outline: none; }
+.poster__frame {
+	position: relative;
+	border-radius: 10px;
+	overflow: hidden;
+	background: var(--color-tile-bg);
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+	transform: scale(1);
+	transition: transform var(--motion-focus-ms) ease-out;
+	pointer-events: none;
+}
+.poster--focused .poster__frame { transform: scale(1.08); z-index: 1; }
+.poster__image { display: block; width: 100%; height: 100%; object-fit: cover; }
+.poster__fallback {
+	padding: 18px 14px;
+	font-size: 22px;
+	line-height: 1.25;
+	color: var(--color-text-secondary);
+	overflow: hidden;
+	height: 100%;
+	box-sizing: border-box;
+}
+.poster__progress { position: absolute; left: 10px; right: 10px; bottom: 10px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.28); overflow: hidden; }
+.poster__progress-bar { height: 100%; background: #e5a00d; }
+.poster__ring {
+	position: absolute;
+	left: 0; top: 0;
+	width: 100%; height: 100%;
+	border-radius: 10px;
+	box-shadow: inset 0 0 0 4px var(--color-tile-border-focus);
+	opacity: 0;
+	transition: opacity var(--motion-focus-ms) ease-out;
+}
+.poster--focused .poster__ring { opacity: 1; }
+.poster__title, .poster__subtitle {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+}
+.poster__title { margin-top: 14px; font-size: 22px; font-weight: 500; color: var(--color-text-secondary); }
+.poster--focused .poster__title { color: var(--color-text-primary); }
+.poster__subtitle { margin-top: 2px; font-size: 19px; color: var(--color-text-muted); }
+/* the all-apps row when it sits below the shelves (favourites set) */
+.shelves__apps { margin-top: 6px; }.shelves .rows { position: relative; left: auto; right: auto; bottom: auto; }
+/* Settings, Widgets, PlxNative: the sign-in code (screens/PlexSignIn.tsx) */
+.plexcode { margin-top: 70px; text-align: center; }
+.plexcode__page { font-size: 34px; color: var(--color-text-secondary); letter-spacing: 0.04em; }
+.plexcode__code { margin: 26px 0 30px; font-size: 128px; font-weight: 600; letter-spacing: 0.32em; color: var(--color-text-primary); line-height: 1; min-height: 128px; }
+.plexcode__status { font-size: 26px; color: var(--color-text-muted); }

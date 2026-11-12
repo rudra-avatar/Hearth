@@ -21,6 +21,9 @@ import {createPointerGuard} from '../lib/pointerguard';
 import {tileSlot} from '../lib/tileslot';
 import {hoverSelected, hoverCancel} from '../lib/pointer';
 import {t as tt} from '../i18n';
+import {MediaShelf} from '../components/MediaShelf';
+import type {ShelfView} from '../lib/shelves';
+import {START_NAV, clampNav, entersShelves, maxZone as maxZoneOf, pointAt, selectedOn, shelfLayout, shelfLift, shelfStep, type ShelfNav} from '../lib/shelfnav';
 
 const ROWS_SHUT_MS = 520;       // p20 (user): Up, the second row goes away and the favourites row glides back down: slower and with a soft start (old: the opening glide, 360 ms ease-out, felt like springing back)
 const ROWS_FADE_MS = 160;        // p25a: the second row fades out this fast on Up (p30, user: shorter; old: 240)
@@ -97,6 +100,9 @@ interface Props {
 	onMovePick?: (key: string | null) => void;
 	onMoveStep?: (key: string, dir: 'left' | 'right') => void;
 	onMoveExit?: () => void;
+	/** Media shelves below the home row, from any source (lib/shelves.ts; only the ones that are on and have items). Down from the
+	 *  home row slides them into view; OK on an item calls the shelf's own `open`. */
+	shelves?: ShelfView[];
 }
 
 /** OLED shift: the offset (px at 1080p) of the clock and the apps, changed once a minute through a small cycle. null = off. */
@@ -115,7 +121,7 @@ function useShift (on: boolean): {x: number; y: number} | null {
 /** The home screen: a clock and the tiles along the bottom, in one row or two.
  *  Left/Right move along a row, Up/Down change row (two rows), OK opens, holding OK opens the app's menu.
  *  Back opens the Recent apps panel. */
-export function Home ({items: allItems, favourites, timeFormat, appearance, active, paused, onActivate, onLongPress, onDeadDown, onBack, wake, homeKey, focus, weather, moveMode, tileKeys, onMovePick, onMoveStep, onMoveExit}: Props) {
+export function Home ({items: allItems, favourites, timeFormat, appearance, active, paused, onActivate, onLongPress, onDeadDown, onBack, wake, homeKey, focus, weather, moveMode, tileKeys, onMovePick, onMoveStep, onMoveExit, shelves}: Props) {
 	const now = useClock(paused);
 	const [position, setPosition] = useState<RowsPosition>(initialPosition);
 	// Favourites: with any chosen, the first row holds them alone; Down brings up a second row with everything else, Up hides it again.
@@ -206,6 +212,44 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 	const tileKeysRef = useRef(tileKeys);
 	tileKeysRef.current = tileKeys;
 
+	// Media shelves below the home row. Zone 0 is the home row(s) as before, 1..n the shelves, and with favourites set n+1 is the
+	// row of all the other apps, which then sits below the shelves (user 2026-11-12: Down goes favourites, shelves, all apps).
+	// With no shelf showing (off, signed out, empty) nothing here changes the home screen. Move mode leaves the shelves out.
+	// The rules are in lib/shelfnav.ts (tested); this only keeps the state and measures the screen.
+	const shelfList = moveMode ? [] : (shelves || []);
+	const nShelves = shelfList.length;
+	const layout = shelfLayout(favN, items.length, shelfList.map((s) => s.items.length));
+	const tailApps = layout.tailApps;
+	const maxZone = maxZoneOf(layout);
+	const [navRaw, setNav] = useState<ShelfNav>(START_NAV);
+	const nav = clampNav(navRaw, layout);
+	const zone = nav.zone;
+	const tailCol = nav.tailCol;
+	const zoneRef = useRef(zone);
+	zoneRef.current = zone;
+	const setZone = (z: number) => setNav((n) => (n.zone === z ? n : {...n, zone: z}));
+	const shelfAt = (s: number): number => selectedOn(nav, layout, s);
+	const layoutRef = useRef(layout);
+	layoutRef.current = layout;
+	const shelfListRef = useRef(shelfList);
+	shelfListRef.current = shelfList;
+	const shelfSig = shelfList.map((s) => s.id + ':' + s.items.length).join('|') + (tailApps ? '+apps' : '');
+	const stageRef = useRef<HTMLDivElement>(null);
+	const shelvesRef = useRef<HTMLDivElement>(null);
+	const [lift, setLift] = useState(0);
+	// The stage slides up just far enough: the home row stays near the top while the shelves fit, and the focused shelf
+	// (or the all-apps row below them) is always fully on screen.
+	useLayoutEffect(() => {
+		if (zone === 0) { if (lift) setLift(0); return; }
+		const box = shelvesRef.current;
+		const rows = rowsRef.current;
+		const sec = box && box.children[zone - 1] as HTMLElement | undefined;
+		if (!box || !rows || !sec) return;
+		const next = shelfLift(zone, {rowsTop: rows.offsetTop, shelvesHeight: box.offsetHeight, sectionTop: sec.offsetTop, sectionHeight: sec.offsetHeight});
+		if (next !== lift) setLift(next);
+	}, [zone, shelfSig]);       // eslint-disable-line react-hooks/exhaustive-deps
+	useEffect(() => { if (tailApps && open) setOpen(false); }, [tailApps, open]);
+
 	// The tile under the pointer gets the highlight (wake from quiet mode). Reads refs: it is called from an effect registered once.
 	const pickRef = useRef<(node: unknown) => void>(() => undefined);
 	pickRef.current = (node) => {
@@ -283,6 +327,7 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 	// Quiet mode also hides the wallpaper's bottom fade (CSS: `.hearth-quiet .wallpaper__fade`).
 	useEffect(() => {
 		document.body.classList.toggle('hearth-quiet', quiet);
+		if (quiet) setZone(0);       // the shelves slide away with the apps; the first key brings back the home row
 		return () => document.body.classList.remove('hearth-quiet');
 	}, [quiet]);
 
@@ -310,6 +355,7 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 		pendingKey.current = found ? null : homeKey || null;
 		setPosition(found || initialPosition());
 		setOpen(false);
+		setZone(0);
 		if (moveRef.current && moveCb.current.onMoveExit) moveCb.current.onMoveExit();       // Hearth came back to the front: the move mode ends
 	}, [wake]);
 	useEffect(() => {
@@ -336,6 +382,17 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 		pendingKey.current = null;                            // the person is moving: a late app list no longer moves the highlight
 		if (key !== 'down') deadRef.current = 0;
 		if (quietRef.current) return true;                    // the key that wakes the apps does nothing else
+		const z = zoneRef.current;
+		const lay = layoutRef.current;
+		if (z > 0) {                                          // on a shelf, or on the all-apps row below the shelves (lib/shelfnav.ts)
+			if (key === 'left' || key === 'right') {
+				const d = stepDecision(stepRef.current, Date.now(), !!(event && event.repeat), speedRef.current);
+				stepRef.current = d.state;
+				if (!d.move) return true;
+			}
+			if (key === 'left' || key === 'right' || key === 'up' || key === 'down' || key === 'back') setNav((n) => shelfStep(clampNav(n, lay), lay, key));
+			return true;
+		}
 		const mv = moveRef.current;
 		if (mv) {
 			const cb = moveCb.current;
@@ -360,6 +417,10 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 			const d = stepDecision(stepRef.current, Date.now(), !!(event && event.repeat), speedRef.current);
 			stepRef.current = d.state;
 			if (!d.move) return true;
+		}
+		if (key === 'down' && !mv) {                          // from the last home row (or the favourites row) down to the first shelf
+			const cur = clampPosition(sizes, posRef.current);
+			if (entersShelves(lay, favN, movePosition(sizes, cur, 'down').row === cur.row)) { deadRef.current = 0; setZone(1); return true; }
 		}
 		if (favN > 0 && key === 'down' && !openRef.current && items.length > favN) {       // bring up the row of all the other apps
 			noteTop();
@@ -388,7 +449,18 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 	useKeys(handleKey, active);
 	useOkPress({
 		onPress: () => {
-			if (!selectedItem || quietRef.current) return;
+			if (quietRef.current) return;
+			const z = zoneRef.current;
+			if (z > 0) {
+				const list = shelfListRef.current;
+				if (z <= list.length) {
+					const shelf = list[z - 1];
+					const item = shelf.items[shelfAt(z - 1)];
+					if (item) shelf.open(item);
+				} else if (items[favN + tailCol]) onActivate(items[favN + tailCol]);
+				return;
+			}
+			if (!selectedItem) return;
 			const mv = moveRef.current;
 			if (mv) {                                          // move mode: OK picks the tile up or puts it down
 				const cb = moveCb.current;
@@ -399,7 +471,12 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 			}
 			onActivate(selectedItem);
 		},
-		onLongPress: () => { if (selectedItem && onLongPress && !quietRef.current && !moveRef.current) onLongPress(selectedItem); }
+		onLongPress: () => {
+			if (!onLongPress || quietRef.current || moveRef.current) return;
+			const z = zoneRef.current;
+			if (z === 0) { if (selectedItem) onLongPress(selectedItem); }
+			else if (z > shelfListRef.current.length && items[favN + tailCol]) onLongPress(items[favN + tailCol]);       // the all-apps row below the shelves keeps the app menu
+		}
 	}, active);
 
 	// The row's sizes are set on the row itself (not on :root), so the Settings grid keeps its own.
@@ -418,6 +495,7 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 	return (
 		<div class={`screen${active ? '' : ' screen--away'}${shift ? ' screen--shift' : ''}${shiftVars.cls ? ' ' + shiftVars.cls : ''}`} style={shiftVars.css || undefined}>
 			{moveMode && <div class="movehint"><div class="movehint__main">{tt('move.hint')}</div><div class="movehint__sub">{tt('move.hintBack')}</div></div>}
+			<div ref={stageRef} class={nShelves > 0 ? 'home-stage home-stage--shelves' : 'home-stage'} style={lift && nShelves > 0 ? {transform: `translate3d(0, ${-lift}px, 0)`} : undefined}>
 			{appearance.clock.show && !moveMode && <Clock now={now} format={timeFormat} config={appearance.clock} weather={weather} />}
 			<div ref={rowsRef} class={classes} style={rowStyle}>
 				{sizes.map((size, r) => {
@@ -426,7 +504,7 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 						<Row
 							key={r}
 							items={items.slice(start, start + size)}
-							focused={r === at.row}
+							focused={r === at.row && zone === 0}
 							selected={at.cols[r]}
 							onSelect={(col) => { pendingKey.current = null; setPosition({row: r, cols: at.cols.map((c, i) => (i === r ? col : c))}); }}
 							onActivate={(col) => { if (!moveRef.current) onActivate(items[start + col]); }}
@@ -440,6 +518,37 @@ export function Home ({items: allItems, favourites, timeFormat, appearance, acti
 						/>
 					);
 				})}
+			</div>
+			{nShelves > 0 && (
+				<div ref={shelvesRef} class={`shelves${quiet ? ' shelves--quiet' : ''}`} style={{left: `${appearance.sideMargin}px`, right: `${appearance.sideMargin}px`}}>
+					{shelfList.map((shelf, s) => (
+						<MediaShelf
+							key={shelf.id}
+							shelf={shelf}
+							focused={zone === s + 1}
+							selected={shelfAt(s)}
+							width={LAYOUT.screenWidth - 2 * appearance.sideMargin}
+							onSelect={(i) => setNav((n) => pointAt(clampNav(n, layout), layout, s + 1, i))}
+							onActivate={(i) => { if (shelf.items[i]) shelf.open(shelf.items[i]); }}
+						/>
+					))}
+					{tailApps && (
+						<div class={rowsClasses(appearance, {multi: false, favN: 0, open: false, shut: false, quiet}, rowVars.cls) + ' shelves__apps'} style={rowVars.css || undefined}>
+							<Row
+								items={items.slice(favN)}
+								focused={zone === maxZone}
+								selected={tailCol}
+								onSelect={(col) => setNav((n) => pointAt(clampNav(n, layout), layout, maxZone, col))}
+								onActivate={(col) => onActivate(items[favN + col])}
+								edgeSpeed={edgeSpeedFactor(appearance.scrollSpeed)}
+								tileSize={tileSize}
+								tileGap={tileGap}
+								viewportWidth={LAYOUT.screenWidth - 2 * appearance.sideMargin}
+							/>
+						</div>
+					)}
+				</div>
+			)}
 			</div>
 		</div>
 	);

@@ -95,13 +95,18 @@ import {undoAll, UNDO_LOG} from './lib/undoallcmd';
 import {appTile, inputTile, pickInOrder} from './lib/tiles';
 import {orderTiles, orderUpdate, stepKeys} from './lib/tileorder';
 import {APP_ID, TIMING} from './config/constants';
-import {LEGACY, PROBE_ENABLED, WEATHER_ENABLED} from './config/features';
+import {LEGACY, PLEX_ENABLED, PROBE_ENABLED, WEATHER_ENABLED} from './config/features';
+import {PLEX_SOURCE_ID, plexSource} from './lib/plexsource';
+import {forgetSet} from './lib/shelves';
+import {useShelves} from './hooks/useShelves';
+import {readAuth, type PlexAuth} from './lib/plexstore';
+import {PlexSignIn} from './screens/PlexSignIn';
 import {PROBE_TESTS, RUN_ALL_ID, bad as probeBad, probeOptions, runAll, withLimit, type ProbeState} from './lib/probe';
 import {fetchWeather} from './lib/weathernet';
 import {FRESH_MS, isFresh, readWeatherCache, usableCached, weatherView, writeWeatherCache, type City, type WeatherData} from './lib/weather';
 import {CONNECT_APPS_NOTE} from './config/connectapps';
 
-type Screen = 'home' | 'settings' | 'picker' | 'saverpicker' | 'cities' | 'source' | 'iconpicker' | 'homekey' | 'preload' | 'poweron' | 'extrakeys' | 'themes' | 'languages' | 'updates' | 'essedit';
+type Screen = 'home' | 'settings' | 'picker' | 'saverpicker' | 'cities' | 'source' | 'iconpicker' | 'homekey' | 'preload' | 'poweron' | 'extrakeys' | 'themes' | 'languages' | 'updates' | 'essedit' | 'plexsignin';
 
 const TAB = {apps: 'apps', sources: 'sources', appsSources: 'appsources', essentials: 'essentials', look: 'look', clock: 'clock', wallpaper: 'wallpaper', saver: 'saver', system: 'system', debug: 'debug', tests: 'tests'} as const;
 const HOME_KEY_MS = 1000;               // p33e: a Home key seen this long before a relaunch makes it a Home press
@@ -197,6 +202,10 @@ export function App () {
 	const [weather, setWeather] = useState<WeatherData | null>(() => (WEATHER_ENABLED ? readWeatherCache() : null));
 	const weatherRef = useRef(weather);
 	weatherRef.current = weather;
+	// PlxNative shelves: the Plex sign-in (lib/plexstore.ts, apart from the settings); the shelves themselves are further down (useShelves)
+	const [plexAuth, setPlexAuth] = useState<PlexAuth>(() => (PLEX_ENABLED ? readAuth() : {clientId: '', token: '', account: '', server: null}));
+	const [plexStart, setPlexStart] = useState<'account' | 'servers'>('account');
+	const plexInfo = {signedIn: !!plexAuth.token, account: plexAuth.account, server: plexAuth.server ? plexAuth.server.name : ''};
 	const [toast, setToast] = useState<ToastMessage | null>(null);
 	const toastTimer = useRef(0);
 	const closedAt = useRef(0);
@@ -859,6 +868,21 @@ export function App () {
 		return data ? weatherView(data, wx.unit, wx.showRange, wx.showCity ? wxCity.name : '') : null;
 	}, [weather, wxCity, wx.unit, wx.showRange, wx.showCity, config.language, langTick]);
 
+	// The PlxNative shelves: the Plex source (lib/plexsource.ts) behind the shared shelves (hooks/useShelves.ts, lib/shelves.ts).
+	// Another app's shelves would add its own source here and append its views to `shelves`.
+	const plexSrc = useMemo(() => plexSource(plexAuth, PLEX_ENABLED ? config.plex : {...config.plex, continueOn: false, recentOn: false}, setPlexAuth),
+		[plexAuth, config.plex, config.language, langTick]);       // eslint-disable-line react-hooks/exhaustive-deps
+	const onShelfOpenError = useCallback((why: 'missing' | 'failed', app: string) => showToast(tt(why === 'missing' ? 'shelves.notInstalled' : 'shelves.openFailed', {app}), 'error'), [showToast]);
+	const onPlexExpired = useCallback(() => showToast(tt('plex.expired'), 'error'), [showToast]);
+	const plexViews = useShelves(plexSrc, {wakes, onExpired: onPlexExpired, onOpenError: onShelfOpenError});
+	const shelfViews = plexViews;
+	const onPlexDone = useCallback((auth: PlexAuth, message: string) => {
+		setPlexAuth(auth);
+		if (!auth.token) forgetSet(PLEX_SOURCE_ID);
+		setScreen('settings');
+		showToast(message);
+	}, [showToast]);
+
 	// Tell the user once if the safety switch-off fired.
 	useEffect(() => {
 		const onVisibility = () => {
@@ -1076,15 +1100,15 @@ export function App () {
 				shown: () => shownInputs.map((i) => inputTile(i, config.sourceEdits, config.inputStatus))
 			})
 		]},
-		lazyTab({id: TAB.essentials, label: tt('app.essentials'), items: [], shown: []}, {options: () => groupsOf('essentials', systemInfo)}),
+		lazyTab({id: TAB.essentials, label: tt('app.essentials'), items: [], shown: []}, {options: () => groupsOf('essentials', {...systemInfo, plex: plexInfo})}),
 		lazyTab({id: TAB.look, label: tt('app.look'), items: [], shown: []}, {options: () => groupsOf('look', systemInfo)}),
-		lazyTab({id: TAB.clock, label: tt('app.widget'), items: [], shown: [], preview: config.clock.show}, {options: () => groupsOf('clock')}),
+		lazyTab({id: TAB.clock, label: tt('app.widget'), items: [], shown: [], preview: config.clock.show}, {options: () => groupsOf('clock', {...systemInfo, plex: plexInfo})}),
 		lazyTab({id: TAB.wallpaper, label: tt('app.wallpaper'), items: [], shown: []}, {options: () => groupsOf('wallpaper')}),
 		...(noRoot ? [] : [lazyTab({id: TAB.saver, label: tt('app.screenSaver'), items: [], shown: []}, {options: () => groupsOf('saver', systemInfo)})]),
 		lazyTab({id: TAB.system, label: tt('app.system'), items: [], shown: []}, {options: () => groupsOf('system', {...systemInfo, tvInput, powerOnNames})}),
 		...(config.showDebug ? [{id: TAB.debug, label: tt('app.debug'), items: [], shown: [], pages: debugPagesNow}] : []),
 		...(PROBE_ENABLED && config.showDebug ? [{id: TAB.tests, label: tt('app.tests'), items: [], shown: [], options: probeOptions(probe)}] : [])
-	], [apps, inputs, shownApps, shownInputs, config, systemInfo, tvInput, probe, debugPagesNow, openGroups, noRoot, powerOnNames, themeRev, langTick]);    // eslint-disable-line react-hooks/exhaustive-deps
+	], [apps, inputs, shownApps, shownInputs, config, systemInfo, tvInput, probe, debugPagesNow, openGroups, noRoot, powerOnNames, themeRev, langTick, plexAuth]);    // eslint-disable-line react-hooks/exhaustive-deps
 
 	const editedSource = editKey ? inputs.filter((i) => i.appId === editKey)[0] : undefined;
 	const editedApp = editKey && !editedSource ? apps.filter((a) => a.id === editKey)[0] : undefined;
@@ -1160,6 +1184,17 @@ export function App () {
 		const blocked = disabledReason(optionId, systemInfo, config);
 		if (blocked) { showToast(blocked, 'error'); return; }
 		if (optionId === 'weatherOn' && !config.weather.city) { showToast(tt('app.chooseACityFirst')); setScreen('cities'); return; }
+		// a Plex shelf switched on before signing in: it is turned on and the sign-in opens at once
+		if ((optionId === 'plexContinue' || optionId === 'plexRecent') && press === 'ok' && !plexAuth.token && pref.on && !pref.on(config)) {
+			updateConfig(applyPref(config, optionId, press));
+			setPlexStart('account');
+			setScreen('plexsignin');
+			return;
+		}
+		if (optionId === 'plexAccount' || optionId === 'plexServer') {
+			if (press === 'ok') { setPlexStart(optionId === 'plexServer' ? 'servers' : 'account'); setScreen('plexsignin'); }
+			return;
+		}
 		if (optionId === 'keepReady' && press === 'ok' && !config.keepReady) {       // P73: a warning before it is turned on
 			setNotice({
 				title: tt('app.keepHearthReady'),
@@ -1408,7 +1443,7 @@ export function App () {
 		}
 		const next = applyPref(config, optionId, press);
 		if (next !== config) updateConfig(next);
-	}, [config, showToast, systemInfo, tvInput, openGroups]);
+	}, [config, showToast, systemInfo, tvInput, openGroups, plexAuth]);
 
 	const onRefresh = useCallback(() => {
 		manualLoad.current = true;
@@ -1599,7 +1634,7 @@ export function App () {
 			{photoShow && <PhotoShow fit={config.wallpaper.fit === 'fit'} intervalSec={config.wallpaper.intervalSec} shuffle={config.wallpaper.shuffle} paused={asleep} />}
 			{!photoShow && <Wallpaper config={config.wallpaper} opacity={config.wallpaperOpacity} onProblem={(text) => showToast(text, 'error')} />}
 			{/* Home stays mounted under the other screens so it keeps its focus position. */}
-			<Home items={homeItems} favourites={config.favourites} timeFormat={timeFormat} appearance={appearance} active={screen === 'home' && !menu && !recents && !notice} paused={asleep} onActivate={onActivate} onLongPress={onLongPress} onDeadDown={config.hideSettings && !tileBack ? showTileAgain : undefined} onBack={openRecents} wake={homeResets} homeKey={config.homeFocus === 'last' && !bootFirst.current ? lastOpened.current : null} focus={focus} weather={weatherLine} moveMode={moveMode} tileKeys={keysRef.current} onMovePick={onMovePick} onMoveStep={onMoveStep} onMoveExit={onMoveExit} />
+			<Home items={homeItems} favourites={config.favourites} timeFormat={timeFormat} appearance={appearance} active={screen === 'home' && !menu && !recents && !notice} paused={asleep} onActivate={onActivate} onLongPress={onLongPress} onDeadDown={config.hideSettings && !tileBack ? showTileAgain : undefined} onBack={openRecents} wake={homeResets} homeKey={config.homeFocus === 'last' && !bootFirst.current ? lastOpened.current : null} focus={focus} weather={weatherLine} shelves={shelfViews} moveMode={moveMode} tileKeys={keysRef.current} onMovePick={onMovePick} onMoveStep={onMoveStep} onMoveExit={onMoveExit} />
 			{recents && screen === 'home' && <Recents icons={recentIcons} edits={config.appEdits} inputs={allInputs} sourceEdits={config.sourceEdits} width={config.recentsW} height={config.recentsH} onClose={closeRecents} onOpen={noteOpened} onToast={showToast} />}
 			{/* Settings stays mounted under the picker so it keeps its tab. */}
 			{screen === 'settings' && settingsTab === TAB.clock && appearance.clock.show && <WidgetPreview now={previewNow} format={timeFormat} config={appearance.clock} weather={weatherLine} />}
@@ -1661,6 +1696,7 @@ export function App () {
 			{screen === 'homekey' && <HomeKey model={config.remoteModel} onModel={onRemoteModel} onClose={() => setScreen('settings')} onChanged={(code) => setSystemInfo((previous) => ({...previous, homeKey: code}))} onToast={showToast}  onAuto={onAutoMap} paused={!!notice} />}
 			{screen === 'saverpicker' && <Picker forSaver onBuiltinVideo={onChooseSaverVideo} onChoose={onChooseSaver} onClose={() => setScreen('settings')} />}
 			{WEATHER_ENABLED && screen === 'cities' && <CityPicker allowShell={isWebOS()} onChoose={onChooseCity} onClose={() => setScreen('settings')} />}
+		{PLEX_ENABLED && screen === 'plexsignin' && <PlexSignIn start={plexStart} onDone={onPlexDone} onClose={() => { setPlexAuth(readAuth()); setScreen('settings'); }} />}
 			{/* W2: last, so a pop-up is in front of every screen (all screens share one layer; the later one is on top) */}
 			{notice && <Notice title={notice.title} text={notice.text} buttons={notice.buttons} onBack={notice.onBack} />}
 			<Toast message={toast} />

@@ -94,6 +94,18 @@ export interface ClockConfig {
 	align: ClockAlign;
 }
 
+/** The Plex shelves below the home row (lib/plex.ts). The sign-in itself is kept apart (lib/plexstore.ts), never in here. */
+export interface PlexConfig {
+	/** show the Continue watching shelf */
+	continueOn: boolean;
+	/** show the Recently added shelf */
+	recentOn: boolean;
+	/** OK on an item: play it in PlxNative (resume) or open its page there */
+	action: 'play' | 'open';
+}
+
+export const DEFAULT_PLEX: PlexConfig = {continueOn: false, recentOn: false, action: 'play'};
+
 export interface WeatherConfig {
 	/** show the weather line under the date */
 	on: boolean;
@@ -281,6 +293,7 @@ export interface UserConfig {
 	clock: ClockConfig;
 	weather: WeatherConfig;
 	wallpaper: WallpaperConfig;
+	plex: PlexConfig;
 }
 
 export const THEME_IDS: ThemeName[] = ['black', 'grey', 'midnight', 'forest', 'teal', 'graphite'];
@@ -406,7 +419,8 @@ export const DEFAULT_CONFIG: UserConfig = {
 	clockFormat: 'tv',
 	clock: DEFAULT_CLOCK,
 	weather: DEFAULT_WEATHER,
-	wallpaper: DEFAULT_WALLPAPER
+	wallpaper: DEFAULT_WALLPAPER,
+	plex: DEFAULT_PLEX
 };
 
 function stringList (value: unknown): string[] | null {
@@ -424,7 +438,8 @@ function ranged (value: unknown, name: RangeName): number {
 /** Fields left alone by the P41f reset: the user's own apps, order, names and favourites, and everything installed on the TV (helper, Home key, power-on app, saver, keep-ready, remote, debug). */
 const KEPT_ON_RESET: readonly (keyof UserConfig)[] = ['appIds', 'hiddenIds', 'sourceIds', 'tileOrder', 'essentials', 'favourites', 'sourceEdits', 'appEdits', 'closeHome', 'tvApps', 'showDebug', 'language', 'hideSettings',
 	'replaceHome', 'homeApp', 'homeAppPrevious', 'preloadOff', 'keepReady', 'keepRelaunch', 'takeoverHome', 'samHome', 'screensaver', 'screensaverSource', 'screensaverInterval', 'screensaverShuffle',
-	'screensaverCare', 'screensaverPowerOff', 'screensaverDim', 'screensaverDimLevel', 'screensaverFit', 'screensaverRecursive', 'powerOnApp', 'powerOnNetwork', 'remoteModel', 'remap', 'remapKept', 'defaultsV'];
+	'screensaverCare', 'screensaverPowerOff', 'screensaverDim', 'screensaverDimLevel', 'screensaverFit', 'screensaverRecursive', 'powerOnApp', 'powerOnNetwork', 'remoteModel', 'remap', 'remapKept', 'defaultsV',
+	'plex'];       // the PlxNative shelves are a feature choice, not a look: a look reset leaves them as they are
 
 /** P41f: the saved settings with every look, widget, wallpaper, home-row and quiet-mode value at its default. */
 export function withDefaultLook (c: UserConfig): UserConfig {
@@ -497,6 +512,7 @@ export function loadConfig (): UserConfig {
 		const w: Partial<WallpaperConfig> = parsed.wallpaper || {};
 		const c: Partial<ClockConfig> = parsed.clock || {};
 		const wx: Partial<WeatherConfig> = parsed.weather || DEFAULT_WEATHER;
+		const px: Partial<PlexConfig> = parsed.plex && typeof parsed.plex === 'object' ? parsed.plex : DEFAULT_PLEX;
 		const wc = wx.city as Partial<City> | null | undefined;
 		const city: City | null = wc && typeof wc.name === 'string' && wc.name && validCoords(wc.lat, wc.lon) ? {name: wc.name.slice(0, 60), lat: wc.lat as number, lon: wc.lon as number, detail: typeof wc.detail === 'string' ? wc.detail.slice(0, 80) : undefined} : null;
 		const mode: WallpaperMode = w.mode === 'image' || w.mode === 'folder' ? w.mode : 'gradient';
@@ -610,6 +626,11 @@ export function loadConfig (): UserConfig {
 				shuffle: w.shuffle !== false,
 				recursive: mode === 'folder' && w.recursive === true,
 				fit: w.fit === 'fit' ? 'fit' : 'fill'
+			},
+			plex: {
+				continueOn: px.continueOn === true,
+				recentOn: px.recentOn === true,
+				action: px.action === 'open' ? 'open' : 'play'
 			}
 		};
 		if (parsed.defaultsV !== DEFAULTS_VERSION) {          // P41f: once per version, every saved look setting (own wallpaper included) goes back to the defaults

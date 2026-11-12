@@ -21,7 +21,7 @@ import {CLOCK_COLOR_IDS, LABEL_COLOR_IDS, iconColorValues, iconColorEffective, i
 import {baseName} from './wallpaper';
 import {QUIET_POWEROFF_VALUES} from './quietoff';
 import {SAVER_FIT_VALUES, fitText, SAVER_INTERVAL_VALUES, SAVER_POWEROFF_VALUES, powerOffText, SAVER_PHOTOS, SAVER_VIDEO, saverIsSlideshow} from './saverconfig';
-import {WEATHER_ENABLED} from '../config/features';
+import {PLEX_ENABLED, WEATHER_ENABLED} from '../config/features';
 import type {TempUnit} from './weather';
 import {lastFailure, rootState, type RootState} from './failure';
 import {APP_ID} from '../config/constants';
@@ -64,6 +64,8 @@ export interface SystemInfo {
 	/** free memory in MB (-1: could not be read; undefined: not read yet) */
 	/** what the TV said when it could not (shown under a greyed-out row) */
 	rootDetail?: string;
+	/** the Plex sign-in, for the PlxNative rows of the Widgets tab (names only; the token never comes here) */
+	plex?: {signedIn: boolean; account: string; server: string};
 }
 
 /** The options that run shell commands, so they can't work without root. */
@@ -257,6 +259,33 @@ const WEATHER_PREFS: PrefDef[] = [
 	toggle('weatherRange', 'clock',
 		(c) => c.weather.showRange, (c, v) => ({...c, weather: {...c.weather, showRange: v}}))
 ];
+
+/** The PlxNative group of the Widgets tab: the two shelves below the home row, the account (always there while signed in, so
+ *  Sign out is never hidden), and with a shelf on the server and what OK does. Account and server names come from
+ *  `SystemInfo.plex` (the sign-in is kept apart from the settings, lib/plexstore.ts). Another shelf source adds its own group
+ *  the same way (lib/shelves.ts). */
+const plexAny = (c: UserConfig): boolean => c.plex.continueOn || c.plex.recentOn;
+const plexIn = (info?: SystemInfo): boolean => !!(info && info.plex && info.plex.signedIn);
+const PLEX_ACTIONS: readonly ('play' | 'open')[] = ['play', 'open'];
+const PLEX_PREFS: PrefDef[] = [
+	toggle('plexContinue', 'clock', (c) => c.plex.continueOn, (c, v) => ({...c, plex: {...c.plex, continueOn: v}})),
+	toggle('plexRecent', 'clock', (c) => c.plex.recentOn, (c, v) => ({...c, plex: {...c.plex, recentOn: v}})),
+	{
+		id: 'plexAccount', tab: 'clock', kind: 'action',
+		shownWith: (c, info) => plexAny(c) || plexIn(info),
+		text: (_c, info) => (info && info.plex && info.plex.account ? info.plex.account : plexIn(info) ? td('pref.plexSignedIn') : td('pref.plexSignIn'))
+	},
+	{
+		id: 'plexServer', tab: 'clock', kind: 'action', visible: plexAny,
+		shownWith: (_c, info) => plexIn(info),
+		text: (_c, info) => (info && info.plex && info.plex.server ? info.plex.server : td('pref.notSet'))
+	},
+	{...choice('plexAction', 'clock', PLEX_ACTIONS, (c) => c.plex.action, (c, v) => ({...c, plex: {...c.plex, action: v}}), (v) => (v === 'open' ? td('pref.plexOpen') : td('pref.plexPlay'))), visible: plexAny}
+];
+
+/** Groups of the Widgets tab that are their own widgets (shelves below the home row), not part of the clock: they stay when the
+ *  clock widget is switched off. */
+const WIDGET_GROUPS = ['PlxNative'];
 
 
 // ----- merged rows (P35c): one row over two saved values; the saved values themselves are unchanged -----
@@ -602,6 +631,7 @@ const LAYOUT: [PrefTab, string, string[]][] = [
 	['clock', 'Time and date', ['clockFormat', 'showPeriod', 'showDate']],
 	['clock', 'Widget look', ['clockSize', 'clockFont', 'clockWeight', 'clockTop', 'clockLeft', 'clockAlign', 'clockColor', 'clockShadow', 'clockScrim', 'clockOpacity']],
 	['clock', 'Weather', ['weatherOn', 'weatherUnit', 'weatherCity', 'weatherCityName', 'weatherRange']],
+	['clock', 'PlxNative', ['plexContinue', 'plexRecent', 'plexAccount', 'plexServer', 'plexAction']],
 	['wallpaper', '', ['wallpaper', 'wallpaperFit', 'interval', 'shuffle', 'wallpaperOpacity', 'fadeStrength']],   // P66b: few rows, no groups (was Background and Picture)
 	['saver', '', ['screensaver', 'screensaverPictures', 'screensaverInterval', 'screensaverShuffle', 'screensaverFit', 'screensaverCare', 'screensaverDim', 'screensaverPowerOff', 'screensaverShow']],
 	['system', '', ['updates', 'language', 'languageRemove']],
@@ -614,11 +644,11 @@ const LAYOUT: [PrefTab, string, string[]][] = [
 const PLACE: Record<string, {tab: PrefTab; group: string; order: number}> = {};
 LAYOUT.forEach(([tab, group, ids], g) => ids.forEach((id, i) => { PLACE[id] = {tab, group, order: g * 100 + i}; }));
 
-const ALL_PREFS: PrefDef[] = WEATHER_ENABLED ? BASE_PREFS.concat(WEATHER_PREFS) : BASE_PREFS;
+const ALL_PREFS: PrefDef[] = (WEATHER_ENABLED ? BASE_PREFS.concat(WEATHER_PREFS) : BASE_PREFS).concat(PLEX_ENABLED ? PLEX_PREFS : []);
 export const PREFS: Pref[] = ALL_PREFS.map((p) => withTexts(((): PrefDef => {
 	if (!PLACE[p.id]) return p;
 	const placed = {...p, tab: PLACE[p.id].tab, group: PLACE[p.id].group};
-	if (placed.tab !== 'clock' || p.id === 'widgetOn') return placed;
+	if (placed.tab !== 'clock' || p.id === 'widgetOn' || WIDGET_GROUPS.indexOf(placed.group) !== -1) return placed;
 	const own = p.visible;       // P41f: with the widget off its rows are hidden
 	return {...placed, visible: (c: UserConfig) => c.clock.show && (!own || own(c))};
 })()));

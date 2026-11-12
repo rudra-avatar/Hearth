@@ -17,3 +17,8 @@ declare const __NOROOT__: boolean | undefined;
 
 /** TEST BUILD ONLY (HEARTH_NOROOT=1): every root (Homebrew Channel) call fails at once without being made, to mock a non-root TV. */
 export const NOROOT_MOCK: boolean = typeof __NOROOT__ === 'undefined' ? false : __NOROOT__;
+
+declare const __PLEX__: boolean | undefined;
+
+/** The Plex shelves (Continue watching, Recently added) and their Settings tab. A build without them: HEARTH_PLEX=0 npm run build. */
+export const PLEX_ENABLED: boolean = typeof __PLEX__ === 'undefined' ? true : __PLEX__;

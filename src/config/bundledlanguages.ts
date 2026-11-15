@@ -6,6 +6,7 @@ export const BUNDLED_LANGUAGES: readonly {id: string; name: string}[] = [
 	{id: "fr", name: "Français"},
 	{id: "id", name: "Bahasa Indonesia"},
 	{id: "it", name: "Italiano"},
+	{id: "nl", name: "Nederlands"},
 	{id: "pl", name: "Polski"},
 	{id: "pt-BR", name: "Português (Brasil)"},
 	{id: "ru", name: "Русский"},
